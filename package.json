@@ -56,12 +56,12 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.9.3",
     "@x402/core": "^2.15.0",
     "@x402/evm": "^2.15.0",
     "@x402/fetch": "^2.15.0",
     "esbuild": "^0.28.1",
-    "typescript": "^5.7.0",
+    "typescript": "^6.0.3",
     "viem": "^2.52.2",
     "vitest": "^4.1.4"
   },
