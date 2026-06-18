@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Audit
+        run: npm audit --audit-level=moderate
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify CLI artifact
+        run: |
+          head -n 1 dist/cli.js | grep '#!/usr/bin/env node'
+          test -x dist/cli.js
+          node dist/cli.js --version
+          node dist/cli.js describe opencli > /tmp/opencli.json
+          node -e "const fs=require('fs'); const doc=JSON.parse(fs.readFileSync('/tmp/opencli.json','utf8')); if (!Array.isArray(doc.commands) || doc.commands.length === 0) throw new Error('OpenCLI document has no commands');"
+
+      - name: Verify package contents
+        run: npm pack --dry-run
