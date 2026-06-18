@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  npm:
+    name: Build, Test, and Publish
+    runs-on: ubuntu-latest
+    environment: npm-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      - name: Audit
+        run: npm audit --audit-level=moderate
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Check tag matches package version
+        if: github.event_name == 'push'
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          test "$GITHUB_REF_NAME" = "$version"
+
+      - name: Check npm version is not already published
+        if: github.event_name == 'push'
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "cambrian@$version" version >/dev/null 2>&1; then
+            echo "cambrian@$version is already published; refusing to republish."
+            exit 1
+          fi
+
+      - name: Publish to npm
+        if: github.event_name == 'push'
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
