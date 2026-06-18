@@ -305,7 +305,7 @@ cambrian mcp install --client claude --mode hosted
 cambrian mcp config --mode local
 ```
 
-Local mode launches `npx -y cambrian-api-mcp`. Hosted mode is the default and works without a local MCP server install.
+Local mode launches `npx -y cambrian-api-mcp`, which requires the `cambrian-api-mcp` package to be published to npm. Until it is published, use the hosted MCP mode or run the MCP server from a local checkout. Hosted mode works today.
 
 OpenAI-style adapter output:
 

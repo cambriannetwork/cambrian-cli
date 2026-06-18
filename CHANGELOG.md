@@ -5,6 +5,8 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-06-18
+
 ### Fixed
 
 - Prefix global boolean flags such as `--json` no longer consume the command
@@ -15,6 +17,9 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
   `--api-key`, `--base-url`, `--output`, and related MCP/pay/skill flags).
 - The generated `dist/cli.js` is chmodded executable during build, preserving
   `-rwxr-xr-x` mode in the npm tarball.
+- Cleared npm audit alerts in the dev/build dependency tree by updating
+  `esbuild`, `vitest`/`vite`/`postcss`, and pinning the transitive `ws` version
+  used through `viem`.
 
 ## [0.2.2] - 2026-06-18
 
@@ -95,6 +100,7 @@ opt-in, and the package still ships with zero runtime dependencies.
 - Production-readiness Tier 1+2: client error normalization, `--json` and
   `--timeout` flags, and structured exit codes.
 
+[0.2.3]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.3
 [0.2.2]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.2
 [0.2.1]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.1
 [0.2.0]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.0
