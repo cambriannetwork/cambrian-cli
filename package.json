@@ -1,0 +1,72 @@
+{
+  "name": "cambrian",
+  "version": "0.2.2",
+  "description": "74 Solana, EVM, Deep42, and perp-risk endpoints for AI agents",
+  "keywords": [
+    "agent",
+    "agentic",
+    "ai",
+    "cli",
+    "solana",
+    "evm",
+    "defi",
+    "deep42",
+    "opencli",
+    "mcp"
+  ],
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cambriannetwork/cambrian-cli.git"
+  },
+  "homepage": "https://github.com/cambriannetwork/cambrian-cli#readme",
+  "bugs": {
+    "url": "https://github.com/cambriannetwork/cambrian-cli/issues"
+  },
+  "main": "dist/client/index.js",
+  "types": "dist/client/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "import": "./dist/metadata.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "skills/"
+  ],
+  "bin": {
+    "cambrian": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "ci": "npm test && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sync-openapi": "node scripts/sync-openapi.mjs",
+    "pack:dry-run": "node scripts/build.mjs && node $npm_execpath pack --dry-run --json",
+    "prepack": "node scripts/build.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@x402/core": "^2.15.0",
+    "@x402/evm": "^2.15.0",
+    "@x402/fetch": "^2.15.0",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.0",
+    "viem": "^2.52.2",
+    "vitest": "^4.1.4"
+  },
+  "license": "MIT",
+  "overrides": {
+    "ws": "8.21.0"
+  }
+}

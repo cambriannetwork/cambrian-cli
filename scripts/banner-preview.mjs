@@ -1,0 +1,29 @@
+// Preview the CAMBRIAN banner color options in your terminal.
+//   node scripts/banner-preview.mjs
+const ART = [
+  ' ██████╗ █████╗ ███╗   ███╗██████╗ ██████╗ ██╗ █████╗ ███╗   ██╗',
+  '██╔════╝██╔══██╗████╗ ████║██╔══██╗██╔══██╗██║██╔══██╗████╗  ██║',
+  '██║     ███████║██╔████╔██║██████╔╝██████╔╝██║███████║██╔██╗ ██║',
+  '██║     ██╔══██║██║╚██╔╝██║██╔══██╗██╔══██╗██║██╔══██║██║╚██╗██║',
+  '╚██████╗██║  ██║██║ ╚═╝ ██║██████╔╝██║  ██║██║██║  ██║██║ ╚████║',
+  ' ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝',
+];
+const R = '\x1b[0m';
+const fg = (r, g, b) => `\x1b[38;2;${r};${g};${b}m`;
+const LEAF = fg(95, 168, 74);
+const CREAM = fg(232, 224, 196);
+const RAMP = [fg(46, 84, 38), fg(58, 108, 46), fg(72, 132, 56), fg(88, 156, 68), fg(104, 176, 80), fg(120, 196, 92)];
+
+const leaf = () => LEAF + ART.join('\n') + R;
+const duo = () =>
+  ART.map((l) => Array.from(l).map((c) => (c === ' ' ? c : c === '█' ? LEAF + c : CREAM + c)).join('')).join('\n') + R;
+const gradient = () => ART.map((l, i) => (RAMP[i] || LEAF) + l).join('\n') + R;
+
+const bold = (s) => `\x1b[1m${s}${R}`;
+console.log('\n' + bold('Option 1 — leaf (solid brand green)') + '\n');
+console.log(leaf());
+console.log('\n' + bold('Option 2 — duo (green fill + cream shadow)') + '\n');
+console.log(duo());
+console.log('\n' + bold('Option 3 — gradient (forest → leaf, top to bottom)') + '\n');
+console.log(gradient());
+console.log('');
