@@ -1,13 +1,13 @@
 # cambrian
 
-DeFi data, social intelligence, and perpetual risk analysis for agents -- 74 endpoints across Solana, EVM, Deep42, and Risk services.
+DeFi data, social intelligence, and perpetual risk analysis for agents across Solana, EVM, Deep42, and Risk services.
 
 `cambrian` is the published agent-facing surface for the Cambrian API:
 
-- `cambrian solana <resource> [--flags]` -- 41 Solana DeFi endpoints
-- `cambrian base <resource> [--flags]` -- 27 Base DeFi endpoints (alias: evm)
-- `cambrian deep42 <resource> [--flags]` -- 5 social intelligence endpoints
-- `cambrian risk <resource> [--flags]` -- 1 perp risk endpoint
+- `cambrian solana <resource> [--flags]` -- Solana DeFi endpoints
+- `cambrian base <resource> [--flags]` -- Base DeFi endpoints (alias: evm)
+- `cambrian deep42 <resource> [--flags]` -- social intelligence endpoints
+- `cambrian risk <resource> [--flags]` -- perp risk endpoint
 - `cambrian pay <group> <resource> [--flags]` -- pay-per-call via x402 (Base USDC, no API key)
 - `cambrian skill ...` -- packaged skill bundle management
 - `cambrian mcp ...` -- hosted/local MCP setup helpers

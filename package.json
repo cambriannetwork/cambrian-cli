@@ -1,7 +1,7 @@
 {
   "name": "cambrian",
   "version": "0.2.3",
-  "description": "74 Solana, EVM, Deep42, and perp-risk endpoints for AI agents",
+  "description": "Solana, EVM, Deep42, and perp-risk data for AI agents",
   "keywords": [
     "agent",
     "agentic",
