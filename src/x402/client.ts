@@ -104,15 +104,17 @@ async function fetchWithTimeout(
   url: string,
   timeoutMs: number,
   phase: 'probe' | 'paid',
+  headers?: RequestInit['headers'],
 ): Promise<Response> {
+  const init: RequestInit = { method: 'GET', ...(headers ? { headers } : {}) };
   if (timeoutMs === 0) {
-    return fetchFn(url, { method: 'GET' });
+    return fetchFn(url, init);
   }
 
   const controller = new AbortController();
   const timer: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetchFn(url, { method: 'GET', signal: controller.signal });
+    return await fetchFn(url, { ...init, signal: controller.signal });
   } catch (err) {
     if (isAbortError(err)) {
       throw new Error(timeoutMessage(phase, timeoutMs));
@@ -142,6 +144,19 @@ export interface PayOptions {
   onPreview?: (req: PaymentRequirement) => void;
   /** Per-request timeout in milliseconds. Set 0 to disable. */
   timeoutMs?: number;
+  /**
+   * Called immediately before the SDK-paid request starts. Use this to attach
+   * idempotency headers and record a local pending attempt. `onSuccess` means
+   * the caller received data; `onRejected` means the gateway rejected payment
+   * before settlement; `onUnknown` means the caller must not assume whether the
+   * authorization settled.
+   */
+  preparePayment?: (req: PaymentRequirement) => {
+    headers?: RequestInit['headers'];
+    onSuccess?: () => void;
+    onRejected?: () => void;
+    onUnknown?: () => void;
+  };
 }
 
 /**
@@ -171,13 +186,29 @@ export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
   }
 
   const payFetch = await opts.getPayFetch();
-  const paidRes = await fetchWithTimeout(payFetch, opts.url, timeoutMs, 'paid');
+  const attempt = opts.preparePayment?.(req);
+  let paidRes: Response;
+  try {
+    paidRes = await fetchWithTimeout(payFetch, opts.url, timeoutMs, 'paid', attempt?.headers);
+  } catch (err) {
+    attempt?.onUnknown?.();
+    throw err;
+  }
   const body = await readBody(paidRes);
   if (!paidRes.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`x402: payment rejected by gateway (${paidRes.status}). ${detail}`);
+    if (paidRes.status === 402 || paidRes.status === 403) {
+      attempt?.onRejected?.();
+      throw new Error(`x402: payment rejected by gateway (${paidRes.status}). ${detail}`);
+    }
+    attempt?.onUnknown?.();
+    throw new Error(
+      `x402: paid request failed after payment submission (${paidRes.status}). ` +
+        `Payment status may be unknown; check your wallet activity before retrying. ${detail}`,
+    );
   }
 
+  attempt?.onSuccess?.();
   return {
     paid: true,
     status: paidRes.status,

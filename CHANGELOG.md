@@ -5,6 +5,22 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-07-06
+
+### Fixed
+
+- `cambrian pay` now validates required options, numeric bounds, and enums from
+  the bundled endpoint metadata before the x402 gateway probe, so locally invalid
+  requests fail before any payment flow can start.
+- `cambrian pay` now records a local pending-payment guard and sends
+  `Idempotency-Key` / `X-Cambrian-Idempotency-Key` headers for paid attempts.
+  If a paid request times out or returns an unknown post-submission failure, an
+  identical wallet/resource retry is blocked until the gateway timeout window
+  expires instead of risking a silent duplicate charge.
+- Successful paid responses now fall back to unfiltered JSON if local output
+  formatting fails after settlement, so users still receive the data they paid
+  for.
+
 ## [0.2.4] - 2026-07-06
 
 ### Added
@@ -118,6 +134,7 @@ opt-in, and the package still ships with zero runtime dependencies.
 - Production-readiness Tier 1+2: client error normalization, `--json` and
   `--timeout` flags, and structured exit codes.
 
+[0.2.5]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.5
 [0.2.4]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.4
 [0.2.3]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.3
 [0.2.2]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.2

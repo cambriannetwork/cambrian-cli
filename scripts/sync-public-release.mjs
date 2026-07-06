@@ -124,6 +124,7 @@ if (!options.allowDirty) {
 const excluded = [
   '.git/',
   '.github/',
+  '.gitignore',
   'CONTRIBUTING.md',
   'SECURITY.md',
   'node_modules/',

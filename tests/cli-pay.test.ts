@@ -6,9 +6,15 @@
  * by the payAndFetch flow unit test.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { runCli } from '../src/cli/index.js';
 import type { Runtime } from '../src/cli/core.js';
+import { readConfig } from '../src/cli/config.js';
+import { prepareX402PaymentAttempt } from '../src/cli/x402-handlers.js';
+import type { PaymentRequirement } from '../src/x402/payment.js';
 
 const TEST_KEY = `0x${'1'.repeat(64)}`;
 
@@ -26,6 +32,17 @@ const REQUIRED_BODY = {
     },
   ],
 };
+
+const created: string[] = [];
+function tempHome(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'cambrian-pay-'));
+  created.push(dir);
+  return dir;
+}
+
+afterEach(() => {
+  for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 function gw402(): typeof globalThis.fetch {
   return (async (url: string) => {
@@ -50,6 +67,18 @@ function run(
     env: {},
     ...overrides,
   }).then((code) => ({ code, stdout, stderr }));
+}
+
+function runtimeWithHome(home: string): Runtime {
+  return {
+    stdout: () => {},
+    stdoutRaw: () => {},
+    stderr: () => {},
+    fetch: gw402(),
+    env: {},
+    homedir: () => home,
+    isTTY: false,
+  };
 }
 
 describe('cambrian pay', () => {
@@ -97,6 +126,36 @@ describe('cambrian pay', () => {
     expect(fetched).toBe(false);
   });
 
+  it('rejects missing required resource params before the x402 probe', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'solana', 'holder-token-balances', '--yes'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('Missing required option --wallet-address');
+    expect(fetched).toBe(false);
+  });
+
+  it('rejects invalid typed params before the x402 probe', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--limit', 'nope', '--yes'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('--limit must be an integer');
+    expect(fetched).toBe(false);
+  });
+
   it('previews and aborts without --yes, building the /api/v1/<group>/<resource> URL', async () => {
     const fetch = gw402();
     const { code, stderr } = await run(
@@ -121,9 +180,10 @@ describe('cambrian pay', () => {
     await run(['pay', 'risk', 'perp-risk-engine'], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
-    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toBe(
-      'https://x402.cambrian.network/api/v1/perp-risk-engine',
+    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain(
+      'https://x402.cambrian.network/api/v1/perp-risk-engine?',
     );
+    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('risk_horizon=1d');
   });
 
   it('rejects when price exceeds --max-amount (exit 2)', async () => {
@@ -133,5 +193,43 @@ describe('cambrian pay', () => {
     );
     expect(code).toBe(2);
     expect(stderr).toContain('exceeds your --max-amount');
+  });
+
+  it('blocks identical paid retries while the previous attempt is still pending', () => {
+    const home = tempHome();
+    const runtime = runtimeWithHome(home);
+    const req = REQUIRED_BODY.accepts[0] as PaymentRequirement;
+    const url = 'https://x402.cambrian.network/api/v1/deep42/social-data/alpha-tweet-detection?limit=1';
+
+    const attempt = prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 1_000);
+
+    expect(attempt.headers['Idempotency-Key']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(attempt.headers['X-Cambrian-Idempotency-Key']).toBe(attempt.headers['Idempotency-Key']);
+    expect(Object.keys(readConfig(runtime).x402PendingPayments ?? {})).toHaveLength(1);
+
+    expect(() => prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 2_000)).toThrow(
+      /previous paid attempt/,
+    );
+
+    attempt.onSuccess();
+    expect(readConfig(runtime).x402PendingPayments).toBeUndefined();
+    expect(() => prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 3_000)).not.toThrow();
+  });
+
+  it('keeps the pending guard on unknown payment state and prunes it after expiry', () => {
+    const home = tempHome();
+    const runtime = runtimeWithHome(home);
+    const req = { ...(REQUIRED_BODY.accepts[0] as PaymentRequirement), maxTimeoutSeconds: 0 };
+    const url = 'https://x402.cambrian.network/api/v1/deep42/social-data/alpha-tweet-detection?limit=1';
+
+    const attempt = prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 1_000);
+    attempt.onUnknown();
+
+    expect(() => prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 2_000)).toThrow(
+      /previous paid attempt/,
+    );
+    expect(() => prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 62_000)).not.toThrow();
   });
 });

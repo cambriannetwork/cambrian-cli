@@ -40,7 +40,7 @@ export function deriveCliMetadata(
 
 // ── Type coercion from spec metadata ─────────────────────────────
 
-function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string): unknown {
+export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string): unknown {
   // Enum validation (case-insensitive match, returns canonical casing)
   if (paramSpec.enum) {
     const match = paramSpec.enum.find((e) => e.toLowerCase() === value.toLowerCase());

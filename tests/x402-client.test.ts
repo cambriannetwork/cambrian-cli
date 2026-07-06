@@ -77,8 +77,39 @@ describe('payAndFetch flow', () => {
     expect(probes).toBe(1); // one unpaid probe; the SDK fetch handles the rest
   });
 
+  it('prepares a paid attempt, sends headers, and marks success', async () => {
+    let paidHeaders: RequestInit['headers'] | undefined;
+    let prepared = 0;
+    let succeeded = 0;
+    const headerPay: PayFetch = async (_url, init) => {
+      paidHeaders = init?.headers;
+      return res(200, { ok: true }, { 'payment-response': 'rcpt' });
+    };
+
+    const result = await payAndFetch({
+      fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
+      url: 'https://x/api',
+      capMicro: 100000,
+      getPayFetch: async () => headerPay,
+      authorize: () => true,
+      preparePayment: () => {
+        prepared += 1;
+        return {
+          headers: { 'Idempotency-Key': 'idem-1' },
+          onSuccess: () => { succeeded += 1; },
+        };
+      },
+    });
+
+    expect(result.paid).toBe(true);
+    expect(prepared).toBe(1);
+    expect(succeeded).toBe(1);
+    expect(paidHeaders).toEqual({ 'Idempotency-Key': 'idem-1' });
+  });
+
   it('aborts (no SDK load, no payment) when not authorized', async () => {
     let loaded = false;
+    let prepared = false;
     await expect(
       payAndFetch({
         fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
@@ -86,13 +117,19 @@ describe('payAndFetch flow', () => {
         capMicro: 100000,
         getPayFetch: async () => { loaded = true; return fakePay; },
         authorize: () => false,
+        preparePayment: () => {
+          prepared = true;
+          return {};
+        },
       }),
     ).rejects.toBeInstanceOf(CliUsageError);
     expect(loaded).toBe(false);
+    expect(prepared).toBe(false);
   });
 
   it('rejects when the price exceeds the cap (before loading the SDK)', async () => {
     let loaded = false;
+    let prepared = false;
     await expect(
       payAndFetch({
         fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
@@ -100,9 +137,14 @@ describe('payAndFetch flow', () => {
         capMicro: 10000, // $0.01 < $0.05
         getPayFetch: async () => { loaded = true; return fakePay; },
         authorize: () => true,
+        preparePayment: () => {
+          prepared = true;
+          return {};
+        },
       }),
     ).rejects.toBeInstanceOf(CliUsageError);
     expect(loaded).toBe(false);
+    expect(prepared).toBe(false);
   });
 
   it('passes through a non-paywalled 200 without paying', async () => {
@@ -119,6 +161,8 @@ describe('payAndFetch flow', () => {
 
   it('throws when the SDK-paid request is itself rejected', async () => {
     const rejectPay: PayFetch = async () => res(402, { error: 'invalid payment' });
+    let rejected = 0;
+    let unknown = 0;
     await expect(
       payAndFetch({
         fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
@@ -126,8 +170,35 @@ describe('payAndFetch flow', () => {
         capMicro: 100000,
         getPayFetch: async () => rejectPay,
         authorize: () => true,
+        preparePayment: () => ({
+          onRejected: () => { rejected += 1; },
+          onUnknown: () => { unknown += 1; },
+        }),
       }),
     ).rejects.toThrow(/payment rejected/);
+    expect(rejected).toBe(1);
+    expect(unknown).toBe(0);
+  });
+
+  it('marks payment state unknown when the paid request returns a 5xx', async () => {
+    const failPay: PayFetch = async () => res(500, { error: 'upstream failed' });
+    let rejected = 0;
+    let unknown = 0;
+    await expect(
+      payAndFetch({
+        fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
+        url: 'https://x/api',
+        capMicro: 100000,
+        getPayFetch: async () => failPay,
+        authorize: () => true,
+        preparePayment: () => ({
+          onRejected: () => { rejected += 1; },
+          onUnknown: () => { unknown += 1; },
+        }),
+      }),
+    ).rejects.toThrow(/Payment status may be unknown/);
+    expect(rejected).toBe(0);
+    expect(unknown).toBe(1);
   });
 
   it('times out the unpaid pre-flight probe', async () => {
@@ -144,6 +215,7 @@ describe('payAndFetch flow', () => {
   });
 
   it('warns that payment state may be unknown when the paid request times out', async () => {
+    let unknown = 0;
     await expect(
       payAndFetch({
         fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
@@ -152,8 +224,12 @@ describe('payAndFetch flow', () => {
         timeoutMs: 1,
         getPayFetch: async () => abortingFetch() as unknown as PayFetch,
         authorize: () => true,
+        preparePayment: () => ({
+          onUnknown: () => { unknown += 1; },
+        }),
       }),
     ).rejects.toThrow(/Payment status may be unknown/);
+    expect(unknown).toBe(1);
   });
 });
 

@@ -17,6 +17,15 @@ import type { Runtime } from './core.js';
 export interface CambrianConfig {
   /** Persisted API key (lowest-precedence source; see resolveApiKey). */
   apiKey?: string;
+  /** Pending x402 attempts whose paid request may have settled but not returned. */
+  x402PendingPayments?: Record<string, {
+    idempotencyKey: string;
+    createdAt: number;
+    expiresAt: number;
+    amount: string;
+    network: string;
+    payTo: string;
+  }>;
   /** Epoch ms of the last update check (throttles the background refresh). */
   lastUpdateCheck?: number;
   /** Latest version seen on the registry, surfaced as a notice next run. */

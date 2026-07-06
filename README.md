@@ -92,8 +92,10 @@ cambrian pay base price-current --token-address 0x420000000000000000000000000000
 Safeguards: every call prints a cost preview and requires `--yes` before
 spending; `--max-amount <usd>` caps the price (default `0.10`); `--timeout <ms>`
 bounds both the unpaid probe and paid gateway request (default `90000`); the
-wallet key is read only from `CAMBRIAN_X402_PRIVATE_KEY` at runtime and is never
-stored or logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
+pay path validates endpoint params before the x402 probe and blocks identical
+retries while a previous paid attempt may still be pending; the wallet key is
+read only from `CAMBRIAN_X402_PRIVATE_KEY` at runtime and is never stored or
+logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 
 ## Features
 
