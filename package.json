@@ -1,6 +1,6 @@
 {
   "name": "cambrian",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Solana, EVM, Deep42, and perp-risk data for AI agents",
   "keywords": [
     "agent",
@@ -34,7 +34,11 @@
   },
   "files": [
     "dist/",
-    "skills/"
+    "skills/cambrian/SKILL.md",
+    "skills/cambrian/agents/",
+    "skills/cambrian/references/cli.md",
+    "skills/cambrian/references/conventions.md",
+    "skills/cambrian/references/workflows.md"
   ],
   "bin": {
     "cambrian": "dist/cli.js"
@@ -44,6 +48,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sync-openapi": "node scripts/sync-openapi.mjs",
+    "check:public": "node scripts/check-public-release.mjs",
+    "sync:public": "node scripts/sync-public-release.mjs",
+    "release:notes": "node scripts/release-notes.mjs",
     "pack:dry-run": "node scripts/build.mjs && node $npm_execpath pack --dry-run --json",
     "prepack": "node scripts/build.mjs",
     "ci": "npm test && npm run build"

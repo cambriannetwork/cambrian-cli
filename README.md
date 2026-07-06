@@ -80,19 +80,20 @@ This path is opt-in and keeps the core install dependency-free, so the signing
 libraries are **not bundled** — install them once alongside the CLI:
 
 ```bash
-npm install -g @x402/fetch @x402/evm viem
+npm install -g @x402/core @x402/fetch @x402/evm viem
 export CAMBRIAN_X402_PRIVATE_KEY=0x<base-mainnet-key-funded-with-usdc>
 
 # Preview the price first (no spend) — then authorize with --yes:
 cambrian pay deep42 social-data/alpha-tweet-detection --limit 1
 cambrian pay deep42 social-data/alpha-tweet-detection --limit 1 --yes
-cambrian pay base price-current --token-address 0x4200000000000000000000000000000000000006 --yes
+cambrian pay base price-current --token-address 0x4200000000000000000000000000000000000006 --timeout 90000 --yes
 ```
 
 Safeguards: every call prints a cost preview and requires `--yes` before
-spending; `--max-amount <usd>` caps the price (default `0.10`); the wallet key is
-read only from `CAMBRIAN_X402_PRIVATE_KEY` at runtime and is never stored or
-logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
+spending; `--max-amount <usd>` caps the price (default `0.10`); `--timeout <ms>`
+bounds both the unpaid probe and paid gateway request (default `90000`); the
+wallet key is read only from `CAMBRIAN_X402_PRIVATE_KEY` at runtime and is never
+stored or logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 
 ## Features
 

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -30,6 +30,9 @@ jobs:
 
       - name: Audit
         run: npm audit --audit-level=moderate
+
+      - name: Public safety
+        run: npm run check:public
 
       - name: Test
         run: npm test
@@ -60,6 +63,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Public safety
+        run: npm run check:public
+
       - name: Build
         run: npm run build
 
@@ -80,3 +86,10 @@ jobs:
         run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          node scripts/release-notes.mjs > /tmp/release-notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file /tmp/release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

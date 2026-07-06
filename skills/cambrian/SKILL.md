@@ -352,7 +352,7 @@ Use local stdio MCP when the client should launch the server process:
 cambrian mcp config --mode local
 ```
 
-Hosted MCP uses Cambrian's managed MCP endpoint.
+Hosted MCP uses Cambrian's managed endpoint by default.
 
 ## Minimal Prompt To Give Another Agent
 

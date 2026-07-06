@@ -39,6 +39,17 @@ function gateway402(): Response {
   return res(402, REQUIRED_BODY, { 'payment-required': b64, 'www-authenticate': 'X402' });
 }
 
+function abortingFetch(): typeof globalThis.fetch {
+  return (async (_url: string, init?: RequestInit) =>
+    new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    })) as unknown as typeof globalThis.fetch;
+}
+
 describe('normalizePrivateKey', () => {
   it('accepts 0x and bare 64-hex, rejects junk', () => {
     expect(normalizePrivateKey(TEST_KEY)).toBe(TEST_KEY);
@@ -117,6 +128,32 @@ describe('payAndFetch flow', () => {
         authorize: () => true,
       }),
     ).rejects.toThrow(/payment rejected/);
+  });
+
+  it('times out the unpaid pre-flight probe', async () => {
+    await expect(
+      payAndFetch({
+        fetch: abortingFetch(),
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 1,
+        getPayFetch: async () => fakePay,
+        authorize: () => true,
+      }),
+    ).rejects.toThrow(/unpaid gateway probe timed out after 1ms/);
+  });
+
+  it('warns that payment state may be unknown when the paid request times out', async () => {
+    await expect(
+      payAndFetch({
+        fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 1,
+        getPayFetch: async () => abortingFetch() as unknown as PayFetch,
+        authorize: () => true,
+      }),
+    ).rejects.toThrow(/Payment status may be unknown/);
   });
 });
 

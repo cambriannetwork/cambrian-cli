@@ -6,12 +6,11 @@ This repository is the public source and release surface for the `cambrian` npm 
 
 The first public-source commit may contain the same code as an already published
 npm version. Do **not** push a release tag for a version that already exists on
-npm. As of this bootstrap, `cambrian@0.2.2` is already published, so the first
-publishing tag from this repository should be `v0.2.3` or later.
+npm.
 
 ## Release Prerequisites
 
-Configure these GitHub settings before the first public release:
+Configure these GitHub settings before publishing:
 
 1. Add repository secret `NPM_TOKEN` with publish access to the `cambrian` package.
 2. Create a GitHub Environment named `npm-production`.
@@ -35,6 +34,7 @@ Configure these GitHub settings before the first public release:
    ```bash
    npm test
    npm run build
+   npm run check:public
    node dist/cli.js describe opencli
    npm pack --dry-run
    ```
@@ -59,15 +59,18 @@ git push origin main "$version"
 The `Release` GitHub Actions workflow will:
 
 - install dependencies with `npm ci`
+- run the public-safety check
 - run tests
 - build artifacts
 - run `npm pack --dry-run`
 - verify that the tag matches `package.json`
 - publish to npm with provenance after `npm-production` approval
+- create a GitHub Release with notes from `CHANGELOG.md`
 
 ## Dry Run
 
-Use the `Release` workflow's manual `workflow_dispatch` with `publish=false` for a GitHub-hosted dry run that does not publish.
+Use the `Release` workflow's manual `workflow_dispatch` for a GitHub-hosted dry
+run that does not publish.
 
 ## Post-Release Checks
 

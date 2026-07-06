@@ -53,6 +53,7 @@ describe('complete', () => {
     const flags = complete(['pay', 'deep42', 'social-data/alpha-tweet-detection', '--']);
     expect(flags).toContain('--yes');
     expect(flags).toContain('--max-amount');
+    expect(flags).toContain('--timeout');
     expect(flags).toContain('--limit'); // a resource param
   });
 });

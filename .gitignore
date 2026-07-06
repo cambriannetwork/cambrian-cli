@@ -6,8 +6,4 @@ dist/
 *.tgz
 .DS_Store
 **/.DS_Store
-.claude/
-.agents/
-.codex/
-.rickydata_code/
 coverage/

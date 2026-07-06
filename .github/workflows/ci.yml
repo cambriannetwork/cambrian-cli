@@ -30,6 +30,9 @@ jobs:
       - name: Audit
         run: npm audit --audit-level=moderate
 
+      - name: Public safety
+        run: npm run check:public
+
       - name: Test
         run: npm test
 

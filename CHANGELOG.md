@@ -5,6 +5,24 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-06
+
+### Added
+
+- `cambrian pay` now supports `--timeout <ms>` (default `90000`) for both the
+  unpaid x402 price probe and the SDK-paid gateway request. Paid-request
+  timeouts warn that payment status may be unknown and should be checked before
+  retrying.
+- Public-release safety scripts now verify package metadata and reject internal
+  development artifacts before staging/publishing the public mirror.
+
+### Fixed
+
+- x402 SDK install hints now include the directly imported `@x402/core`
+  package: `npm install -g @x402/core @x402/fetch @x402/evm viem`.
+- The npm `files` allowlist now enumerates public skill files instead of
+  shipping the entire local `skills/` tree.
+
 ## [0.2.3] - 2026-06-18
 
 ### Fixed
@@ -87,9 +105,9 @@ opt-in, and the package still ships with zero runtime dependencies.
   - `cambrian pay <group> <resource>`: pay for a single call with USDC on Base
     via x402 ($0.05/request, facilitator-settled — no gas, no API key). Prints a
     cost preview and requires `--yes`; `--max-amount <usd>` caps the price
-    (default `0.10`). The signing libraries (`@x402/fetch`, `@x402/evm`, `viem`)
-    are peer-installed and lazy-loaded, preserving the zero-runtime-dependency
-    core. See [docs/x402.md](docs/x402.md).
+    (default `0.10`). The signing libraries (`@x402/core`, `@x402/fetch`,
+    `@x402/evm`, `viem`) are peer-installed and lazy-loaded, preserving the
+    zero-runtime-dependency core. See [docs/x402.md](docs/x402.md).
 
 ## [0.1.14] - 2026
 
@@ -100,6 +118,7 @@ opt-in, and the package still ships with zero runtime dependencies.
 - Production-readiness Tier 1+2: client error normalization, `--json` and
   `--timeout` flags, and structured exit codes.
 
+[0.2.4]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.4
 [0.2.3]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.3
 [0.2.2]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.2
 [0.2.1]: https://github.com/cambriannetwork/cambrian-cli/releases/tag/v0.2.1

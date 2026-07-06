@@ -19,6 +19,9 @@ import {
   type PaymentRequirement,
 } from './payment.js';
 
+export const X402_SDK_INSTALL_COMMAND = 'npm install -g @x402/core @x402/fetch @x402/evm viem';
+export const DEFAULT_X402_TIMEOUT_MS = 90_000;
+
 /** Normalizes/validates a 32-byte hex private key (0x-prefixed). */
 export function normalizePrivateKey(raw: string): `0x${string}` {
   const hex = raw.startsWith('0x') ? raw : `0x${raw}`;
@@ -55,7 +58,7 @@ export async function loadPayFetch(
   } catch {
     throw new CliUsageError(
       'x402 payments require the x402 SDK, which is not installed.\n' +
-        'Install it alongside the CLI:  npm install -g @x402/fetch @x402/evm viem',
+        `Install it alongside the CLI:  ${X402_SDK_INSTALL_COMMAND}`,
     );
   }
 
@@ -82,6 +85,44 @@ async function readBody(res: Response): Promise<unknown> {
   }
 }
 
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
+}
+
+function timeoutMessage(phase: 'probe' | 'paid', timeoutMs: number): string {
+  if (phase === 'paid') {
+    return (
+      `x402: paid request timed out after ${timeoutMs}ms. ` +
+      'Payment status may be unknown; check your wallet activity before retrying.'
+    );
+  }
+  return `x402: unpaid gateway probe timed out after ${timeoutMs}ms.`;
+}
+
+async function fetchWithTimeout(
+  fetchFn: PayFetch,
+  url: string,
+  timeoutMs: number,
+  phase: 'probe' | 'paid',
+): Promise<Response> {
+  if (timeoutMs === 0) {
+    return fetchFn(url, { method: 'GET' });
+  }
+
+  const controller = new AbortController();
+  const timer: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchFn(url, { method: 'GET', signal: controller.signal });
+  } catch (err) {
+    if (isAbortError(err)) {
+      throw new Error(timeoutMessage(phase, timeoutMs));
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export interface PayResult {
   paid: boolean;
   status: number;
@@ -99,6 +140,8 @@ export interface PayOptions {
   authorize: (req: PaymentRequirement) => boolean;
   /** Called once the price is known, before authorization (cost preview). */
   onPreview?: (req: PaymentRequirement) => void;
+  /** Per-request timeout in milliseconds. Set 0 to disable. */
+  timeoutMs?: number;
 }
 
 /**
@@ -106,7 +149,8 @@ export interface PayOptions {
  * if authorized — pays via the SDK-wrapped fetch and returns the body + receipt.
  */
 export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
-  const probe = await opts.fetch(opts.url, { method: 'GET' });
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_X402_TIMEOUT_MS;
+  const probe = await fetchWithTimeout(opts.fetch, opts.url, timeoutMs, 'probe');
 
   if (probe.status !== 402) {
     const body = await readBody(probe);
@@ -127,7 +171,7 @@ export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
   }
 
   const payFetch = await opts.getPayFetch();
-  const paidRes = await payFetch(opts.url, { method: 'GET' });
+  const paidRes = await fetchWithTimeout(payFetch, opts.url, timeoutMs, 'paid');
   const body = await readBody(paidRes);
   if (!paidRes.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);

@@ -1,5 +1,5 @@
 /**
- * `cambrian pay <group> <resource> [params] [--max-amount <usd>] [--yes]` —
+ * `cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]` —
  * pay-per-call against the x402 gateway (x402.cambrian.network) instead of an
  * API key. Covers all data groups (solana / base|evm / deep42 / risk): the
  * gateway fronts the same `/api/v1/<group>/<resource>` paths. Reuses the bundled
@@ -13,6 +13,7 @@ import {
   getOption,
   hasOption,
   requireOptionValue,
+  optionalOptionValue,
   assertNoUnknownOptions,
   parseCsvValues,
   CliUsageError,
@@ -32,9 +33,14 @@ import {
   formatUsd,
   requirementAmount,
 } from '../x402/payment.js';
-import { payAndFetch, loadPayFetch } from '../x402/client.js';
+import {
+  payAndFetch,
+  loadPayFetch,
+  DEFAULT_X402_TIMEOUT_MS,
+  X402_SDK_INSTALL_COMMAND,
+} from '../x402/client.js';
 
-const PAY_GLOBAL_OPTIONS = ['help', 'yes', 'max-amount', 'json', 'output', 'fields'];
+const PAY_GLOBAL_OPTIONS = ['help', 'yes', 'max-amount', 'json', 'output', 'fields', 'timeout'];
 
 /** group token (incl. evm alias) → { metadata group key, spec, aliases }. */
 interface PayGroup {
@@ -66,10 +72,20 @@ function parseOutputFormat(parsed: ParsedArgs): OutputFormat {
   return raw as OutputFormat;
 }
 
+function parsePayTimeout(parsed: ParsedArgs): number {
+  const raw = optionalOptionValue(parsed, 'timeout');
+  if (!raw) return DEFAULT_X402_TIMEOUT_MS;
+  const parsedMs = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsedMs) || parsedMs < 0) {
+    throw new CliUsageError('--timeout must be a non-negative integer (milliseconds).');
+  }
+  return parsedMs;
+}
+
 export function payHelp(): string {
   return [
     'Usage:',
-    '  cambrian pay <group> <resource> [params] [--max-amount <usd>] [--yes]',
+    '  cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]',
     '',
     'Pay-per-call via x402 (Base USDC, $0.05/call) instead of an API key. Spends real funds.',
     '',
@@ -78,12 +94,13 @@ export function payHelp(): string {
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',
     '  --max-amount <usd> Spend cap per call (default 0.10).',
+    `  --timeout <ms>    Gateway timeout in milliseconds (default ${DEFAULT_X402_TIMEOUT_MS}).`,
     '  --output <fmt>     json (default), table, or tsv.',
     '  --fields a,b,c     Project to only these fields.',
     '',
     'Wallet:',
     '  Set CAMBRIAN_X402_PRIVATE_KEY=0x<key> (Base mainnet, funded with USDC).',
-    '  Requires the x402 SDK: npm install -g @x402/fetch @x402/evm viem',
+    `  Requires the x402 SDK: ${X402_SDK_INSTALL_COMMAND}`,
     '',
     'Examples:',
     '  cambrian pay deep42 social-data/alpha-tweet-detection --limit 1 --yes',
@@ -148,6 +165,7 @@ export async function handlePay(parsed: ParsedArgs, runtime: Runtime): Promise<n
     : DEFAULT_MAX_AMOUNT_MICRO;
   const authorized = hasOption(parsed, 'yes');
   const output = parseOutputFormat(parsed);
+  const timeoutMs = parsePayTimeout(parsed);
   const fields = hasOption(parsed, 'fields')
     ? parseCsvValues(getOption(parsed, 'fields') ?? '', 'fields')
     : undefined;
@@ -156,6 +174,7 @@ export async function handlePay(parsed: ParsedArgs, runtime: Runtime): Promise<n
     fetch: runtime.fetch,
     url,
     capMicro,
+    timeoutMs,
     getPayFetch: () => loadPayFetch(privateKey, runtime.fetch, capMicro),
     onPreview: (req) => {
       runtime.stderr(

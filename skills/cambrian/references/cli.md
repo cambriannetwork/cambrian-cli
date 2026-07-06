@@ -607,7 +607,7 @@ cambrian mcp test --mode hosted
 ```
 
 Meaning:
-- hosted mode uses BYOK auth against Cambrian's managed MCP endpoint
+- hosted mode uses BYOK auth against Cambrian's managed endpoint
 - local mode launches `npx -y cambrian-api-mcp`
 - live MCP tests require `CAMBRIAN_API_KEY` or `--api-key`
 

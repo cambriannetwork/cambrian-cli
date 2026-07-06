@@ -25,7 +25,7 @@ const GLOBAL_FLAGS = [
 
 /** Data groups payable via `cambrian pay <group> <resource>`. */
 const PAY_GROUPS = ['solana', 'base', 'evm', 'deep42', 'risk'];
-const PAY_FLAGS = ['--yes', '--max-amount', '--output', '--fields', '--help'];
+const PAY_FLAGS = ['--yes', '--max-amount', '--timeout', '--output', '--fields', '--help'];
 
 function startsWithFilter(candidates: string[], prefix: string): string[] {
   if (!prefix) return candidates;

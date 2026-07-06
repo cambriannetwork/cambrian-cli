@@ -58,6 +58,8 @@ describe('cambrian pay', () => {
     expect(code).toBe(0);
     expect(stdout).toContain('Pay-per-call via x402');
     expect(stdout).toContain('solana | base (evm) | deep42 | risk');
+    expect(stdout).toContain('--timeout <ms>');
+    expect(stdout).toContain('npm install -g @x402/core @x402/fetch @x402/evm viem');
   });
 
   it('errors (exit 2) on an unknown group with a suggestion', async () => {
@@ -78,6 +80,21 @@ describe('cambrian pay', () => {
     const { code, stderr } = await run(['pay', 'deep42', 'social-data/alpha-tweet-detection', '--limit', '1']);
     expect(code).toBe(2);
     expect(stderr).toContain('CAMBRIAN_X402_PRIVATE_KEY');
+  });
+
+  it('rejects a bare --timeout before network access', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--timeout'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('--timeout requires a value');
+    expect(fetched).toBe(false);
   });
 
   it('previews and aborts without --yes, building the /api/v1/<group>/<resource> URL', async () => {
