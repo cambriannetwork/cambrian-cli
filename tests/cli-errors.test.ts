@@ -128,6 +128,39 @@ describe('CLI default (non-json) error output stays plain text', () => {
     expect(stderr).toContain('Rate limit exceeded');
     expect(stderr).toContain('7 seconds');
   });
+
+  it('401 from an HTML gateway page prints the rejected-key guidance, not the sanitized upstream text', async () => {
+    const html = '<!DOCTYPE html><html><body>401 Unauthorized</body></html>';
+    const { code, stderr } = await run(['solana', 'latest-block'], {
+      fetch: fetchReturning({ status: 401, body: html, contentType: 'text/html' }),
+    });
+    expect(code).toBe(1);
+    expect(stderr).toContain('API key rejected (HTTP 401)');
+    expect(stderr).toContain('cambrian config set-key');
+    expect(stderr).toContain('CAMBRIAN_API_KEY');
+    expect(stderr).not.toContain('non-JSON');
+    expect(stderr).not.toContain('<html');
+  });
+
+  it('401 with a JSON body also prints the rejected-key guidance', async () => {
+    const { code, stderr } = await run(['solana', 'latest-block'], {
+      fetch: fetchReturning({ status: 401, body: JSON.stringify({ message: 'bad key' }) }),
+    });
+    expect(code).toBe(1);
+    expect(stderr).toContain('API key rejected (HTTP 401)');
+  });
+
+  it('401 with --json keeps the structured AUTH_REQUIRED contract unchanged', async () => {
+    const html = '<!DOCTYPE html><html><body>401</body></html>';
+    const { code, stderr } = await run(['solana', 'latest-block', '--json'], {
+      fetch: fetchReturning({ status: 401, body: html, contentType: 'text/html' }),
+    });
+    expect(code).toBe(1);
+    const parsed = JSON.parse(stderr.trim());
+    expect(parsed.error.code).toBe('AUTH_REQUIRED');
+    expect(parsed.error.status).toBe(401);
+    expect(parsed.error.retryable).toBe(false);
+  });
 });
 
 describe('CLI --timeout', () => {

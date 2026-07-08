@@ -5,6 +5,23 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-08
+
+First stable release. The CLI surface (command groups, global flags, exit-code
+contract, `--json` error schema, `describe opencli`) and the TypeScript client
+are now considered stable; breaking changes will bump the major version.
+
+### Fixed
+
+- A rejected API key (HTTP 401) now prints clear guidance — check
+  `CAMBRIAN_API_KEY`, replace the stored key with `cambrian config set-key`,
+  where to get a key — instead of the sanitized upstream-gateway text
+  ("Upstream returned a non-JSON (HTML) error response"), which read like a
+  network fault. The structured `--json` error contract (`AUTH_REQUIRED`,
+  status 401) is unchanged.
+- Aligned the `cambrian mcp` row in the top-level `--help` output (was off by
+  one space).
+
 ## [0.2.5] - 2026-07-06
 
 ### Fixed

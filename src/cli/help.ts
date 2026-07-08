@@ -12,7 +12,7 @@ export function rootHelp(): string {
     '  cambrian config <set-key|get-key|clear>  Persist your API key (XDG config, 0600)',
     '  cambrian completion <bash|zsh|fish>      Print a shell completion script',
     '  cambrian skill <install|print|targets>   Skill bundle for AI agents',
-    '  cambrian mcp <config|install|test>        MCP setup helpers (hosted by default)',
+    '  cambrian mcp <config|install|test>       MCP setup helpers (hosted by default)',
     '  cambrian describe opencli                Machine-readable CLI schema',
     '  cambrian --version                       Print version',
     '',

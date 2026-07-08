@@ -244,6 +244,22 @@ function formatRateLimitError(error: ApiError): string {
   return parts.join(' ');
 }
 
+/**
+ * A 401 means a key WAS sent but was rejected upstream — often surfaced only as
+ * an HTML gateway page, whose sanitized message ("Upstream returned a non-JSON
+ * (HTML) error response") reads like a network fault. Tell the user what it
+ * actually is and how to fix it, mirroring the "API key required" wording.
+ */
+function formatAuthRequiredError(): string {
+  return (
+    'API key rejected (HTTP 401). The key sent with this request is invalid or expired.\n\n' +
+    '  cambrian config get-key                  (inspect the stored key)\n' +
+    '  cambrian config set-key <your-key>       (replace it, all shells)\n' +
+    '  export CAMBRIAN_API_KEY=<your-key>       (current shell)\n\n' +
+    'Get a key at: https://form.typeform.com/to/FlAoEzva'
+  );
+}
+
 /** Emits a structured JSON error to stderr (used with the global --json flag). */
 function logCliErrorJson(runtime: Runtime, error: unknown): void {
   if (error instanceof ApiError) {
@@ -285,6 +301,10 @@ export function logCliError(runtime: Runtime, error: unknown, json = false): voi
     }
     if (error instanceof ApiError && error.status === 429) {
       runtime.stderr(formatRateLimitError(error));
+      return;
+    }
+    if (error instanceof ApiError && error.status === 401) {
+      runtime.stderr(formatAuthRequiredError());
       return;
     }
     runtime.stderr(error.message);
