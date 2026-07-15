@@ -6,7 +6,7 @@ import {
   buildCategorizedHelp,
   DATA_OUTPUT_GLOBAL_OPTIONS,
 } from './dynamic-handler.js';
-import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
+import { CAMBRIAN_METADATA_GROUPS, type CambrianMetadataGroup } from '../metadata.js';
 
 // ── Load spec and derive CLI metadata ────────────────────────────
 
@@ -20,7 +20,7 @@ export const SOLANA_REQUIRED_OPTIONS = requiredOptions;
 
 // ── Categorized help ─────────────────────────────────────────────
 
-const SOLANA_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', ...DATA_OUTPUT_GLOBAL_OPTIONS];
+const SOLANA_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', 'offline', ...DATA_OUTPUT_GLOBAL_OPTIONS];
 
 function getSolanaCategory(resource: string): string {
   if (resource.startsWith('meteora-dlmm')) return 'Pools - Meteora DLMM';
@@ -51,8 +51,8 @@ const SOLANA_CATEGORY_ORDER = [
   'Block',
 ];
 
-function solanaHelp(): string {
-  return buildCategorizedHelp(resources, getSolanaCategory, 'solana', {
+function solanaHelp(currentResources: string[]): string {
+  return buildCategorizedHelp(currentResources, getSolanaCategory, 'solana', {
     categoryOrder: SOLANA_CATEGORY_ORDER,
   });
 }
@@ -64,18 +64,22 @@ export async function handleSolanaQuery(
   parsed: ParsedArgs,
   runtime: Runtime,
   client: CambrianData,
+  metadata: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.solana,
 ): Promise<number> {
+  const currentSpec = metadata.spec;
+  const currentDefaults = metadata.cliDefaults;
+  const current = deriveCliMetadata(currentSpec, currentDefaults);
   return handleDynamicQuery(
     resource,
     parsed,
     runtime,
     (path, params) => client.opabinia.query(path, params),
-    spec,
+    currentSpec,
     'solana',
     SOLANA_GLOBAL_OPTIONS,
-    SOLANA_CLI_DEFAULTS,
-    allowedOptions,
-    requiredOptions,
-    solanaHelp,
+    currentDefaults,
+    current.allowedOptions,
+    current.requiredOptions,
+    () => solanaHelp(current.resources),
   );
 }

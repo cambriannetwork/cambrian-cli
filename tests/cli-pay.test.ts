@@ -61,11 +61,12 @@ function run(
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   let stdout = '';
   let stderr = '';
+  const env = { CAMBRIAN_SCHEMA_MODE: 'bundled', ...(overrides.env ?? {}) };
   return runCli(argv, {
     stdout: (l) => { stdout += l + '\n'; },
     stderr: (l) => { stderr += l + '\n'; },
-    env: {},
     ...overrides,
+    env,
   }).then((code) => ({ code, stdout, stderr }));
 }
 

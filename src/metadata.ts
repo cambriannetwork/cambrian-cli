@@ -11,7 +11,20 @@ export interface ParamSpec {
   min?: number;
   max?: number;
   description?: string;
-  items?: Record<string, unknown>;
+  pattern?: string;
+  items?: Record<string, unknown> & {
+    type?: string;
+    enum?: string[];
+    min?: number;
+    max?: number;
+    pattern?: string;
+  };
+  minItems?: number;
+  maxItems?: number;
+  style?: string;
+  explode?: boolean;
+  /** Enables the stricter validation used for runtime-discovered additions. */
+  strict?: boolean;
 }
 
 export interface EndpointSpec {

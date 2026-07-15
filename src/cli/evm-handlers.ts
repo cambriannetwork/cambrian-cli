@@ -6,7 +6,7 @@ import {
   buildCategorizedHelp,
   DATA_OUTPUT_GLOBAL_OPTIONS,
 } from './dynamic-handler.js';
-import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
+import { CAMBRIAN_METADATA_GROUPS, type CambrianMetadataGroup } from '../metadata.js';
 
 // ── Load spec and derive CLI metadata ────────────────────────────
 
@@ -20,7 +20,7 @@ export const EVM_REQUIRED_OPTIONS = requiredOptions;
 
 // ── Categorized help ─────────────────────────────────────────────
 
-const EVM_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', ...DATA_OUTPUT_GLOBAL_OPTIONS];
+const EVM_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', 'offline', ...DATA_OUTPUT_GLOBAL_OPTIONS];
 
 function getEvmCategory(resource: string): string {
   if (resource.startsWith('aero-v2')) return 'Aerodrome V2';
@@ -48,8 +48,8 @@ const EVM_CATEGORY_ORDER = [
   'Prices',
 ];
 
-function evmHelp(): string {
-  return buildCategorizedHelp(resources, getEvmCategory, 'base', {
+function evmHelp(currentResources: string[]): string {
+  return buildCategorizedHelp(currentResources, getEvmCategory, 'base', {
     extraLines: ['Aliases: cambrian evm'],
     categoryOrder: EVM_CATEGORY_ORDER,
   });
@@ -62,18 +62,22 @@ export async function handleEvmQuery(
   parsed: ParsedArgs,
   runtime: Runtime,
   client: CambrianData,
+  metadata: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.base,
 ): Promise<number> {
+  const currentSpec = metadata.spec;
+  const currentDefaults = metadata.cliDefaults;
+  const current = deriveCliMetadata(currentSpec, currentDefaults);
   return handleDynamicQuery(
     resource,
     parsed,
     runtime,
     (path, params) => client.opabinia.query(path, params),
-    spec,
+    currentSpec,
     'base',
     EVM_GLOBAL_OPTIONS,
-    EVM_CLI_DEFAULTS,
-    allowedOptions,
-    requiredOptions,
-    evmHelp,
+    currentDefaults,
+    current.allowedOptions,
+    current.requiredOptions,
+    () => evmHelp(current.resources),
   );
 }

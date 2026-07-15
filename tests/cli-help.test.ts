@@ -11,6 +11,7 @@ function captureStdout(argv: string[]): Promise<{ code: number; stdout: string }
   return runCli(argv, {
     stdout: (msg: string) => { stdout += msg + '\n'; },
     stderr: () => {},
+    env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
   }).then((code) => ({ code, stdout }));
 }
 
@@ -110,7 +111,7 @@ describe('CLI help output', () => {
     const code = await runCli(['mcp', 'test'], {
       stdout: () => {},
       stderr: (msg: string) => { stderr += msg + '\n'; },
-      env: {},
+      env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
     });
     expect(code).toBe(2);
     expect(stderr).toContain('CAMBRIAN_API_KEY required');

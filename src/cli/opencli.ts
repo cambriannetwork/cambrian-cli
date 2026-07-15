@@ -1,8 +1,10 @@
-import { readPackageVersion, resolvePackageRoot } from './core.js';
-import { SOLANA_RESOURCES, SOLANA_ALLOWED_OPTIONS, SOLANA_REQUIRED_OPTIONS } from './solana-handlers.js';
-import { EVM_RESOURCES, EVM_ALLOWED_OPTIONS, EVM_REQUIRED_OPTIONS } from './evm-handlers.js';
-import { DEEP42_RESOURCES, DEEP42_ALLOWED_OPTIONS, DEEP42_REQUIRED_OPTIONS } from './deep42-handlers.js';
-import { RISK_RESOURCES, RISK_ALLOWED_OPTIONS, RISK_REQUIRED_OPTIONS } from './risk-handlers.js';
+import { readPackageVersion } from './core.js';
+import {
+  CAMBRIAN_METADATA_GROUPS,
+  type CambrianGroup,
+  type CambrianMetadataGroup,
+} from '../metadata.js';
+import { deriveCliMetadata } from './dynamic-handler.js';
 
 const OPENCLI_SCHEMA_VERSION = '0.1.0';
 
@@ -60,8 +62,26 @@ function buildSubcommands(
   });
 }
 
-export function buildOpenCliDocument() {
+export function buildOpenCliDocument(
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
+) {
   const version = readPackageVersion();
+  const solana = deriveCliMetadata(
+    metadataGroups.solana.spec,
+    metadataGroups.solana.cliDefaults,
+  );
+  const base = deriveCliMetadata(
+    metadataGroups.base.spec,
+    metadataGroups.base.cliDefaults,
+  );
+  const deep42 = deriveCliMetadata(
+    metadataGroups.deep42.spec,
+    metadataGroups.deep42.cliDefaults,
+  );
+  const risk = deriveCliMetadata(
+    metadataGroups.risk.spec,
+    metadataGroups.risk.cliDefaults,
+  );
   return {
     opencli: OPENCLI_SCHEMA_VERSION,
     info: buildOpenCliInfo(version),
@@ -76,7 +96,7 @@ export function buildOpenCliDocument() {
     commands: [
       {
         name: 'solana',
-        description: `Query Solana DeFi endpoints (${SOLANA_RESOURCES.length} resources).`,
+        description: `Query Solana DeFi endpoints (${solana.resources.length} resources).`,
         options: [
           {
             name: 'api-key',
@@ -91,12 +111,12 @@ export function buildOpenCliDocument() {
             description: 'API key used for authenticated requests.',
           },
         ],
-        commands: buildSubcommands(SOLANA_RESOURCES, 'Solana', SOLANA_ALLOWED_OPTIONS, SOLANA_REQUIRED_OPTIONS),
+        commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions),
       },
       {
         name: 'base',
         aliases: ['evm'],
-        description: `Query Base chain DeFi endpoints (${EVM_RESOURCES.length} resources).`,
+        description: `Query Base chain DeFi endpoints (${base.resources.length} resources).`,
         options: [
           {
             name: 'api-key',
@@ -111,11 +131,11 @@ export function buildOpenCliDocument() {
             description: 'API key used for authenticated requests.',
           },
         ],
-        commands: buildSubcommands(EVM_RESOURCES, 'Base', EVM_ALLOWED_OPTIONS, EVM_REQUIRED_OPTIONS),
+        commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions),
       },
       {
         name: 'deep42',
-        description: `Query Deep42 social intelligence endpoints (${DEEP42_RESOURCES.length} resources).`,
+        description: `Query Deep42 social intelligence endpoints (${deep42.resources.length} resources).`,
         options: [
           {
             name: 'api-key',
@@ -130,7 +150,7 @@ export function buildOpenCliDocument() {
             description: 'API key used for authenticated requests.',
           },
         ],
-        commands: buildSubcommands(DEEP42_RESOURCES, 'Deep42', DEEP42_ALLOWED_OPTIONS, DEEP42_REQUIRED_OPTIONS),
+        commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions),
       },
       {
         name: 'risk',
@@ -149,7 +169,16 @@ export function buildOpenCliDocument() {
             description: 'API key used for authenticated requests.',
           },
         ],
-        commands: buildSubcommands(RISK_RESOURCES, 'Risk', RISK_ALLOWED_OPTIONS, RISK_REQUIRED_OPTIONS),
+        commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions),
+      },
+      {
+        name: 'schema',
+        description: 'Inspect and refresh the additive runtime endpoint registry.',
+        commands: [
+          { name: 'status', description: 'Show bundled, cached, and live registry status.' },
+          { name: 'refresh', description: 'Force a safe runtime schema refresh.' },
+          { name: 'clear-cache', description: 'Remove cached runtime endpoint additions.' },
+        ],
       },
       {
         name: 'skill',

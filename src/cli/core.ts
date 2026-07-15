@@ -59,6 +59,7 @@ const BARE_BOOLEAN_OPTIONS = new Set([
   'yes',
   'dry-run',
   'discover',
+  'offline',
   // Current schema boolean params. Keeping them here prevents boolean API flags
   // from accidentally consuming the next token as a value.
   'whitelisted',

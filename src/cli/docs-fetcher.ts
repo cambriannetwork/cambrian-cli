@@ -8,7 +8,12 @@
  */
 
 import { CAMBRIAN_METADATA_GROUPS, DEEP42_RESOURCE_ALIASES } from '../metadata.js';
-import type { CambrianGroup, EndpointSpec, ParamSpec } from '../metadata.js';
+import type {
+  CambrianGroup,
+  CambrianMetadataGroup,
+  EndpointSpec,
+  ParamSpec,
+} from '../metadata.js';
 
 const LLMS_BASE = 'https://docs.cambrian.org';
 const LLMS_ROOT = `${LLMS_BASE}/llms.txt`;
@@ -21,128 +26,26 @@ const SECTION_HEADERS: Record<string, string> = {
   risk: '### Perp risk engine',
 };
 
-// Map CLI resource names to API paths for endpoint-specific docs
-// Solana: the CLI resource name maps to /api/v1/solana/<path>
-// EVM: the CLI resource name maps to /api/v1/evm/<path>
-// Deep42: handled dynamically (resource IS the path)
-// Risk: single endpoint
-function resourceToApiPath(group: string, resource: string): string | null {
-  switch (group) {
-    case 'solana':
-      // CLI resource: "price-current" -> API path: "solana/price-current"
-      // CLI resource: "orca-pool" -> API path: "solana/orca/pool"
-      // CLI resource: "meteora-dlmm-pools" -> API path: "solana/meteora-dlmm/pools"
-      // CLI resource: "ohlcv-token" -> API path: "solana/ohlcv/token"
-      // CLI resource: "tokens-holders" -> API path: "solana/tokens/holders"
-      return `solana/${cliResourceToUrlPath(resource)}`;
+type MetadataGroups = Record<CambrianGroup, CambrianMetadataGroup>;
 
-    case 'evm':
-      // CLI resource: "chains" -> API path: "evm/chains"
-      // CLI resource: "aero-v2-pool" -> API path: "evm/aero/v2/pool"
-      // CLI resource: "uniswap-v3-pools" -> API path: "evm/uniswap/v3/pools"
-      return `evm/${cliResourceToUrlPath(resource)}`;
-
-    case 'deep42': {
-      // Deep42 resources can be aliases or full paths
-      const deep42Aliases: Record<string, string> = {
-        'alpha-tweet-detection': 'social-data/alpha-tweet-detection',
-        'alpha-tweets': 'social-data/alpha-tweet-detection',
-        'influencer-credibility': 'social-data/influencer-credibility',
-        'sentiment-shifts': 'social-data/sentiment-shifts',
-      };
-      const resolved = deep42Aliases[resource] ?? resource;
-      return `deep42/${resolved}`;
-    }
-
-    case 'risk':
-      return 'perp-risk-engine';
-
-    default:
-      return null;
-  }
+function metadataGroupKey(group: string): CambrianGroup | undefined {
+  if (group === 'evm' || group === 'base') return 'base';
+  if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
+  return undefined;
 }
 
-/**
- * Convert CLI kebab-case resource to URL path.
- * e.g. "orca-pool" -> "orca/pool"
- *      "aero-v2-pools" -> "aero/v2/pools"
- *      "tokens-holders" -> "tokens/holders"
- *      "ohlcv-base-quote" -> "ohlcv/base-quote"
- *
- * Strategy: try the endpoint-specific URL; if it 404s, try parent paths.
- */
-function cliResourceToUrlPath(resource: string): string {
-  // Known patterns where hyphens are NOT path separators
-  const knownMappings: Record<string, string> = {
-    // Solana pools
-    'meteora-dlmm-pool': 'meteora-dlmm/pool',
-    'meteora-dlmm-pool-multi': 'meteora-dlmm/pool-multi',
-    'meteora-dlmm-pools': 'meteora-dlmm/pools',
-    'raydium-clmm-pool': 'raydium-clmm/pool',
-    'raydium-clmm-pool-multi': 'raydium-clmm/pool-multi',
-    'raydium-clmm-pools': 'raydium-clmm/pools',
-    'orca-pool': 'orca/pool',
-    'orca-pool-multi': 'orca/pool-multi',
-    'orca-pools': 'orca/pools',
-    'orca-pools-fee-metrics': 'orca/pools/fee-metrics',
-    'orca-pools-fee-ranges': 'orca/pools/fee-ranges',
-    'orca-pools-historical-data': 'orca/pools/historical-data',
-    'orca-pools-liquidity-map': 'orca/pools/liquidity-map',
-    // Solana data
-    'ohlcv-token': 'ohlcv/token',
-    'ohlcv-pool': 'ohlcv/pool',
-    'ohlcv-base-quote': 'ohlcv/base-quote',
-    'price-current': 'price-current',
-    'price-hour': 'price-hour',
-    'price-multi': 'price-multi',
-    'price-unix': 'price-unix',
-    'price-volume-single': 'price-volume/single',
-    'price-volume-multi': 'price-volume/multi',
-    'token-details': 'token-details',
-    'token-details-multi': 'token-details-multi',
-    'token-pool-search': 'token-pool-search',
-    'token-transactions': 'token-transactions',
-    'token-transactions-time-bounded': 'token-transactions-time-bounded',
-    'token-mint-burn-transactions': 'token-mint-burn-transactions',
-    'pool-transactions': 'pool-transactions',
-    'pool-transactions-time-bounded': 'pool-transactions-time-bounded',
-    'trade-statistics': 'trade-statistics',
-    'trending-tokens': 'trending-tokens',
-    'latest-block': 'latest-block',
-    'holder-token-balances': 'holder-token-balances',
-    'wallet-balance-history': 'wallet-balance-history',
-    'traders-leaderboard': 'traders/leaderboard',
-    'tokens': 'tokens',
-    'tokens-holders': 'tokens/holders',
-    'tokens-holders-over-time': 'tokens/holders-over-time',
-    'tokens-holder-distribution-over-time': 'tokens/holder-distribution-over-time',
-    'tokens-security': 'tokens/security',
-    // EVM pools
-    'aero-v2-pool': 'aero/v2/pool',
-    'aero-v2-pools': 'aero/v2/pools',
-    'aero-v2-fee-metrics': 'aero/v2/fee-metrics',
-    'aero-v2-pool-volume': 'aero/v2/pool-volume',
-    'aero-v2-providers': 'aero/v2/providers',
-    'aero-v2-provider-positions': 'aero/v2/provider-positions',
-    'aero-v2-provider-summary': 'aero/v2/provider-summary',
-    'aero-v3-pool': 'aero/v3/pool',
-    'aero-v3-pools': 'aero/v3/pools',
-    'alien-v3-pool': 'alien/v3/pool',
-    'alien-v3-pools': 'alien/v3/pools',
-    'sushi-v3-pool': 'sushi/v3/pool',
-    'sushi-v3-pools': 'sushi/v3/pools',
-    'clones-v3-pool': 'clones/v3/pool',
-    'clones-v3-pools': 'clones/v3/pools',
-    'pancake-v3-pool': 'pancake/v3/pool',
-    'pancake-v3-pools': 'pancake/v3/pools',
-    'uniswap-v3-pool': 'uniswap/v3/pool',
-    'uniswap-v3-pools': 'uniswap/v3/pools',
-    'tvl-status': 'tvl/status',
-    'tvl-top': 'tvl/top',
-    'tvl-top-owners': 'tvl/top-owners',
-  };
-
-  return knownMappings[resource] ?? resource;
+/** Builds endpoint docs paths directly from the executable registry. */
+function resourceToApiPath(
+  group: string,
+  resource: string,
+  metadataGroups: MetadataGroups,
+): string | null {
+  const key = metadataGroupKey(group);
+  if (!key) return null;
+  const resolved = key === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
+  const entry = metadataGroups[key].spec[resolved];
+  if (!entry) return null;
+  return entry.apiPath.replace(/^\/?api\/v1\//, '').replace(/^\//, '');
 }
 
 /**
@@ -186,11 +89,14 @@ export async function fetchDocs(
   fetchFn: FetchFn,
   group?: string,
   resource?: string,
+  metadataGroups: MetadataGroups = CAMBRIAN_METADATA_GROUPS,
+  offline = false,
 ): Promise<string | null> {
+  if (offline) return buildSchemaFallbackDocs(group, resource, metadataGroups);
   try {
     // Level 3: specific endpoint docs
     if (group && resource) {
-      const apiPath = resourceToApiPath(group, resource);
+      const apiPath = resourceToApiPath(group, resource, metadataGroups);
       if (apiPath) {
         const url = `${LLMS_BASE}/api/v1/${apiPath}/llms.txt`;
         let endpointText: string | null = null;
@@ -228,10 +134,10 @@ export async function fetchDocs(
     }
 
     // Schema fallback: offline, derived from bundled OpenAPI params.
-    return buildSchemaFallbackDocs(group, resource);
+    return buildSchemaFallbackDocs(group, resource, metadataGroups);
   } catch {
     // Last resort: try schema fallback, then null.
-    return buildSchemaFallbackDocs(group, resource);
+    return buildSchemaFallbackDocs(group, resource, metadataGroups);
   }
 }
 
@@ -285,12 +191,16 @@ function renderEndpointSchema(group: string, resource: string, entry: EndpointSp
  * fetch fails. Returns null if the group/resource can't be resolved from the
  * schema. Purely offline — never fetches, never throws.
  */
-export function buildSchemaFallbackDocs(group?: string, resource?: string): string | null {
+export function buildSchemaFallbackDocs(
+  group?: string,
+  resource?: string,
+  metadataGroups: MetadataGroups = CAMBRIAN_METADATA_GROUPS,
+): string | null {
   try {
     if (!group) return null;
     const metadataKey = GROUP_TO_METADATA_KEY[group];
     if (!metadataKey) return null;
-    const groupMeta = CAMBRIAN_METADATA_GROUPS[metadataKey];
+    const groupMeta = metadataGroups[metadataKey];
 
     // Group-level fallback (no resource): list available resources.
     if (!resource) {

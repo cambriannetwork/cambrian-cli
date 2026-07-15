@@ -50,6 +50,7 @@ describe('CLI typo suggestions', () => {
     return runCli(argv, {
       stdout: () => {},
       stderr: (msg: string) => { stderr += msg + '\n'; },
+      env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
     }).then((code) => ({ code, stderr }));
   }
 

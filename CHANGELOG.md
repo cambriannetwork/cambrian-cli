@@ -5,6 +5,42 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-15
+
+### Added
+
+- Compatible new API endpoints are now discovered from pinned production
+  OpenAPI documents at runtime, so ordinary `GET`/query additions can appear
+  without reinstalling the CLI or publishing another npm version.
+- Added `cambrian schema status|refresh|clear-cache [group]`, the `--offline`
+  metadata flag, and the `CAMBRIAN_SCHEMA_MODE=bundled` compatibility switch.
+- Runtime endpoint metadata now feeds execution, help, shell completion,
+  endpoint docs fallback, x402 resource validation, and `describe opencli`.
+
+### Safety
+
+- The installed 74-endpoint snapshot remains authoritative for every existing
+  command. Live metadata is additive only and cannot remove or redefine bundled
+  behavior.
+- Runtime discovery accepts only concrete `GET` operations with supported query
+  parameter schemas. It rejects request bodies, path parameters, catch-all
+  routes, unsupported methods/serialization, ambiguous names, and malformed or
+  unsafe metadata.
+- Schemas use a 15-minute XDG-compatible, private, atomic, last-known-good cache
+  with conditional HTTP revalidation and a five-second refresh timeout. Failed
+  refreshes fall back to cache or bundle without blocking existing commands.
+- A successful schema refresh remains usable for the current invocation when
+  cache persistence fails, reports a warning, and performs best-effort cleanup
+  of failed atomic-write temporary files.
+- `schema status` identifies cached runtime additions that are missing from the
+  current OpenAPI document or have drifted incompatibly, while continuing to
+  execute their last-known-good definition.
+- Runtime additions use the `llms.txt` intersection when it contains at least
+  five compatible operations for a group; otherwise they fall back to the
+  compatible OpenAPI list. Bundled commands are never filtered.
+- The public release safety check rejects accidental runtime dependencies,
+  preserving the package's zero-runtime-dependency contract.
+
 ## [1.0.0] - 2026-07-08
 
 First stable release. The CLI surface (command groups, global flags, exit-code

@@ -24,10 +24,12 @@ import {
 import { configDir, readConfig, writeConfig, type CambrianConfig } from './config.js';
 import { didYouMean } from './suggest.js';
 import { formatResult, OUTPUT_FORMATS, type OutputFormat } from './output.js';
-import { coerceValue, deriveCliMetadata } from './dynamic-handler.js';
+import { coerceValue, deriveCliMetadata, serializeQueryParams } from './dynamic-handler.js';
 import {
   CAMBRIAN_METADATA_GROUPS,
   DEEP42_RESOURCE_ALIASES,
+  type CambrianGroup,
+  type CambrianMetadataGroup,
   type GroupSpec,
 } from '../metadata.js';
 import {
@@ -46,7 +48,7 @@ import {
   X402_SDK_INSTALL_COMMAND,
 } from '../x402/client.js';
 
-const PAY_GLOBAL_OPTIONS = ['help', 'yes', 'max-amount', 'json', 'output', 'fields', 'timeout'];
+const PAY_GLOBAL_OPTIONS = ['help', 'yes', 'max-amount', 'json', 'output', 'fields', 'timeout', 'offline'];
 const X402_PENDING_GRACE_MS = 30_000;
 const X402_PENDING_MIN_MS = 60_000;
 
@@ -60,10 +62,12 @@ interface PayGroup {
   allowedOptions: Record<string, string[]>;
 }
 
-const PAY_GROUPS: Record<string, PayGroup> = (() => {
+function buildPayGroups(
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup>,
+): Record<string, PayGroup> {
   const out: Record<string, PayGroup> = {};
   const build = (key: 'solana' | 'base' | 'deep42' | 'risk', aliases: Record<string, string>) => {
-    const metadata = CAMBRIAN_METADATA_GROUPS[key];
+    const metadata = metadataGroups[key];
     const spec = metadata.spec;
     return {
       spec,
@@ -78,7 +82,7 @@ const PAY_GROUPS: Record<string, PayGroup> = (() => {
   out.deep42 = build('deep42', DEEP42_RESOURCE_ALIASES);
   out.risk = build('risk', {});
   return out;
-})();
+}
 
 function parseOutputFormat(parsed: ParsedArgs): OutputFormat {
   if (!hasOption(parsed, 'output')) return 'json';
@@ -331,7 +335,12 @@ function buildUrl(apiPath: string, query: URLSearchParams): string {
   return `${X402_BASE_URL}${path}${qs ? `?${qs}` : ''}`;
 }
 
-export async function handlePay(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
+export async function handlePay(
+  parsed: ParsedArgs,
+  runtime: Runtime,
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
+): Promise<number> {
+  const payGroups = buildPayGroups(metadataGroups);
   const groupArg = parsed.positionals[1];
   const resourceArg = parsed.positionals[2];
   if (!groupArg || hasOption(parsed, 'help')) {
@@ -339,9 +348,9 @@ export async function handlePay(parsed: ParsedArgs, runtime: Runtime): Promise<n
     return 0;
   }
 
-  const group = PAY_GROUPS[groupArg];
+  const group = payGroups[groupArg];
   if (!group) {
-    const suggestion = didYouMean(groupArg, Object.keys(PAY_GROUPS));
+    const suggestion = didYouMean(groupArg, Object.keys(payGroups));
     throw new CliUsageError(
       `Unknown pay group: ${groupArg}.${suggestion} Groups: solana, base, deep42, risk.`,
     );
@@ -360,25 +369,52 @@ export async function handlePay(parsed: ParsedArgs, runtime: Runtime): Promise<n
   const allowed = group.allowedOptions[resource] ?? [];
   assertNoUnknownOptions(parsed, [...PAY_GLOBAL_OPTIONS, ...allowed], `pay ${groupArg} ${resourceArg}`);
 
-  const query = new URLSearchParams();
+  const queryParams: Record<string, unknown> = {};
   const defaults = group.cliDefaults[resource] ?? {};
   for (const [apiParam, paramSpec] of Object.entries(entry.params)) {
     const cliFlag = apiParam.replace(/_/g, '-');
 
     if (paramSpec.type === 'boolean') {
-      if (hasOption(parsed, cliFlag)) query.set(apiParam, 'true');
+      if (hasOption(parsed, cliFlag)) {
+        const rawBoolean = getOption(parsed, cliFlag);
+        if (rawBoolean !== 'true' && rawBoolean !== 'false') {
+          throw new CliUsageError(`--${cliFlag} must be true or false.`);
+        }
+        queryParams[apiParam] = rawBoolean === 'true';
+      } else if (paramSpec.strict && paramSpec.default !== undefined) {
+        queryParams[apiParam] = paramSpec.default;
+      } else if (paramSpec.strict && paramSpec.required && paramSpec.default === undefined) {
+        throw new CliUsageError(`Missing required option --${cliFlag}.`);
+      }
       continue;
     }
 
     const rawValue = getOption(parsed, cliFlag);
     if (rawValue && rawValue !== 'true') {
-      query.set(apiParam, String(coerceValue(rawValue, paramSpec, cliFlag)));
+      queryParams[apiParam] = coerceValue(rawValue, paramSpec, cliFlag);
     } else if (apiParam in defaults) {
-      query.set(apiParam, String(coerceValue(defaults[apiParam], paramSpec, cliFlag)));
+      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.default !== undefined) {
-      query.set(apiParam, String(coerceValue(String(paramSpec.default), paramSpec, cliFlag)));
+      queryParams[apiParam] = paramSpec.strict
+        ? paramSpec.default
+        : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
     } else if (paramSpec.required) {
       throw new CliUsageError(`Missing required option --${cliFlag}.`);
+    }
+  }
+  const serialized = serializeQueryParams(entry, queryParams);
+  const query = new URLSearchParams();
+  for (const [apiParam, value] of Object.entries(serialized)) {
+    if (Array.isArray(value)) {
+      // Preserve the existing comma-separated pay behavior for the bundled
+      // snapshot. Runtime additions honor their explicit OpenAPI serialization.
+      if (!entry.params[apiParam]?.strict) {
+        query.set(apiParam, String(value));
+      } else {
+        for (const item of value) query.append(apiParam, String(item));
+      }
+    } else {
+      query.set(apiParam, String(value));
     }
   }
   const url = buildUrl(entry.apiPath, query);

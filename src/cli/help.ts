@@ -11,6 +11,7 @@ export function rootHelp(): string {
     '  cambrian docs [group] [resource]         API documentation from docs.cambrian.org',
     '  cambrian config <set-key|get-key|clear>  Persist your API key (XDG config, 0600)',
     '  cambrian completion <bash|zsh|fish>      Print a shell completion script',
+    '  cambrian schema <status|refresh|clear-cache> Runtime endpoint registry controls',
     '  cambrian skill <install|print|targets>   Skill bundle for AI agents',
     '  cambrian mcp <config|install|test>       MCP setup helpers (hosted by default)',
     '  cambrian describe opencli                Machine-readable CLI schema',
@@ -80,6 +81,19 @@ export function completionHelp(): string {
   ].join('\n');
 }
 
+export function schemaHelp(): string {
+  return [
+    'Usage:',
+    '  cambrian schema status [solana|base|deep42|risk]',
+    '  cambrian schema refresh [solana|base|deep42|risk]',
+    '  cambrian schema clear-cache [solana|base|deep42|risk]',
+    '',
+    'The installed endpoint snapshot remains the compatibility baseline.',
+    'Runtime refreshes can add compatible GET/query endpoints but never',
+    'remove or redefine bundled commands.',
+  ].join('\n');
+}
+
 export function describeHelp(): string {
   return [
     'Usage:',
@@ -102,6 +116,9 @@ export function docsHelp(): string {
     '  cambrian docs',
     '  cambrian docs solana',
     '  cambrian docs solana price-current',
+    '',
+    'Options:',
+    '  --offline   Use cached/bundled endpoint metadata and schema-derived docs.',
     '',
     'Source: docs.cambrian.org/llms.txt',
   ].join('\n');

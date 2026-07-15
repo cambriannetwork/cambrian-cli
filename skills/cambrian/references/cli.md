@@ -43,6 +43,16 @@ Execution best practice:
 - once the routing surface is known, go straight to the narrowest `cambrian <group> <resource>` command that fits the ask
 - use documented named flags such as `--token-address`, `--pool-address`, `--days`; do not pass values positionally
 
+Endpoint discovery:
+
+- compatible new GET/query endpoints are discovered from the production
+  OpenAPI registry without reinstalling the package
+- run `cambrian schema refresh <group>` when an endpoint was just deployed and
+  must be visible immediately
+- inspect cache/source/fallback state with `cambrian schema status [group]`
+- use `--offline` to prevent metadata refresh for a data, docs, pay, or OpenCLI
+  command
+
 ## Start Here By Prompt
 
 - for "what's hot on Solana?", start with `solana trending-tokens`

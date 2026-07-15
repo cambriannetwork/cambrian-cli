@@ -52,8 +52,11 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
 
   switch (paramSpec.type) {
     case 'integer': {
+      if (paramSpec.strict && !/^-?\d+$/.test(value)) {
+        throw new CliUsageError(`--${cliFlag} must be an integer.`);
+      }
       const n = Number.parseInt(value, 10);
-      if (!Number.isInteger(n)) {
+      if (!Number.isSafeInteger(n)) {
         throw new CliUsageError(`--${cliFlag} must be an integer.`);
       }
       if (paramSpec.min !== undefined && n < paramSpec.min) {
@@ -77,11 +80,65 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       }
       return n;
     }
-    case 'array':
-      return value.split(',').map((s) => s.trim());
+    case 'boolean': {
+      if (value !== 'true' && value !== 'false') {
+        throw new CliUsageError(`--${cliFlag} must be true or false.`);
+      }
+      return value === 'true';
+    }
+    case 'array': {
+      const values = value.split(',').map((s) => s.trim()).filter(Boolean);
+      if (values.length === 0) {
+        throw new CliUsageError(`--${cliFlag} must contain at least one value.`);
+      }
+      if (paramSpec.minItems !== undefined && values.length < paramSpec.minItems) {
+        throw new CliUsageError(
+          `--${cliFlag} must contain at least ${paramSpec.minItems} values.`,
+        );
+      }
+      if (paramSpec.maxItems !== undefined && values.length > paramSpec.maxItems) {
+        throw new CliUsageError(
+          `--${cliFlag} must contain at most ${paramSpec.maxItems} values.`,
+        );
+      }
+      if (!paramSpec.strict || !paramSpec.items) return values;
+      const itemSpec: ParamSpec = {
+        required: true,
+        type: paramSpec.items.type ?? 'string',
+        ...(paramSpec.items.enum ? { enum: paramSpec.items.enum } : {}),
+        ...(paramSpec.items.min !== undefined ? { min: paramSpec.items.min } : {}),
+        ...(paramSpec.items.max !== undefined ? { max: paramSpec.items.max } : {}),
+        ...(paramSpec.items.pattern ? { pattern: paramSpec.items.pattern } : {}),
+        strict: true,
+      };
+      return values.map((item) => coerceValue(item, itemSpec, cliFlag));
+    }
     default:
+      if (paramSpec.pattern && !new RegExp(paramSpec.pattern).test(value)) {
+        throw new CliUsageError(`--${cliFlag} has an invalid format.`);
+      }
       return value;
   }
+}
+
+/** Honors OpenAPI query-array serialization for runtime-discovered commands. */
+export function serializeQueryParams(
+  entry: EndpointSpec,
+  params: Record<string, unknown>,
+): Record<string, unknown> {
+  const serialized: Record<string, unknown> = { ...params };
+  for (const [name, value] of Object.entries(params)) {
+    const param = entry.params[name];
+    if (
+      param?.type === 'array' &&
+      Array.isArray(value) &&
+      param.style === 'form' &&
+      param.explode === false
+    ) {
+      serialized[name] = value.join(',');
+    }
+  }
+  return serialized;
 }
 
 // ── Schema hint formatting (offline, from bundled OpenAPI schema) ──
@@ -172,6 +229,7 @@ export function buildResourceHelp(
     '  --max-items <n>   Cap total rows when paginating (default 10000).',
     '  --timeout <ms>    Per-request timeout in milliseconds (default 90000).',
     '  --retries <n>     Retry transient failures (408/429/5xx) with backoff (default 0).',
+    '  --offline         Use bundled/cached endpoint metadata without schema refresh.',
     '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY).',
     '',
     `▶ Full docs, field descriptions & examples:  cambrian docs ${groupCommand} ${resource}`,
@@ -253,7 +311,15 @@ export async function handleDynamicQuery(
     // Boolean params: presence of flag = true
     if (paramSpec.type === 'boolean') {
       if (hasOption(parsed, cliFlag)) {
-        queryParams[apiParam] = true;
+        const rawBoolean = getOption(parsed, cliFlag);
+        if (rawBoolean !== 'true' && rawBoolean !== 'false') {
+          throw new CliUsageError(`--${cliFlag} must be true or false.`);
+        }
+        queryParams[apiParam] = rawBoolean === 'true';
+      } else if (paramSpec.strict && paramSpec.default !== undefined) {
+        queryParams[apiParam] = paramSpec.default;
+      } else if (paramSpec.strict && paramSpec.required && paramSpec.default === undefined) {
+        throw new CliUsageError(`Missing required option --${cliFlag}.`);
       }
       continue;
     }
@@ -265,12 +331,16 @@ export async function handleDynamicQuery(
     } else if (apiParam in defaults) {
       queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.default !== undefined) {
-      queryParams[apiParam] = coerceValue(String(paramSpec.default), paramSpec, cliFlag);
+      queryParams[apiParam] = paramSpec.strict
+        ? paramSpec.default
+        : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
     } else if (paramSpec.required) {
       throw new CliUsageError(`Missing required option --${cliFlag}.`);
     }
   }
 
+  const executeQuery: QueryFn = (path, params) =>
+    queryFn(path, serializeQueryParams(entry, params));
   let result: unknown;
   if (wantAll) {
     const limitSpec = entry.params.limit;
@@ -285,14 +355,14 @@ export async function handleDynamicQuery(
       ? parsePositiveInt(getOption(parsed, 'max-items') ?? '', 'max-items')
       : DEFAULT_MAX_ITEMS;
     result = await collectAllPages(
-      queryFn,
+      executeQuery,
       entry.apiPath,
       queryParams,
       `${groupCommand} ${resource}`,
       { pageSize, maxItems },
     );
   } else {
-    result = await queryFn(entry.apiPath, queryParams);
+    result = await executeQuery(entry.apiPath, queryParams);
   }
 
   const maxWidth =
@@ -363,7 +433,13 @@ export function buildCategorizedHelp(
 
   if (options?.extraLines) lines.push('', ...options.extraLines);
 
-  lines.push('', 'Global options:', '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).', '  --help             Show this help.');
+  lines.push(
+    '',
+    'Global options:',
+    '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).',
+    '  --offline          Use bundled/cached endpoint metadata without refresh.',
+    '  --help             Show this help.',
+  );
 
   return lines.join('\n');
 }

@@ -29,7 +29,7 @@ function runDocs(
     fetch,
     stdout: (line: string) => { stdout += line + '\n'; },
     stderr: (line: string) => { stderr += line + '\n'; },
-    env: {},
+    env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
   }).then((code) => ({ code, stdout, stderr }));
 }
 

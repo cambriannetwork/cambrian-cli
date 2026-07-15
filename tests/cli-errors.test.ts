@@ -29,7 +29,7 @@ function run(
   return runCli(argv, {
     stdout: (line: string) => { stdout += line + '\n'; },
     stderr: (line: string) => { stderr += line + '\n'; },
-    env: { CAMBRIAN_API_KEY: 'test-key' },
+    env: { CAMBRIAN_API_KEY: 'test-key', CAMBRIAN_SCHEMA_MODE: 'bundled' },
     ...overrides,
   }).then((code) => ({ code, stdout, stderr }));
 }

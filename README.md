@@ -11,6 +11,7 @@ DeFi data, social intelligence, and perpetual risk analysis for agents across So
 - `cambrian pay <group> <resource> [--flags]` -- pay-per-call via x402 (Base USDC, no API key)
 - `cambrian skill ...` -- packaged skill bundle management
 - `cambrian mcp ...` -- hosted/local MCP setup helpers
+- `cambrian schema ...` -- inspect, refresh, or clear the runtime endpoint registry
 - `cambrian describe opencli` -- machine-readable command contract
 - a typed TypeScript client from `cambrian`
 - shared metadata for MCP/server consumers from `cambrian/metadata`
@@ -68,6 +69,56 @@ cambrian completion bash >> ~/.bashrc
 cambrian completion zsh  >> ~/.zshrc
 cambrian completion fish > ~/.config/fish/completions/cambrian.fish
 ```
+
+## Runtime Endpoint Discovery
+
+The installed 74-endpoint snapshot is an immutable compatibility baseline. At
+runtime, the CLI safely layers compatible new API operations over that snapshot,
+so an ordinary new endpoint can appear without reinstalling `cambrian` or
+publishing another npm version.
+
+- A group command loads its pinned production OpenAPI document and caches the
+  normalized result for 15 minutes. ETag and `Last-Modified` revalidation avoid
+  unnecessary downloads.
+- Typing a resource not present in the cache forces one immediate refresh, even
+  while the cache is fresh. Group help also refreshes stale metadata.
+- Shell completion is cache-only and never waits on network access. A normal
+  command, group help, or explicit refresh populates it.
+- Only concrete `GET` operations with query parameters in the supported
+  primitive/array profile can be added. Bodies, path parameters, catch-all
+  routes, non-GET methods, ambiguous names, and malformed schemas stay hidden.
+- Live metadata can add commands, but it cannot remove or redefine an installed
+  command. A failed or invalid refresh falls back to the last-known-good cache,
+  then to the installed snapshot.
+- `schema status` reports cached additions that have disappeared from live
+  OpenAPI or acquired an incompatible live definition. They remain executable
+  from their last-known-good definition until the cache is explicitly cleared.
+- When at least five compatible operations for a group are present in
+  `llms.txt`, only that documented intersection is eligible for runtime
+  additions. With fewer than five, the CLI falls back to the compatible OpenAPI
+  list. The installed baseline is never filtered by this rule.
+
+The cache honors `XDG_CACHE_HOME` (and the platform cache directory elsewhere),
+uses private directory/file modes, and never stores API keys.
+If a valid refresh succeeds while the cache is temporarily unwritable, that
+invocation still uses the validated live metadata and reports a warning; failed
+atomic writes also clean up their temporary files on a best-effort basis.
+
+```bash
+cambrian schema status [solana|base|deep42|risk]
+cambrian schema refresh [solana|base|deep42|risk]
+cambrian schema clear-cache [solana|base|deep42|risk]
+
+# Never refresh metadata for this invocation:
+cambrian solana latest-block --offline
+
+# Emergency process-wide compatibility switch:
+CAMBRIAN_SCHEMA_MODE=bundled cambrian solana latest-block
+```
+
+A package release is still required when the interpreter itself needs a new
+capability, such as request bodies, another HTTP method, a new authentication
+model, or a previously unsupported OpenAPI construct.
 
 ## Pay-Per-Call With x402 (No API Key)
 
@@ -257,6 +308,7 @@ default output is unchanged (pretty JSON), so all flags are opt-in.
 | `--json` | Machine-readable output; errors emit structured JSON on stderr |
 | `--timeout <ms>` | Per-request timeout (default `90000`) |
 | `--api-key <key>` | API key for this call (else `CAMBRIAN_API_KEY`) |
+| `--offline` | Use installed/cached endpoint metadata without a schema refresh |
 
 ```bash
 cambrian solana trending-tokens --output table
@@ -277,6 +329,7 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |
 | `cambrian config set-key\|get-key\|clear` | Persist, print, or remove the stored API key |
 | `cambrian completion <bash\|zsh\|fish>` | Print a shell completion script |
+| `cambrian schema status\|refresh\|clear-cache` | Inspect or control runtime endpoint discovery |
 | `cambrian skill install` | Install the packaged skill bundle |
 | `cambrian skill print` | Print the packaged skill or adapter metadata |
 | `cambrian mcp config` | Print hosted/local MCP client configuration |

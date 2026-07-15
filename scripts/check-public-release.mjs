@@ -104,6 +104,9 @@ if (existsSync(pkgPath)) {
   if (pkg.scripts?.['check:public'] !== 'node scripts/check-public-release.mjs') {
     fail('package.json scripts.check:public must run scripts/check-public-release.mjs');
   }
+  if (pkg.dependencies && Object.keys(pkg.dependencies).length > 0) {
+    fail('package.json must not declare runtime dependencies');
+  }
   if (!Array.isArray(pkg.files) || pkg.files.includes('skills/') || pkg.files.includes('skills')) {
     fail('package.json files must explicitly allowlist public skill files, not the whole skills directory');
   }

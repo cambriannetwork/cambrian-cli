@@ -21,7 +21,7 @@ import { handleSolanaQuery } from './solana-handlers.js';
 import { handleEvmQuery } from './evm-handlers.js';
 import { handleDeep42Query } from './deep42-handlers.js';
 import { handleRiskQuery } from './risk-handlers.js';
-import { rootHelp, skillHelp, describeHelp, docsHelp } from './help.js';
+import { rootHelp, skillHelp, describeHelp, docsHelp, schemaHelp } from './help.js';
 import { banner } from './banner.js';
 import { buildOpenCliDocument } from './opencli.js';
 import { fetchDocs, buildSchemaFallbackDocs } from './docs-fetcher.js';
@@ -40,13 +40,70 @@ import { readConfig, writeConfig, configPath } from './config.js';
 import { complete, completionScript, assertCompletionShell } from './completion.js';
 import { maybeNotifyUpdate } from './update-check.js';
 import { configHelp, completionHelp } from './help.js';
+import {
+  loadCachedMetadataGroup,
+  loadRuntimeMetadataGroup,
+  clearRegistryCache,
+} from '../schema/registry.js';
+import {
+  CAMBRIAN_METADATA_GROUPS,
+  DEEP42_RESOURCE_ALIASES,
+  type CambrianGroup,
+  type CambrianMetadataGroup,
+} from '../metadata.js';
 
 // ── Known top-level commands (for dispatch + typo suggestions) ──────
 
-const KNOWN_COMMANDS = ['solana', 'evm', 'base', 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'skill', 'mcp', 'describe'];
+const KNOWN_COMMANDS = ['solana', 'evm', 'base', 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe'];
 
 /** Command groups that perform real authenticated queries (drive the update notice). */
 const DATA_COMMANDS = ['solana', 'evm', 'base', 'deep42', 'risk'];
+
+const REGISTRY_GROUPS: CambrianGroup[] = ['solana', 'base', 'deep42', 'risk'];
+
+function cachedMetadataGroups(runtime: Runtime): Record<CambrianGroup, CambrianMetadataGroup> {
+  return Object.fromEntries(
+    REGISTRY_GROUPS.map((group) => [group, loadCachedMetadataGroup(group, runtime).metadata]),
+  ) as Record<CambrianGroup, CambrianMetadataGroup>;
+}
+
+function canonicalRegistryResource(group: CambrianGroup, resource: string): string {
+  return group === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
+}
+
+function registryGroupForToken(group: string | undefined): CambrianGroup | undefined {
+  if (group === 'evm' || group === 'base') return 'base';
+  if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
+  return undefined;
+}
+
+async function runtimeMetadataFor(
+  group: CambrianGroup,
+  resource: string,
+  parsed: ParsedArgs,
+  runtime: Runtime,
+): Promise<CambrianMetadataGroup> {
+  const resolution = await loadRuntimeMetadataGroup(group, runtime, {
+    offline: hasOption(parsed, 'offline'),
+    ...(resource ? { missingResource: canonicalRegistryResource(group, resource) } : {}),
+  });
+  return resolution.metadata;
+}
+
+async function allRuntimeMetadata(
+  parsed: ParsedArgs,
+  runtime: Runtime,
+): Promise<Record<CambrianGroup, CambrianMetadataGroup>> {
+  const entries = await Promise.all(
+    REGISTRY_GROUPS.map(async (group) => {
+      const resolution = await loadRuntimeMetadataGroup(group, runtime, {
+        offline: hasOption(parsed, 'offline'),
+      });
+      return [group, resolution.metadata] as const;
+    }),
+  );
+  return Object.fromEntries(entries) as Record<CambrianGroup, CambrianMetadataGroup>;
+}
 
 // ── Client factory ─────────────────────────────────────────────────
 
@@ -120,8 +177,26 @@ function createClient(parsed: ParsedArgs, runtime: Runtime): CambrianData {
 async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const group = parsed.positionals[1] ?? undefined;
   const resource = parsed.positionals[2] ?? undefined;
+  assertNoUnknownOptions(parsed, ['help', 'offline'], 'docs');
 
-  const docs = await fetchDocs(runtime.fetch, group, resource);
+  const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
+  const registryGroup = registryGroupForToken(group);
+  if (registryGroup) {
+    metadataGroups[registryGroup] = await runtimeMetadataFor(
+      registryGroup,
+      resource ?? '',
+      parsed,
+      runtime,
+    );
+  }
+
+  const docs = await fetchDocs(
+    runtime.fetch,
+    group,
+    resource,
+    metadataGroups,
+    hasOption(parsed, 'offline'),
+  );
   if (docs) {
     runtime.stdout(docs);
     return 0;
@@ -129,7 +204,7 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
 
   // Live llms.txt unavailable — fall back to the bundled OpenAPI schema so the
   // command still produces useful, non-breaking output offline.
-  const fallback = buildSchemaFallbackDocs(group, resource);
+  const fallback = buildSchemaFallbackDocs(group, resource, metadataGroups);
   if (fallback) {
     runtime.stdout(fallback);
     return 0;
@@ -258,6 +333,64 @@ async function handleCompletion(parsed: ParsedArgs, runtime: Runtime): Promise<n
   return 0;
 }
 
+// ── Runtime schema registry controls ──────────────────────────────
+
+function selectedSchemaGroups(token: string | undefined): CambrianGroup[] {
+  if (!token) return [...REGISTRY_GROUPS];
+  const group = registryGroupForToken(token);
+  if (!group) {
+    throw new CliUsageError(
+      `Unknown schema group: ${token}. Use solana, base, deep42, or risk.`,
+    );
+  }
+  return [group];
+}
+
+async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
+  const subcommand = parsed.positionals[1];
+  if (!subcommand || hasOption(parsed, 'help')) {
+    runtime.stdout(schemaHelp());
+    return 0;
+  }
+  assertNoUnknownOptions(parsed, ['help'], `schema ${subcommand}`);
+  const groupToken = parsed.positionals[2];
+  if (parsed.positionals.length > 3) {
+    throw new CliUsageError(`Too many arguments for schema ${subcommand}.`);
+  }
+  const groups = selectedSchemaGroups(groupToken);
+
+  if (subcommand === 'clear-cache') {
+    const cleared = groups.length === 1
+      ? clearRegistryCache(runtime, groups[0])
+      : clearRegistryCache(runtime);
+    printJson(runtime, {
+      cleared,
+      group: groups.length === 1 ? groups[0] : 'all',
+    });
+    return 0;
+  }
+
+  if (subcommand === 'status') {
+    const statuses = groups.map((group) => loadCachedMetadataGroup(group, runtime).status);
+    printJson(runtime, statuses.length === 1 ? statuses[0] : { groups: statuses });
+    return 0;
+  }
+
+  if (subcommand === 'refresh') {
+    const statuses = await Promise.all(
+      groups.map(async (group) =>
+        (await loadRuntimeMetadataGroup(group, runtime, { refresh: true })).status,
+      ),
+    );
+    printJson(runtime, statuses.length === 1 ? statuses[0] : { groups: statuses });
+    return statuses.some((status) => status.lastError) ? 1 : 0;
+  }
+
+  throw new CliUsageError(
+    `Unknown schema subcommand: ${subcommand}. Use status, refresh, or clear-cache.`,
+  );
+}
+
 // ── Describe command ───────────────────────────────────────────────
 
 async function handleDescribe(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
@@ -266,11 +399,11 @@ async function handleDescribe(parsed: ParsedArgs, runtime: Runtime): Promise<num
     runtime.stdout(describeHelp());
     return 0;
   }
-  assertNoUnknownOptions(parsed, ['help'], `describe ${resource}`);
+  assertNoUnknownOptions(parsed, ['help', 'offline'], `describe ${resource}`);
   if (resource !== 'opencli') {
     throw new CliUsageError(`Unknown describe subcommand: ${resource}`);
   }
-  printJson(runtime, buildOpenCliDocument());
+  printJson(runtime, buildOpenCliDocument(await allRuntimeMetadata(parsed, runtime)));
   return 0;
 }
 
@@ -282,7 +415,7 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
     // Hidden completion endpoint: parse the raw words (which may include partial
     // flags) directly, before parseArgs, so it never errors on in-progress input.
     if (argv[0] === '__complete') {
-      const candidates = complete(argv.slice(1));
+      const candidates = complete(argv.slice(1), cachedMetadataGroups(runtime));
       if (candidates.length > 0) runtime.stdout(candidates.join('\n'));
       return 0;
     }
@@ -326,30 +459,59 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
     switch (command) {
       // ── Data commands ────────────────────────────────────────
       case 'solana': {
-        if (skipAuth) return await handleSolanaQuery(resource, parsed, runtime, null!);
+        if (skipAuth) {
+          const metadata = await runtimeMetadataFor('solana', resource, parsed, runtime);
+          return await handleSolanaQuery(resource, parsed, runtime, null!, metadata);
+        }
         const client = createClient(parsed, runtime);
-        return await handleSolanaQuery(resource, parsed, runtime, client);
+        const metadata = await runtimeMetadataFor('solana', resource, parsed, runtime);
+        return await handleSolanaQuery(resource, parsed, runtime, client, metadata);
       }
       case 'evm':
       case 'base': {
-        if (skipAuth) return await handleEvmQuery(resource, parsed, runtime, null!);
+        if (skipAuth) {
+          const metadata = await runtimeMetadataFor('base', resource, parsed, runtime);
+          return await handleEvmQuery(resource, parsed, runtime, null!, metadata);
+        }
         const client = createClient(parsed, runtime);
-        return await handleEvmQuery(resource, parsed, runtime, client);
+        const metadata = await runtimeMetadataFor('base', resource, parsed, runtime);
+        return await handleEvmQuery(resource, parsed, runtime, client, metadata);
       }
       case 'deep42': {
-        if (skipAuth) return await handleDeep42Query(resource, parsed, runtime, null!);
+        if (skipAuth) {
+          const metadata = await runtimeMetadataFor('deep42', resource, parsed, runtime);
+          return await handleDeep42Query(resource, parsed, runtime, null!, metadata);
+        }
         const client = createClient(parsed, runtime);
-        return await handleDeep42Query(resource, parsed, runtime, client);
+        const metadata = await runtimeMetadataFor('deep42', resource, parsed, runtime);
+        return await handleDeep42Query(resource, parsed, runtime, client, metadata);
       }
       case 'risk': {
-        if (skipAuth) return await handleRiskQuery(resource, parsed, runtime, null!);
+        if (skipAuth) {
+          const metadata = await runtimeMetadataFor('risk', resource, parsed, runtime);
+          return await handleRiskQuery(resource, parsed, runtime, null!, metadata);
+        }
         const client = createClient(parsed, runtime);
-        return await handleRiskQuery(resource, parsed, runtime, client);
+        const metadata = await runtimeMetadataFor('risk', resource, parsed, runtime);
+        return await handleRiskQuery(resource, parsed, runtime, client, metadata);
       }
 
       // ── x402 pay-per-call (Base USDC; spends real funds) ─────
-      case 'pay':
-        return await handlePay(parsed, runtime);
+      case 'pay': {
+        const payGroupToken = parsed.positionals[1];
+        const payResource = parsed.positionals[2] ?? '';
+        const payGroup = registryGroupForToken(payGroupToken);
+        if (!payGroup || !payResource || hasOption(parsed, 'help')) {
+          return await handlePay(parsed, runtime);
+        }
+        const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
+        const cached = loadCachedMetadataGroup(payGroup, runtime).metadata;
+        const canonicalResource = canonicalRegistryResource(payGroup, payResource);
+        metadataGroups[payGroup] = cached.spec[canonicalResource]
+          ? cached
+          : await runtimeMetadataFor(payGroup, payResource, parsed, runtime);
+        return await handlePay(parsed, runtime, metadataGroups);
+      }
 
       // ── Docs: live API documentation from llms.txt ───────────
       case 'docs':
@@ -364,6 +526,8 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
         return await handleConfig(parsed, runtime);
       case 'completion':
         return await handleCompletion(parsed, runtime);
+      case 'schema':
+        return await handleSchema(parsed, runtime);
 
       // ── Meta commands ────────────────────────────────────────
       case 'skill':

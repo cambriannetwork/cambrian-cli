@@ -5,7 +5,7 @@ import {
   handleDynamicQuery,
   DATA_OUTPUT_GLOBAL_OPTIONS,
 } from './dynamic-handler.js';
-import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
+import { CAMBRIAN_METADATA_GROUPS, type CambrianMetadataGroup } from '../metadata.js';
 
 // ── Load spec and derive CLI metadata ────────────────────────────
 
@@ -19,15 +19,15 @@ export const RISK_REQUIRED_OPTIONS = requiredOptions;
 
 // ── Help ─────────────────────────────────────────────────────────
 
-const RISK_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', ...DATA_OUTPUT_GLOBAL_OPTIONS];
+const RISK_GLOBAL_OPTIONS = ['help', 'api-key', 'base-url', 'json', 'timeout', 'retries', 'offline', ...DATA_OUTPUT_GLOBAL_OPTIONS];
 
-function riskHelp(): string {
+function riskHelp(currentResources: string[]): string {
   return [
     'Usage:',
     '  cambrian risk <resource> [options]',
     '',
     'Resources:',
-    ...resources.map((r) => `  ${r}`),
+    ...currentResources.map((r) => `  ${r}`),
     '',
     'Global options:',
     '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).',
@@ -42,18 +42,22 @@ export async function handleRiskQuery(
   parsed: ParsedArgs,
   runtime: Runtime,
   client: CambrianData,
+  metadata: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.risk,
 ): Promise<number> {
+  const currentSpec = metadata.spec;
+  const currentDefaults = metadata.cliDefaults;
+  const current = deriveCliMetadata(currentSpec, currentDefaults);
   return handleDynamicQuery(
     resource,
     parsed,
     runtime,
     (path, params) => client.risk.query(path, params),
-    spec,
+    currentSpec,
     'risk',
     RISK_GLOBAL_OPTIONS,
-    RISK_CLI_DEFAULTS,
-    allowedOptions,
-    requiredOptions,
-    riskHelp,
+    currentDefaults,
+    current.allowedOptions,
+    current.requiredOptions,
+    () => riskHelp(current.resources),
   );
 }

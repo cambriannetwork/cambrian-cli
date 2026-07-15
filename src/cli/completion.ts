@@ -6,7 +6,7 @@
  */
 
 import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
-import type { CambrianGroup } from '../metadata.js';
+import type { CambrianGroup, CambrianMetadataGroup } from '../metadata.js';
 import { CliUsageError } from './core.js';
 
 export const COMPLETION_SHELLS = ['bash', 'zsh', 'fish'] as const;
@@ -15,17 +15,17 @@ export type CompletionShell = (typeof COMPLETION_SHELLS)[number];
 /** Top-level commands offered for completion (hidden `__complete` excluded). */
 const TOP_LEVEL = [
   'solana', 'base', 'evm', 'deep42', 'risk', 'pay',
-  'docs', 'config', 'completion', 'skill', 'mcp', 'describe',
+  'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe',
 ];
 
 const GLOBAL_FLAGS = [
   '--json', '--output', '--fields', '--all', '--max-items',
-  '--timeout', '--retries', '--api-key', '--help',
+  '--timeout', '--retries', '--api-key', '--offline', '--help',
 ];
 
 /** Data groups payable via `cambrian pay <group> <resource>`. */
 const PAY_GROUPS = ['solana', 'base', 'evm', 'deep42', 'risk'];
-const PAY_FLAGS = ['--yes', '--max-amount', '--timeout', '--output', '--fields', '--help'];
+const PAY_FLAGS = ['--yes', '--max-amount', '--timeout', '--output', '--fields', '--offline', '--help'];
 
 function startsWithFilter(candidates: string[], prefix: string): string[] {
   if (!prefix) return candidates;
@@ -48,7 +48,10 @@ function metadataGroupKey(group: string): CambrianGroup | undefined {
  *   ['solana', 'tok']      → solana resources starting with 'tok'
  *   ['solana','tokens','--'] → that resource's flags + globals
  */
-export function complete(words: string[]): string[] {
+export function complete(
+  words: string[],
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
+): string[] {
   const args = words.length === 0 ? [''] : words;
 
   // Completing the group/command token.
@@ -56,12 +59,21 @@ export function complete(words: string[]): string[] {
     return startsWithFilter(TOP_LEVEL, args[0] ?? '');
   }
 
+  if (args[0] === 'schema') {
+    const subcommands = ['status', 'refresh', 'clear-cache'];
+    if (args.length === 2) return startsWithFilter(subcommands, args[1] ?? '');
+    if (args.length === 3 && subcommands.includes(args[1])) {
+      return startsWithFilter(['solana', 'base', 'deep42', 'risk'], args[2] ?? '');
+    }
+    return [];
+  }
+
   // `pay <group> <resource> [flags]` — one token deeper than the data commands.
   if (args[0] === 'pay') {
     if (args.length === 2) return startsWithFilter(PAY_GROUPS, args[1] ?? '');
     const payGroupKey = metadataGroupKey(args[1]);
     if (!payGroupKey) return [];
-    const payMeta = CAMBRIAN_METADATA_GROUPS[payGroupKey];
+    const payMeta = metadataGroups[payGroupKey];
     if (args.length === 3) return startsWithFilter(payMeta.resources, args[2] ?? '');
     const payEntry = payMeta.spec[args[2]];
     const payResourceFlags = payEntry
@@ -72,7 +84,7 @@ export function complete(words: string[]): string[] {
 
   const groupKey = metadataGroupKey(args[0]);
   if (!groupKey) return [];
-  const meta = CAMBRIAN_METADATA_GROUPS[groupKey];
+  const meta = metadataGroups[groupKey];
 
   // Completing the resource token.
   if (args.length === 2) {

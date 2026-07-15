@@ -19,7 +19,8 @@ It provides:
 - a machine-readable command description via `describe opencli`
 - a typed TypeScript client
 - shared server metadata from `cambrian/metadata`
-- dynamic `--help` powered by `docs.cambrian.org/llms.txt`
+- schema-aware `--help` plus live documentation from `docs.cambrian.org/llms.txt`
+- additive runtime discovery for compatible new API endpoints
 
 The published package is intentionally narrow.
 
@@ -89,6 +90,17 @@ Execution rule after setup:
 - Do not start normal reads with `cambrian --help`, `which cambrian`, `skill print`, `skill targets`, or `describe opencli`.
 - Use `describe opencli` only for runtime setup, capability ingestion, or when the user explicitly asks about the command contract.
 - Once the command family is known, go straight to the narrowest `cambrian <group> <resource> ...` call that fits the prompt.
+
+Runtime endpoint rule:
+
+- The CLI refreshes a private OpenAPI-backed endpoint cache automatically; a
+  compatible new GET/query endpoint can appear without reinstalling the npm
+  package.
+- If a newly deployed endpoint is expected but not visible, run
+  `cambrian schema refresh <solana|base|deep42|risk>` once, then retry it.
+- Use `--offline` when a command must use only installed/cached metadata.
+- Do not assume a refresh can remove or redefine an installed command; the
+  bundled command contract always wins.
 
 ## Agent Workflow
 

@@ -149,6 +149,7 @@ describe('per-resource --help includes schema hints', () => {
     return runCli(argv, {
       stdout: (msg: string) => { stdout += msg + '\n'; },
       stderr: () => {},
+      env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
     }).then((code) => ({ code, stdout }));
   }
 
