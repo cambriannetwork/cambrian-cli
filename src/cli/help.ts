@@ -23,7 +23,7 @@ export function rootHelp(): string {
     'Quick start:',
     '  export CAMBRIAN_API_KEY=<your-key>',
     '  cambrian solana trending-tokens',
-    '  cambrian base chains',
+    '  cambrian base dexes',
     '  cambrian deep42 alpha-tweets --limit 5',
     '  cambrian risk perp-risk-engine --token-address <addr> --entry-price 100 --leverage 10 --direction long --risk-horizon 1d',
     '',
@@ -88,9 +88,8 @@ export function schemaHelp(): string {
     '  cambrian schema refresh [solana|base|deep42|risk]',
     '  cambrian schema clear-cache [solana|base|deep42|risk]',
     '',
-    'The installed endpoint snapshot remains the compatibility baseline.',
-    'Runtime refreshes can add compatible GET/query endpoints but never',
-    'remove or redefine bundled commands.',
+    'Validated runtime OpenAPI is authoritative for supported GET/query',
+    'commands. Failed or invalid refreshes fall back to cache, then bundle.',
   ].join('\n');
 }
 

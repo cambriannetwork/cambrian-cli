@@ -202,8 +202,8 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
     return 0;
   }
 
-  // Live llms.txt unavailable — fall back to the bundled OpenAPI schema so the
-  // command still produces useful, non-breaking output offline.
+  // Live llms.txt unavailable — fall back to the active cached/bundled OpenAPI
+  // metadata so the command still produces useful output offline.
   const fallback = buildSchemaFallbackDocs(group, resource, metadataGroups);
   if (fallback) {
     runtime.stdout(fallback);
@@ -352,7 +352,11 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
     runtime.stdout(schemaHelp());
     return 0;
   }
-  assertNoUnknownOptions(parsed, ['help'], `schema ${subcommand}`);
+  assertNoUnknownOptions(
+    parsed,
+    subcommand === 'status' ? ['help', 'offline'] : ['help'],
+    `schema ${subcommand}`,
+  );
   const groupToken = parsed.positionals[2];
   if (parsed.positionals.length > 3) {
     throw new CliUsageError(`Too many arguments for schema ${subcommand}.`);

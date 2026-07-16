@@ -23,7 +23,7 @@ export interface ParamSpec {
   maxItems?: number;
   style?: string;
   explode?: boolean;
-  /** Enables the stricter validation used for runtime-discovered additions. */
+  /** Enables strict validation for normalized authoritative OpenAPI metadata. */
   strict?: boolean;
 }
 
@@ -68,6 +68,9 @@ const rawSpec = specData as {
   risk: GroupSpec;
 };
 
+// Backward-compatible CLI conveniences. Runtime metadata retains these only
+// while the active OpenAPI parameter schema accepts the value and declares no
+// authoritative default of its own.
 export const SOLANA_CLI_DEFAULTS: Record<string, Record<string, string>> = {
   'orca-pools': { dex: 'orca' },
   'trending-tokens': { order_by: 'volume_usd_24h' },

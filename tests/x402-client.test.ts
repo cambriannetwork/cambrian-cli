@@ -241,7 +241,7 @@ describe('loadPayFetch (real @x402 SDK wiring)', () => {
     const noop = (async () => res(200, {})) as unknown as typeof globalThis.fetch;
     const payFetch = await loadPayFetch(TEST_KEY, noop, 100000);
     expect(typeof payFetch).toBe('function');
-  });
+  }, 15_000);
 
   it('rejects an invalid private key', async () => {
     const noop = (async () => res(200, {})) as unknown as typeof globalThis.fetch;

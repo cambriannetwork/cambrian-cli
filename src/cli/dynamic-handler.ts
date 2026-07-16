@@ -121,7 +121,7 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
   }
 }
 
-/** Honors OpenAPI query-array serialization for runtime-discovered commands. */
+/** Honors query-array serialization from authoritative runtime OpenAPI metadata. */
 export function serializeQueryParams(
   entry: EndpointSpec,
   params: Record<string, unknown>,
@@ -141,16 +141,17 @@ export function serializeQueryParams(
   return serialized;
 }
 
-// ── Schema hint formatting (offline, from bundled OpenAPI schema) ──
+// ── Schema hint formatting (from the active OpenAPI metadata) ──
 
 /**
- * Renders default/min/max from the bundled schema as a compact suffix for a
+ * Renders default/min/max from the active schema as a compact suffix for a
  * --help flag line, e.g. " (default: 100, 1-1000)". Returns '' when the spec
  * carries none of these. Purely offline — never fetches.
  */
-export function formatSchemaHints(ps: ParamSpec): string {
+export function formatSchemaHints(ps: ParamSpec, cliDefault?: string): string {
   const parts: string[] = [];
   if (ps.default !== undefined) parts.push(`default: ${ps.default}`);
+  else if (cliDefault !== undefined) parts.push(`CLI default: ${cliDefault}`);
   if (ps.min !== undefined && ps.max !== undefined) {
     parts.push(`${ps.min}-${ps.max}`);
   } else if (ps.min !== undefined) {
@@ -175,7 +176,7 @@ function exampleValueFor(apiParam: string, ps: ParamSpec | undefined): string {
  * required markers, enums, and schema hints), a minimal runnable example built
  * from the required params, the shared global options, and a prominent pointer
  * to the live `cambrian docs` for full field/unit descriptions (which live in
- * llms.txt, not the bundled schema).
+ * llms.txt, not the executable OpenAPI schema).
  */
 export function buildResourceHelp(
   groupCommand: string,
@@ -183,6 +184,7 @@ export function buildResourceHelp(
   entry: EndpointSpec,
   allowed: string[],
   required: string[],
+  defaults: Record<string, string> = {},
 ): string {
   const requiredSet = new Set(required);
 
@@ -194,7 +196,7 @@ export function buildResourceHelp(
           let line = `  --${f}`;
           if (requiredSet.has(f)) line += ' (required)';
           if (ps?.enum) line += ` [${ps.enum.join('|')}]`;
-          if (ps) line += formatSchemaHints(ps);
+          if (ps) line += formatSchemaHints(ps, defaults[apiParam]);
           if (ps?.description) line += `\n      ${ps.description}`;
           return line;
         })
@@ -216,6 +218,9 @@ export function buildResourceHelp(
     '',
     'Options:',
     ...flagLines,
+    '',
+    'CLI validation enforces these active OpenAPI constraints before sending a request.',
+    'Structural fields (required/default/enum/pattern/range) take precedence over descriptive prose.',
     '',
     'Example:',
     `  # Query ${resource}`,
@@ -274,6 +279,7 @@ export async function handleDynamicQuery(
         entry,
         allowedOptions[resource] ?? [],
         requiredOptions[resource] ?? [],
+        cliDefaults[resource] ?? {},
       ),
     );
     return 0;
@@ -301,7 +307,9 @@ export async function handleDynamicQuery(
     );
   }
 
-  // Build query params with type coercion and CLI defaults
+  // Build query params. OpenAPI defaults are authoritative; compatibility CLI
+  // defaults are used only when the registry has validated them against the
+  // active schema.
   const defaults = cliDefaults[resource] ?? {};
   const queryParams: Record<string, unknown> = {};
 
@@ -316,9 +324,11 @@ export async function handleDynamicQuery(
           throw new CliUsageError(`--${cliFlag} must be true or false.`);
         }
         queryParams[apiParam] = rawBoolean === 'true';
-      } else if (paramSpec.strict && paramSpec.default !== undefined) {
+      } else if (paramSpec.default !== undefined) {
         queryParams[apiParam] = paramSpec.default;
-      } else if (paramSpec.strict && paramSpec.required && paramSpec.default === undefined) {
+      } else if (apiParam in defaults) {
+        queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
+      } else if (paramSpec.required) {
         throw new CliUsageError(`Missing required option --${cliFlag}.`);
       }
       continue;
@@ -328,12 +338,12 @@ export async function handleDynamicQuery(
 
     if (rawValue && rawValue !== 'true') {
       queryParams[apiParam] = coerceValue(rawValue, paramSpec, cliFlag);
-    } else if (apiParam in defaults) {
-      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.default !== undefined) {
       queryParams[apiParam] = paramSpec.strict
         ? paramSpec.default
         : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
+    } else if (apiParam in defaults) {
+      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.required) {
       throw new CliUsageError(`Missing required option --${cliFlag}.`);
     }

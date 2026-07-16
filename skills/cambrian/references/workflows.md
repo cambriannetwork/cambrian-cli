@@ -118,14 +118,14 @@ Use this for prompts like:
 
 Order:
 
-1. `base chains` if the chain ID is unknown
+1. `base dexes` if the DEX is unknown
 2. `base <dex>-pool` for specific pool metrics (e.g. `aero-v2-pool`)
 3. for Aerodrome v2: `base aero-v2-fee-metrics` and `base aero-v2-pool-volume`
 
 Example:
 
 ```bash
-cambrian base chains
+cambrian base dexes
 cambrian base aero-v2-pool --pool-address <pool>
 cambrian base aero-v2-fee-metrics --pool-address <pool>
 cambrian base aero-v2-pool-volume --pool-address <pool>
@@ -142,29 +142,24 @@ What to extract:
 
 Use this for prompts like:
 
-- "What are this address's LP positions on Aerodrome?"
-- "Show me the biggest LPs in this pool."
-- "Analyze this LP's strategy."
+- "Summarize this address's Aerodrome LP exposure."
+- "Analyze this LP's aggregate strategy."
 
 Order:
 
-1. `base aero-v2-providers` to list LPs in a pool, or `base aero-v2-provider-summary` for a specific LP
-2. `base aero-v2-provider-positions` for detailed position data
-3. `base aero-v2-pool` for pool context
+1. `base aero-v2-provider-summary` for a specific LP
+2. `base aero-v2-pool` for pool context
 
 Example:
 
 ```bash
-cambrian base aero-v2-providers
-cambrian base aero-v2-provider-positions --wallet-address <wallet>
 cambrian base aero-v2-provider-summary --wallet-address <provider_address>
 cambrian base aero-v2-pool --pool-address <pool>
 ```
 
 What to extract:
 
-- LP's position size, range, and share of pool
-- aggregate LP performance across pools
+- aggregate LP exposure and performance across pools
 - pool context: TVL, volume, fee tier
 - one short judgment on the LP's positioning
 
@@ -256,24 +251,24 @@ What to extract:
 - social sentiment as a risk overlay
 - one short judgment on whether the trade setup looks safe
 
-## Workflow 9: Cross-Chain DeFi Comparison
+## Workflow 9: Base DEX Comparison
 
 Use this for prompts like:
 
-- "Compare TVL between Ethereum and Base."
-- "Which chain has better DeFi opportunities?"
-- "Compare Uniswap pools on different chains."
+- "Compare TVL across Base DEXes."
+- "Which Base DEX has better DeFi opportunities?"
+- "Compare major Base liquidity pools."
 
 Order:
 
-1. `base chains` to confirm chain IDs
-2. `base uniswap-v3-pools` per chain for pool-level comparison
+1. `base dexes` to confirm the supported DEXes
+2. `base uniswap-v3-pools` and the relevant peer pool lists
 3. optionally `base tvl-top-owners` for whale comparison
 
 Example:
 
 ```bash
-cambrian base chains
+cambrian base dexes
 cambrian base uniswap-v3-pools
 cambrian base tvl-top-owners
 ```
@@ -283,4 +278,4 @@ What to extract:
 - TVL comparison: total, top pools, concentration
 - pool quality: fee tiers, volume-to-TVL ratios
 - whale presence: top owners and their share
-- one short judgment on relative chain attractiveness for LPs
+- one short judgment on relative DEX or pool attractiveness for LPs

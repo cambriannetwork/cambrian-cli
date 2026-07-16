@@ -1,143 +1,139 @@
 #!/usr/bin/env node
 
 /**
- * Fetches OpenAPI specs from all Cambrian API services and produces
- * a normalized JSON snapshot mapping CLI resource names → expected parameters.
+ * Refreshes the bundled offline registry using the same OpenAPI interpreter and
+ * llms.txt visibility policy as the runtime registry.
  *
  * Output: src/generated/openapi-params.json
- *
  * Run: npm run sync-openapi
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
+import {
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUTPUT = resolve(__dirname, '..', 'src', 'generated', 'openapi-params.json');
+const ROOT = resolve(__dirname, '..');
+const OUTPUT = resolve(ROOT, 'src', 'generated', 'openapi-params.json');
+const LLMS_URL = 'https://docs.cambrian.org/llms.txt';
+const OPENAPI_URLS = {
+  opabinia: 'https://opabinia.cambrian.network/openapi.json',
+  deep42: 'https://deep42.cambrian.network/openapi.json',
+  risk: 'https://risk.cambrian.network/openapi.json',
+};
 
-/**
- * Resources present in a service's OpenAPI spec but intentionally NOT exposed by
- * the CLI: they are hidden from the public docs (docs.cambrian.org/llms.txt) and
- * are not deployed on the live gateway (they return 404). Keyed by
- * `<group>:<resource>`. Keep this in sync with llms.txt.
- */
-const EXCLUDED_RESOURCES = new Set([
-  'deep42:discovery/project-metadata',
-  'deep42:discovery/search-projects',
-]);
-
-const SPECS = [
-  { url: 'https://opabinia.cambrian.network/openapi.json', prefix: '/api/v1/' },
-  { url: 'https://deep42.cambrian.network/openapi.json', prefix: '/api/v1/deep42/' },
-  { url: 'https://risk.cambrian.network/openapi.json', prefix: '/api/v1/' },
-];
-
-/** Convert an API path to a { group, resource } pair.
- *  /api/v1/solana/orca/pools/liquidity-map → { group: 'solana', resource: 'orca-pools-liquidity-map' }
- *  /api/v1/evm/aero/v2/pool               → { group: 'evm', resource: 'aero-v2-pool' }
- *  /api/v1/perp-risk-engine               → { group: 'risk', resource: 'perp-risk-engine' }
- *  /api/v1/deep42/social-data/alpha-tweet-detection → { group: 'deep42', resource: 'social-data/alpha-tweet-detection' }
- */
-function pathToGroupResource(apiPath) {
-  // Skip catch-all and parameterized paths
-  if (apiPath.includes('{')) return null;
-
-  // Strip /api/v1/ or api/v1/ prefix (risk spec omits leading slash)
-  const stripped = apiPath.replace(/^\/?api\/v1\//, '');
-
-  // Risk endpoint has no group prefix
-  if (stripped === 'perp-risk-engine') {
-    return { group: 'risk', resource: 'perp-risk-engine' };
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    headers: { accept: 'application/json', 'user-agent': 'cambrian-openapi-sync' },
+  });
+  if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+  const document = await response.json();
+  if (
+    !document ||
+    typeof document !== 'object' ||
+    typeof document.openapi !== 'string' ||
+    !document.openapi.startsWith('3.') ||
+    !document.info ||
+    typeof document.info.title !== 'string' ||
+    typeof document.info.version !== 'string' ||
+    !document.paths ||
+    typeof document.paths !== 'object' ||
+    Array.isArray(document.paths)
+  ) {
+    throw new Error(`Invalid OpenAPI 3 document from ${url}`);
   }
-
-  // Skip stats
-  if (stripped === 'stats') return null;
-
-  // Deep42: keep slash-separated paths
-  if (stripped.startsWith('deep42/')) {
-    return { group: 'deep42', resource: stripped.replace('deep42/', '') };
-  }
-
-  // Solana and EVM: first segment is group, rest becomes dash-separated resource
-  const segments = stripped.split('/');
-  const group = segments[0]; // 'solana' or 'evm'
-  if (group !== 'solana' && group !== 'evm') return null;
-  const resourceParts = segments.slice(1);
-  const resource = resourceParts.join('-');
-
-  return { group, resource };
+  return document;
 }
 
-function extractParams(operation) {
-  const params = {};
-  for (const p of operation.parameters || []) {
-    if (p.in !== 'query') continue;
-    const schema = p.schema || {};
-    const entry = {
-      required: p.required === true,
-      type: schema.type || 'string',
-    };
-    if (schema.enum) entry.enum = schema.enum;
-    if (schema.minimum !== undefined) entry.min = schema.minimum;
-    if (schema.maximum !== undefined) entry.max = schema.maximum;
-    if (schema.default !== undefined) entry.default = schema.default;
-    params[p.name] = entry;
-  }
-  return params;
+async function fetchText(url) {
+  const response = await fetch(url, {
+    headers: { accept: 'text/plain', 'user-agent': 'cambrian-openapi-sync' },
+  });
+  if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+  return response.text();
 }
 
-async function fetchSpec(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
-  return res.json();
+async function loadRuntimeInterpreter() {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cambrian-openapi-sync-'));
+  const outfile = join(temporaryDirectory, 'registry.mjs');
+  await build({
+    entryPoints: [resolve(ROOT, 'src', 'schema', 'registry.ts')],
+    outfile,
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node20',
+  });
+  try {
+    return await import(`${pathToFileURL(outfile).href}?v=${Date.now()}`);
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 }
 
 async function main() {
+  console.log('Fetching authoritative OpenAPI and llms.txt documents ...');
+  const [interpreter, opabinia, deep42, risk, llmsText] = await Promise.all([
+    loadRuntimeInterpreter(),
+    fetchJson(OPENAPI_URLS.opabinia),
+    fetchJson(OPENAPI_URLS.deep42),
+    fetchJson(OPENAPI_URLS.risk),
+    fetchText(LLMS_URL),
+  ]);
+  const { normalizeOpenApiGroup, parseLlmsEndpointKeys, applyVisibilityPolicy } = interpreter;
+  const llmsEndpointKeys = parseLlmsEndpointKeys(llmsText);
+  const inputs = [
+    ['solana', 'solana', opabinia],
+    ['base', 'evm', opabinia],
+    ['deep42', 'deep42', deep42],
+    ['risk', 'risk', risk],
+  ];
   const result = {};
 
-  for (const { url } of SPECS) {
-    console.log(`Fetching ${url} ...`);
-    let spec;
-    try {
-      spec = await fetchSpec(url);
-    } catch (err) {
-      console.error(`  WARN: ${err.message} — skipping`);
-      continue;
+  for (const [group, outputGroup, document] of inputs) {
+    const normalized = normalizeOpenApiGroup(group, document);
+    if (Object.keys(normalized.spec).length === 0) {
+      throw new Error(`No compatible ${group} operations; refusing to replace bundled registry`);
     }
-
-    const paths = spec.paths || {};
-    for (const [apiPath, methods] of Object.entries(paths)) {
-      for (const [method, operation] of Object.entries(methods)) {
-        if (method === 'parameters' || method === 'servers') continue;
-        if (typeof operation !== 'object' || !operation) continue;
-
-        const parsed = pathToGroupResource(apiPath);
-        if (!parsed) continue;
-        const { group, resource } = parsed;
-        if (EXCLUDED_RESOURCES.has(`${group}:${resource}`)) continue;
-
-        if (!result[group]) result[group] = {};
-        result[group][resource] = {
-          apiPath,
-          method: method.toUpperCase(),
-          params: extractParams(operation),
-        };
-      }
+    const visible = applyVisibilityPolicy(normalized.spec, llmsEndpointKeys);
+    if (Object.keys(visible.spec).length === 0) {
+      throw new Error(`No visible ${group} operations; refusing to replace bundled registry`);
     }
-  }
-
-  // Summary
-  for (const [group, resources] of Object.entries(result)) {
-    console.log(`  ${group}: ${Object.keys(resources).length} endpoints`);
+    result[outputGroup] = visible.spec;
+    console.log(
+      `  ${group}: ${Object.keys(normalized.spec).length} compatible, ` +
+      `${Object.keys(visible.spec).length} visible (${visible.mode}, ` +
+      `${visible.usableLlmsCount} llms.txt matches)`,
+    );
+    for (const rejection of normalized.rejected) {
+      const detail = rejection.detail ? ` (${rejection.detail})` : '';
+      console.log(
+        `    hidden incompatible operation: ${rejection.method} ${rejection.path} ` +
+        `[${rejection.reason}]${detail}`,
+      );
+    }
   }
 
   mkdirSync(dirname(OUTPUT), { recursive: true });
-  writeFileSync(OUTPUT, JSON.stringify(result, null, 2) + '\n');
-  console.log(`\nWritten to ${OUTPUT}`);
+  const temporaryOutput = `${OUTPUT}.${process.pid}.tmp`;
+  try {
+    writeFileSync(temporaryOutput, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o644 });
+    renameSync(temporaryOutput, OUTPUT);
+  } finally {
+    rmSync(temporaryOutput, { force: true });
+  }
+  console.log(`Written atomically to ${OUTPUT}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 });

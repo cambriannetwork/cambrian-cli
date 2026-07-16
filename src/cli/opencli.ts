@@ -173,11 +173,11 @@ export function buildOpenCliDocument(
       },
       {
         name: 'schema',
-        description: 'Inspect and refresh the additive runtime endpoint registry.',
+        description: 'Inspect and refresh the authoritative runtime endpoint registry.',
         commands: [
           { name: 'status', description: 'Show bundled, cached, and live registry status.' },
-          { name: 'refresh', description: 'Force a safe runtime schema refresh.' },
-          { name: 'clear-cache', description: 'Remove cached runtime endpoint additions.' },
+          { name: 'refresh', description: 'Force a validated runtime schema refresh.' },
+          { name: 'clear-cache', description: 'Remove cached runtime endpoint metadata.' },
         ],
       },
       {

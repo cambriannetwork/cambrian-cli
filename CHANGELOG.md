@@ -5,6 +5,36 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-16
+
+### Fixed
+
+- Validated production OpenAPI is now authoritative for compatible runtime
+  commands, including updates and removals of existing operations. The bundled
+  snapshot is used only for explicit bundled mode or when no valid live/cache
+  registry is available.
+- Replaced the sticky additive cache overlay with atomic authoritative schema
+  replacement. Failed, timed-out, oversized, or structurally invalid refreshes
+  still preserve the last-known-good cache without partially applying metadata.
+- Applied the `llms.txt` visibility threshold to the complete live registry:
+  five or more documented compatible operations expose the documented
+  intersection; fewer than five expose the compatible OpenAPI list.
+- Bumped the registry cache format so installations cannot retain definitions
+  pinned by the `1.1.0` additive-only merge.
+- Runtime help, completion, OpenCLI, docs fallback, validation, execution, and
+  x402 resource validation now consume updated existing-operation metadata.
+  Production `token-analysis`, for example, exposes the current 1–730 day range
+  and flexible `<N>h`/`<N>d` granularity from OpenAPI.
+- Online endpoint docs now lead with the active OpenAPI executable contract and
+  remove stale `llms.txt` parameter sections while retaining narrative examples
+  and response semantics as supplementary guidance.
+- Refreshed the installed offline snapshot through the runtime interpreter and
+  visibility policy: 41 Solana, 23 public Base, 5 Deep42, and 1 Risk command.
+  Existing CLI convenience defaults remain only while the active OpenAPI schema
+  accepts them; an OpenAPI-declared default always takes precedence.
+- `schema status` now accepts the global `--offline` flag because it is already
+  a cache-only operation.
+
 ## [1.1.0] - 2026-07-15
 
 ### Added

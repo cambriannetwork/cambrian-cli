@@ -68,8 +68,7 @@ Endpoint discovery:
 - for Solana trader rankings, start with `solana traders-leaderboard`
 - for Solana wallet analysis, start with `solana wallet-balance-history` or `solana holder-token-balances`
 - for Base pool metrics on a specific DEX, start with `base <dex>-v3-pool` (alias: `evm`)
-- for Base LP provider analysis (Aerodrome v2), start with `base aero-v2-provider-positions`
-- for supported Base chains, start with `base chains`
+- for Base LP provider analysis (Aerodrome v2), start with `base aero-v2-provider-summary`
 - for supported Base DEXes, start with `base dexes`
 - for Base token price, start with `base price-current`
 - for alpha tweet feeds, start with `deep42 social-data/alpha-tweet-detection`
@@ -412,16 +411,12 @@ Meaning:
 ### LP Providers (Aerodrome v2)
 
 ```bash
-cambrian base aero-v2-providers
-cambrian base aero-v2-provider-positions --wallet-address <provider-address>
 cambrian base aero-v2-provider-summary --wallet-address <provider-address>
 ```
 
 Meaning:
-- `providers` lists all LPs in a given Aerodrome v2 pool
-- `provider-positions` returns detailed position data for a specific LP
 - `provider-summary` returns an aggregate summary across all pools for a given LP address
-- use for "who provides liquidity in this pool?" or "what are this LP's positions?"
+- use for "summarize this LP's Aerodrome exposure"
 
 ### TVL
 
@@ -435,17 +430,15 @@ Meaning:
 - `tvl-top-owners` returns top TVL owners
 - use for "what are the biggest pools?" or "who has the most TVL?"
 
-### Chain and DEX Discovery
+### DEX Discovery
 
 ```bash
-cambrian base chains
 cambrian base dexes
 ```
 
 Meaning:
-- `chains` returns all supported chains
 - `dexes` returns all supported DEXes with chain mappings
-- use these first when the user asks about a chain or DEX you have not seen before
+- use this first when the user asks about a Base DEX you have not seen before
 
 ### Base Tokens and Prices
 

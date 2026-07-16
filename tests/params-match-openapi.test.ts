@@ -58,23 +58,6 @@ function cliToApi(flag: string): string {
   return flag.replace(/-/g, '_');
 }
 
-// Params that the API marks required but the CLI provides a default.
-// These should be in ALLOWED_OPTIONS but not necessarily REQUIRED_OPTIONS.
-const CLI_DEFAULTS: Record<string, Record<string, string[]>> = {
-  solana: {
-    'orca-pools': ['dex'],
-    'trending-tokens': ['order_by'],
-  },
-  evm: {
-    'aero-v2-pool': ['apr_days_annualized'],
-  },
-  deep42: {},
-};
-
-function hasCliDefault(specGroup: string, resource: string, apiParam: string): boolean {
-  return (CLI_DEFAULTS[specGroup]?.[resource] ?? []).includes(apiParam);
-}
-
 // ── Test runner ───────────────────────────────────────────────────
 
 function testGroup(
@@ -85,6 +68,7 @@ function testGroup(
   requiredOpts: Record<string, string[]>,
 ) {
   const specEndpoints = spec[specGroup];
+  const metadataGroup = specGroup === 'evm' ? 'base' : specGroup;
   if (!specEndpoints) {
     throw new Error(`No OpenAPI spec found for group "${specGroup}". Run: npm run sync-openapi`);
   }
@@ -124,11 +108,14 @@ function testGroup(
           expect(missing, `Missing required flags:\n  ${missing.join('\n  ')}`).toHaveLength(0);
         });
 
-        it('every required API param is in REQUIRED_OPTIONS (unless defaulted)', () => {
+        it('every required API param is in REQUIRED_OPTIONS unless OpenAPI supplies a default', () => {
           const missing: string[] = [];
           for (const [apiParam, info] of Object.entries(apiParams)) {
             if (!info.required) continue;
-            if (hasCliDefault(specGroup, resource, apiParam)) continue;
+            if (apiParam in (
+              CAMBRIAN_METADATA_GROUPS[metadataGroup as keyof typeof CAMBRIAN_METADATA_GROUPS]
+                .cliDefaults[resource] ?? {}
+            )) continue;
             if (info.default !== undefined) continue;
             const hasFlag = [...required].some((f) => cliToApi(f) === apiParam);
             if (!hasFlag) {
@@ -193,7 +180,7 @@ describe('shared Cambrian metadata registry', () => {
     expect(buildCambrianToolName('risk', 'perp-risk-engine')).toBe('cambrian_risk_perp_risk_engine');
   });
 
-  it('marks CLI-defaulted params optional for MCP metadata', () => {
+  it('retains compatible CLI convenience defaults in MCP metadata', () => {
     const aeroPool = CAMBRIAN_MCP_TOOLS.find((tool) => tool.name === 'cambrian_base_aero_v2_pool');
     const aprDays = aeroPool?.params.find((param) => param.name === 'apr_days_annualized');
     expect(aprDays?.required).toBe(false);
@@ -215,5 +202,24 @@ describe('shared Cambrian metadata registry', () => {
     expect(spec.deep42['discovery/project-metadata']).toBeUndefined();
     expect(spec.deep42['discovery/search-projects']).toBeUndefined();
     expect(CAMBRIAN_MCP_TOOLS.some((t) => t.resource.startsWith('discovery/'))).toBe(false);
+  });
+
+  it('bundles only Base endpoints visible under the current llms.txt policy', () => {
+    const base = CAMBRIAN_METADATA_GROUPS.base.resources;
+    expect(base).toHaveLength(23);
+    expect(base).not.toContain('aero-v2-provider-positions');
+    expect(base).not.toContain('aero-v2-providers');
+    expect(base).not.toContain('chains');
+    expect(base).not.toContain('lending-protocols');
+  });
+
+  it('bundles the current token-analysis OpenAPI contract', () => {
+    const token = CAMBRIAN_METADATA_GROUPS.deep42.spec['social-data/token-analysis'];
+    expect(token.params.days_back).toMatchObject({ default: 7, min: 1, max: 730 });
+    expect(token.params.granularity).toMatchObject({
+      default: 'total',
+      pattern: '^(total|[1-9][0-9]*[hd])$',
+    });
+    expect(token.params).not.toHaveProperty('include_price_correlation');
   });
 });

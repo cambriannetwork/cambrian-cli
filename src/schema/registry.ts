@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 1;
+export const REGISTRY_CACHE_VERSION = 2;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -67,12 +67,6 @@ export interface NormalizedOpenApiGroup {
   rejected: RegistryRejection[];
 }
 
-export interface AdditiveMergeResult {
-  spec: GroupSpec;
-  additions: string[];
-  driftedBundled: string[];
-}
-
 export interface VisibilityResult {
   spec: GroupSpec;
   mode: 'llms-filtered' | 'openapi-sparse';
@@ -95,6 +89,8 @@ interface RegistryCacheEntry {
   rejected: RegistryRejection[];
   visibilityMode: VisibilityResult['mode'];
   usableLlmsCount: number;
+  missingLiveAdditions: string[];
+  driftedLiveAdditions: string[];
   openapi: SourceValidators;
   llms: SourceValidators;
   lastAttemptAt?: number;
@@ -111,6 +107,8 @@ export interface RuntimeRegistryStatus {
   visibleLiveCount: number;
   additions: string[];
   driftedBundled: string[];
+  removedBundled: string[];
+  hiddenByLlms: string[];
   missingLiveAdditions: string[];
   driftedLiveAdditions: string[];
   rejected: RegistryRejection[];
@@ -467,74 +465,40 @@ export function normalizeOpenApiGroup(group: CambrianGroup, document: unknown): 
   return { spec, rejected };
 }
 
-function isConstraintTightening(bundled: ParamSpec, live: ParamSpec): boolean {
-  if (bundled.type !== live.type) return true;
-  if (!bundled.required && live.required) return true;
-  if (live.min !== undefined && (bundled.min === undefined || live.min > bundled.min)) return true;
-  if (live.max !== undefined && (bundled.max === undefined || live.max < bundled.max)) return true;
-  if (live.enum) {
-    if (!bundled.enum) return true;
-    if (bundled.enum.some((value) => !live.enum!.includes(value))) return true;
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (isObject(value)) {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
   }
-  // A newly published validation hint enriches the installed snapshot but
-  // does not redefine the server operation. A changed constraint that the
-  // installed snapshot already carried is meaningful drift.
-  if (bundled.pattern && live.pattern !== bundled.pattern) return true;
-  if (bundled.type === 'array' && live.items) {
-    if (!bundled.items) {
-      // Legacy arrays have always been parsed as strings. Publishing that
-      // explicit item type is enrichment, while a numeric/boolean item type
-      // would represent a different executable contract.
-      if (live.items.type !== 'string') return true;
-    } else {
-      if (bundled.items.type !== live.items.type) return true;
-      if (live.items.enum) {
-        if (!bundled.items.enum) return true;
-        if (bundled.items.enum.some((value) => !live.items!.enum!.includes(value))) return true;
-      }
-      if (bundled.items.pattern && live.items.pattern !== bundled.items.pattern) return true;
-      if (live.items.min !== undefined &&
-        (bundled.items.min === undefined || live.items.min > bundled.items.min)) return true;
-      if (live.items.max !== undefined &&
-        (bundled.items.max === undefined || live.items.max < bundled.items.max)) return true;
-    }
-    if (live.minItems !== undefined &&
-      (bundled.minItems === undefined || live.minItems > bundled.minItems)) return true;
-    if (live.maxItems !== undefined &&
-      (bundled.maxItems === undefined || live.maxItems < bundled.maxItems)) return true;
-  }
-  return false;
+  return JSON.stringify(value) ?? 'null';
 }
 
-function hasBreakingDrift(bundled: GroupSpec[string], live: GroupSpec[string]): boolean {
-  if (normalizeApiPath(bundled.apiPath) !== normalizeApiPath(live.apiPath)) return true;
-  if (bundled.method.toUpperCase() !== live.method.toUpperCase()) return true;
-  for (const [name, bundledParam] of Object.entries(bundled.params)) {
-    const liveParam = live.params[name];
-    if (!liveParam || isConstraintTightening(bundledParam, liveParam)) return true;
-  }
-  for (const [name, liveParam] of Object.entries(live.params)) {
-    if (!(name in bundled.params) && liveParam.required) return true;
-  }
-  return false;
+function endpointSpecsEqual(left: GroupSpec[string], right: GroupSpec[string]): boolean {
+  const executableContract = (endpoint: GroupSpec[string]): unknown => ({
+    apiPath: normalizeApiPath(endpoint.apiPath),
+    method: endpoint.method.toUpperCase(),
+    params: Object.fromEntries(Object.entries(endpoint.params).map(([name, param]) => {
+      const { description: _description, strict: _strict, ...contract } = param;
+      return [name, contract];
+    })),
+  });
+  return stableJson(executableContract(left)) === stableJson(executableContract(right));
 }
 
-/** The installed snapshot always wins; live metadata can only add resources. */
-export function mergeAdditiveSpec(bundled: GroupSpec, live: GroupSpec): AdditiveMergeResult {
-  const spec: GroupSpec = { ...bundled };
-  const additions: string[] = [];
-  const driftedBundled: string[] = [];
-  for (const [resource, endpoint] of Object.entries(live)) {
-    if (Object.hasOwn(bundled, resource)) {
-      if (hasBreakingDrift(bundled[resource], endpoint)) {
-        driftedBundled.push(resource);
-      }
-      continue;
-    }
-    spec[resource] = endpoint;
-    additions.push(resource);
-  }
-  return { spec, additions, driftedBundled };
+function addedResources(baseline: GroupSpec, current: GroupSpec): string[] {
+  return Object.keys(current).filter((resource) => !Object.hasOwn(baseline, resource));
+}
+
+function removedResources(baseline: GroupSpec, current: GroupSpec): string[] {
+  return Object.keys(baseline).filter((resource) => !Object.hasOwn(current, resource));
+}
+
+function changedResources(baseline: GroupSpec, current: GroupSpec): string[] {
+  return Object.entries(baseline)
+    .filter(([resource, endpoint]) =>
+      Object.hasOwn(current, resource) && !endpointSpecsEqual(endpoint, current[resource]))
+    .map(([resource]) => resource);
 }
 
 export function endpointKey(method: string, apiPath: string): string {
@@ -551,7 +515,7 @@ export function parseLlmsEndpointKeys(text: string): Set<string> {
   return keys;
 }
 
-/** Applies the docs threshold to compatible live operations, before additive merge. */
+/** Applies the docs threshold to the authoritative compatible OpenAPI operations. */
 export function applyVisibilityPolicy(
   discovered: GroupSpec,
   llmsEndpointKeys: ReadonlySet<string>,
@@ -697,6 +661,10 @@ function readRegistryCache(runtime: Runtime, group: CambrianGroup): RegistryCach
       return null;
     }
     if (!Number.isSafeInteger(parsed.usableLlmsCount) || (parsed.usableLlmsCount as number) < 0) return null;
+    if (!Array.isArray(parsed.missingLiveAdditions) ||
+      !parsed.missingLiveAdditions.every((v) => typeof v === 'string')) return null;
+    if (!Array.isArray(parsed.driftedLiveAdditions) ||
+      !parsed.driftedLiveAdditions.every((v) => typeof v === 'string')) return null;
     if (!isSourceValidators(parsed.openapi) || !isSourceValidators(parsed.llms)) return null;
     if (parsed.lastAttemptAt !== undefined && !Number.isFinite(parsed.lastAttemptAt)) return null;
     if (parsed.lastError !== undefined && typeof parsed.lastError !== 'string') return null;
@@ -736,12 +704,79 @@ export function clearRegistryCache(runtime: Runtime, group?: CambrianGroup): num
   return removed;
 }
 
+function parseCliDefault(raw: string, spec: ParamSpec): { valid: boolean; value?: unknown } {
+  if (spec.type === 'string') {
+    const value = spec.enum
+      ? spec.enum.find((entry) => entry.toLowerCase() === raw.toLowerCase())
+      : raw;
+    return value !== undefined && isValidDefault(value, spec)
+      ? { valid: true, value }
+      : { valid: false };
+  }
+  if (spec.type === 'integer') {
+    if (!/^-?\d+$/.test(raw)) return { valid: false };
+    const value = Number(raw);
+    return isValidDefault(value, spec) ? { valid: true, value } : { valid: false };
+  }
+  if (spec.type === 'number') {
+    const value = Number(raw);
+    return isValidDefault(value, spec) ? { valid: true, value } : { valid: false };
+  }
+  if (spec.type === 'boolean') {
+    if (raw !== 'true' && raw !== 'false') return { valid: false };
+    const value = raw === 'true';
+    return isValidDefault(value, spec) ? { valid: true, value } : { valid: false };
+  }
+  if (spec.type === 'array' && spec.items) {
+    const values: unknown[] = [];
+    const itemSpec: ParamSpec = {
+      required: true,
+      type: spec.items.type ?? 'string',
+      ...(spec.items.enum ? { enum: spec.items.enum } : {}),
+      ...(spec.items.min !== undefined ? { min: spec.items.min } : {}),
+      ...(spec.items.max !== undefined ? { max: spec.items.max } : {}),
+      ...(spec.items.pattern ? { pattern: spec.items.pattern } : {}),
+    };
+    const parts = raw.split(',').map((entry) => entry.trim()).filter(Boolean);
+    if (parts.length === 0) return { valid: false };
+    for (const part of parts) {
+      const parsed = parseCliDefault(part, itemSpec);
+      if (!parsed.valid) return { valid: false };
+      values.push(parsed.value);
+    }
+    return isValidDefault(values, spec) ? { valid: true, value: values } : { valid: false };
+  }
+  return { valid: false };
+}
+
+function compatibleCliDefaults(
+  group: CambrianGroup,
+  spec: GroupSpec,
+): Record<string, Record<string, string>> {
+  const result: Record<string, Record<string, string>> = {};
+  const candidates = CAMBRIAN_METADATA_GROUPS[group].cliDefaults;
+  for (const [resource, defaults] of Object.entries(candidates)) {
+    const endpoint = spec[resource];
+    if (!endpoint) continue;
+    for (const [name, raw] of Object.entries(defaults)) {
+      const parameter = endpoint.params[name];
+      if (!parameter || parameter.default !== undefined) continue;
+      if (!parseCliDefault(raw, parameter).valid) continue;
+      (result[resource] ??= {})[name] = raw;
+    }
+  }
+  return result;
+}
+
 function metadataFromSpec(group: CambrianGroup, spec: GroupSpec): CambrianMetadataGroup {
   const bundled = CAMBRIAN_METADATA_GROUPS[group];
   return {
     ...bundled,
     resources: Object.keys(spec),
     spec,
+    // OpenAPI defaults win. Historical CLI conveniences survive only while
+    // they remain valid under the active contract.
+    cliDefaults: compatibleCliDefaults(group, spec),
   };
 }
 
@@ -818,22 +853,8 @@ function statusFor(
   lastError?: string,
 ): RuntimeMetadataResolution {
   const bundled = CAMBRIAN_METADATA_GROUPS[group];
-  const visibleSpec = cache?.visibleSpec ?? {};
-  const merged = mergeAdditiveSpec(bundled.spec, visibleSpec);
-  const missingLiveAdditions: string[] = [];
-  const driftedLiveAdditions: string[] = [];
-  if (cache) {
-    for (const [resource, cachedEndpoint] of Object.entries(cache.visibleSpec)) {
-      if (Object.hasOwn(bundled.spec, resource)) continue;
-      const liveEndpoint = cache.compatibleSpec[resource];
-      if (!liveEndpoint) {
-        missingLiveAdditions.push(resource);
-      } else if (hasBreakingDrift(cachedEndpoint, liveEndpoint)) {
-        driftedLiveAdditions.push(resource);
-      }
-    }
-  }
-  const metadata = metadataFromSpec(group, merged.spec);
+  const activeSpec = cache?.visibleSpec ?? bundled.spec;
+  const metadata = cache ? metadataFromSpec(group, activeSpec) : bundled;
   return {
     metadata,
     status: {
@@ -843,10 +864,12 @@ function statusFor(
       bundledCount: bundled.resources.length,
       compatibleCount: cache ? Object.keys(cache.compatibleSpec).length : bundled.resources.length,
       visibleLiveCount: cache ? Object.keys(cache.visibleSpec).length : bundled.resources.length,
-      additions: merged.additions,
-      driftedBundled: cache ? mergeAdditiveSpec(bundled.spec, cache.compatibleSpec).driftedBundled : [],
-      missingLiveAdditions,
-      driftedLiveAdditions,
+      additions: cache ? addedResources(bundled.spec, activeSpec) : [],
+      driftedBundled: cache ? changedResources(bundled.spec, cache.compatibleSpec) : [],
+      removedBundled: cache ? removedResources(bundled.spec, cache.compatibleSpec) : [],
+      hiddenByLlms: cache ? removedResources(cache.compatibleSpec, cache.visibleSpec) : [],
+      missingLiveAdditions: cache?.missingLiveAdditions ?? [],
+      driftedLiveAdditions: cache?.driftedLiveAdditions ?? [],
       rejected: cache?.rejected ?? [],
       usableLlmsCount: cache?.usableLlmsCount ?? 0,
       fetchedAt: cache?.fetchedAt ?? null,
@@ -898,16 +921,12 @@ async function refreshGroup(
     } catch {
       throw new Error(`${OPENAPI_URLS[group]} returned invalid JSON`);
     }
-    if (!isObject(parsed) || typeof parsed.openapi !== 'string' || !parsed.openapi.startsWith('3.')) {
+    if (!isObject(parsed) || typeof parsed.openapi !== 'string' || !parsed.openapi.startsWith('3.') ||
+      !isObject(parsed.info) || typeof parsed.info.title !== 'string' ||
+      typeof parsed.info.version !== 'string' || !isObject(parsed.paths)) {
       throw new Error(`${OPENAPI_URLS[group]} did not return an OpenAPI 3 document`);
     }
     const normalized = normalizeOpenApiGroup(group, parsed);
-    const hasKnownOperation = CAMBRIAN_METADATA_GROUPS[group].resources.some((resource) =>
-      Object.hasOwn(normalized.spec, resource)
-    );
-    if (!hasKnownOperation) {
-      throw new Error(`${OPENAPI_URLS[group]} contained no known compatible operations`);
-    }
     compatibleSpec = normalized.spec;
     rejected = normalized.rejected;
   }
@@ -935,10 +954,16 @@ async function refreshGroup(
   }
 
   const visibility = applyVisibilityPolicy(compatibleSpec, llmsEndpointKeys);
-  // Once a compatible addition has been observed by this installation, keep
-  // its cached definition stable. A later remote document may add more, but it
-  // may not silently redefine or remove a previously working command.
-  const visibleSpec = { ...visibility.spec, ...(cache?.visibleSpec ?? {}) };
+  const previousVisibleSpec = cache?.visibleSpec ?? CAMBRIAN_METADATA_GROUPS[group].spec;
+  const visibleSpec = { ...visibility.spec };
+  const previousAdditions = new Set(addedResources(
+    CAMBRIAN_METADATA_GROUPS[group].spec,
+    previousVisibleSpec,
+  ));
+  const missingLiveAdditions = removedResources(previousVisibleSpec, visibleSpec)
+    .filter((resource) => previousAdditions.has(resource));
+  const driftedLiveAdditions = changedResources(previousVisibleSpec, visibleSpec)
+    .filter((resource) => previousAdditions.has(resource));
   const entry: RegistryCacheEntry = {
     version: REGISTRY_CACHE_VERSION,
     group,
@@ -950,6 +975,8 @@ async function refreshGroup(
     rejected,
     visibilityMode: visibility.mode,
     usableLlmsCount: visibility.usableLlmsCount,
+    missingLiveAdditions,
+    driftedLiveAdditions,
     openapi: openapiResponse.validators,
     llms: llmsValidators,
     lastAttemptAt: now,
@@ -970,8 +997,8 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * Loads the immutable bundled group plus last-known-good runtime additions.
- * Refresh failures are deliberately non-breaking and fall back to cache/bundle.
+ * Loads validated authoritative runtime metadata. Refresh failures fall back
+ * to the last-known-good cache and then the immutable bundled snapshot.
  */
 export async function loadRuntimeMetadataGroup(
   group: CambrianGroup,

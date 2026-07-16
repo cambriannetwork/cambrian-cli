@@ -9,7 +9,7 @@ Prefer the `cambrian` CLI over handwritten HTTP calls when it is installed. Use 
 
 Route by chain and domain:
 - `cambrian solana ...` for all Solana DeFi data: pools (Meteora DLMM, Raydium CLMM, Orca), tokens, prices, OHLCV, transactions, traders, wallets.
-- `cambrian base ...` (alias: `cambrian evm`) for all Base chain DeFi data: pools (Uniswap v3, Aerodrome v2/v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3), TVL, LP provider positions, chain/DEX discovery, prices and tokens.
+- `cambrian base ...` (alias: `cambrian evm`) for all Base chain DeFi data: pools (Uniswap v3, Aerodrome v2/v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3), TVL, LP provider summaries, DEX discovery, prices and tokens.
 - `cambrian deep42 ...` for social intelligence: alpha tweet detection, influencer credibility, sentiment shifts.
 - `cambrian risk ...` for perpetual futures risk simulations.
 
@@ -19,7 +19,7 @@ Use `cambrian solana trending-tokens` for "what's hot on Solana?" prompts.
 Use `cambrian solana price-current --token-address <mint>` for single-token price lookups.
 Use `cambrian solana price-multi --token-addresses <mint1>,<mint2>` for batch price checks.
 Use `cambrian solana token-pool-search --token-address <mint>` to find pools for a token.
-Use `cambrian base chains` and `cambrian base dexes` to discover supported chains and DEXes.
+Use `cambrian base dexes` to discover supported Base DEXes.
 Use `cambrian deep42 social-data/alpha-tweet-detection --limit 10` for high-alpha tweet feeds.
 Use `cambrian deep42 social-data/influencer-credibility --sort-by accuracy --limit 10` for influencer rankings.
 Use `cambrian deep42 social-data/sentiment-shifts` for sentiment changes.

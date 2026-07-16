@@ -28,10 +28,27 @@ const SECTION_HEADERS: Record<string, string> = {
 
 type MetadataGroups = Record<CambrianGroup, CambrianMetadataGroup>;
 
+interface ResolvedEndpoint {
+  entry: EndpointSpec;
+  cliDefaults: Record<string, string>;
+}
+
 function metadataGroupKey(group: string): CambrianGroup | undefined {
   if (group === 'evm' || group === 'base') return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
+}
+
+function resolveEndpoint(
+  group: string,
+  resource: string,
+  metadataGroups: MetadataGroups,
+): ResolvedEndpoint | null {
+  const key = metadataGroupKey(group);
+  if (!key) return null;
+  const resolved = key === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
+  const entry = metadataGroups[key].spec[resolved];
+  return entry ? { entry, cliDefaults: metadataGroups[key].cliDefaults[resolved] ?? {} } : null;
 }
 
 /** Builds endpoint docs paths directly from the executable registry. */
@@ -40,12 +57,28 @@ function resourceToApiPath(
   resource: string,
   metadataGroups: MetadataGroups,
 ): string | null {
-  const key = metadataGroupKey(group);
-  if (!key) return null;
-  const resolved = key === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
-  const entry = metadataGroups[key].spec[resolved];
-  if (!entry) return null;
-  return entry.apiPath.replace(/^\/?api\/v1\//, '').replace(/^\//, '');
+  const endpoint = resolveEndpoint(group, resource, metadataGroups);
+  if (!endpoint) return null;
+  return endpoint.entry.apiPath.replace(/^\/?api\/v1\//, '').replace(/^\//, '');
+}
+
+/** Removes llms.txt parameter tables so they cannot override OpenAPI constraints. */
+function withoutParameterSections(text: string): string {
+  const result: string[] = [];
+  let skippedHeadingLevel: number | null = null;
+  for (const line of text.split('\n')) {
+    const heading = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
+    if (skippedHeadingLevel !== null) {
+      if (!heading || heading[1].length > skippedHeadingLevel) continue;
+      skippedHeadingLevel = null;
+    }
+    if (heading && /\bparameters\b/i.test(heading[2])) {
+      skippedHeadingLevel = heading[1].length;
+      continue;
+    }
+    result.push(line);
+  }
+  return result.join('\n').trim();
 }
 
 /**
@@ -80,7 +113,7 @@ export type FetchFn = typeof globalThis.fetch;
 /**
  * Fetch help documentation from llms.txt.
  * On any network/HTTP failure the function falls back to schema-derived info
- * from the bundled OpenAPI params. Never throws.
+ * from the active cached/bundled OpenAPI metadata. Never throws.
  *
  * Returns the documentation text, or null only when no fallback is available
  * (e.g. root-level fetch with no group specified).
@@ -106,7 +139,19 @@ export async function fetchDocs(
         } catch {
           // network failure — proceed to root fallback below
         }
-        if (endpointText) return endpointText;
+        if (endpointText) {
+          const endpoint = resolveEndpoint(group, resource, metadataGroups);
+          if (endpoint) {
+            return renderLiveEndpointDocs(
+              group,
+              resource,
+              endpoint.entry,
+              endpoint.cliDefaults,
+              endpointText,
+            );
+          }
+          return endpointText;
+        }
         // Fall through: try root llms.txt, then schema fallback.
       }
     }
@@ -133,7 +178,7 @@ export async function fetchDocs(
       return fullText;
     }
 
-    // Schema fallback: offline, derived from bundled OpenAPI params.
+    // Schema fallback: offline, derived from active cached/bundled metadata.
     return buildSchemaFallbackDocs(group, resource, metadataGroups);
   } catch {
     // Last resort: try schema fallback, then null.
@@ -141,7 +186,7 @@ export async function fetchDocs(
   }
 }
 
-// ── Schema-derived fallback (offline, from bundled OpenAPI schema) ──
+// ── Schema-derived fallback (offline, from active OpenAPI metadata) ──
 
 // CLI group name -> metadata group key (evm/base both map to the `base` spec).
 const GROUP_TO_METADATA_KEY: Record<string, CambrianGroup> = {
@@ -152,26 +197,35 @@ const GROUP_TO_METADATA_KEY: Record<string, CambrianGroup> = {
   risk: 'risk',
 };
 
-function describeParam(name: string, ps: ParamSpec): string {
+function describeParam(name: string, ps: ParamSpec, cliDefault?: string): string {
   const cliFlag = name.replace(/_/g, '-');
   const bits: string[] = [ps.type];
-  if (ps.required) bits.push('required'); else bits.push('optional');
+  if (ps.required && cliDefault === undefined) bits.push('required'); else bits.push('optional');
   if (ps.enum) bits.push(`one of: ${ps.enum.join(', ')}`);
   if (ps.default !== undefined) bits.push(`default: ${ps.default}`);
+  else if (cliDefault !== undefined) bits.push(`CLI compatibility default: ${cliDefault}`);
   if (ps.min !== undefined && ps.max !== undefined) bits.push(`range ${ps.min}-${ps.max}`);
   else if (ps.min !== undefined) bits.push(`min ${ps.min}`);
   else if (ps.max !== undefined) bits.push(`max ${ps.max}`);
+  if (ps.pattern) bits.push(`pattern ${ps.pattern}`);
   const meta = `  --${cliFlag}  (${bits.join(', ')})`;
   return ps.description ? `${meta}\n      ${ps.description}` : meta;
 }
 
-function renderEndpointSchema(group: string, resource: string, entry: EndpointSpec): string {
-  const lines: string[] = [
+function renderExecutableContract(
+  group: string,
+  resource: string,
+  entry: EndpointSpec,
+  cliDefaults: Record<string, string>,
+): string {
+  const lines = [
     `# cambrian ${group} ${resource}`,
     '',
-    '(Live docs unavailable — showing bundled schema. For full descriptions,',
-    ' units, and response fields, retry `cambrian docs` when online or see',
-    ` https://docs.cambrian.org/api/v1/${entry.apiPath.replace(/^\/api\/v1\//, '').replace(/^\//, '')}/llms.txt )`,
+    '## Authoritative executable contract',
+    '',
+    'Flags, required fields, defaults, enums, patterns, and numeric limits below',
+    'come from the active OpenAPI schema registry and govern CLI validation/execution.',
+    'Any labeled CLI compatibility default is used only while that schema accepts it.',
     '',
     `${entry.method} ${entry.apiPath}`,
     '',
@@ -181,13 +235,47 @@ function renderEndpointSchema(group: string, resource: string, entry: EndpointSp
     lines.push('Parameters: (none)');
   } else {
     lines.push('Parameters:');
-    for (const [name, ps] of params) lines.push(describeParam(name, ps));
+    for (const [name, ps] of params) lines.push(describeParam(name, ps, cliDefaults[name]));
   }
   return lines.join('\n');
 }
 
+function renderEndpointSchema(
+  group: string,
+  resource: string,
+  entry: EndpointSpec,
+  cliDefaults: Record<string, string>,
+): string {
+  return [
+    renderExecutableContract(group, resource, entry, cliDefaults),
+    '',
+    '(Live llms.txt documentation unavailable. The executable contract above',
+    ' remains usable; retry `cambrian docs` online for response-field semantics',
+    ' and examples.)',
+  ].join('\n');
+}
+
+function renderLiveEndpointDocs(
+  group: string,
+  resource: string,
+  entry: EndpointSpec,
+  cliDefaults: Record<string, string>,
+  llmsText: string,
+): string {
+  const supplementary = withoutParameterSections(llmsText);
+  return [
+    renderExecutableContract(group, resource, entry, cliDefaults),
+    '',
+    '## Supplementary llms.txt documentation',
+    '',
+    'The narrative, examples, and response semantics below are supplementary.',
+    'If they conflict with executable parameters, the OpenAPI contract above wins.',
+    ...(supplementary ? ['', supplementary] : []),
+  ].join('\n');
+}
+
 /**
- * Builds documentation from the bundled OpenAPI schema when the live llms.txt
+ * Builds documentation from active cached/bundled OpenAPI metadata when llms.txt
  * fetch fails. Returns null if the group/resource can't be resolved from the
  * schema. Purely offline — never fetches, never throws.
  */
@@ -208,7 +296,7 @@ export function buildSchemaFallbackDocs(
       return [
         `# cambrian ${group}`,
         '',
-        '(Live docs unavailable — showing bundled schema resource list.)',
+        '(Live docs unavailable — showing active schema resource list.)',
         '',
         'Resources:',
         ...resources.map((r) => `  ${r}`),
@@ -225,7 +313,12 @@ export function buildSchemaFallbackDocs(
 
     const entry = groupMeta.spec[resolved];
     if (!entry) return null;
-    return renderEndpointSchema(group, resource, entry);
+    return renderEndpointSchema(
+      group,
+      resource,
+      entry,
+      groupMeta.cliDefaults[resolved] ?? {},
+    );
   } catch {
     return null;
   }

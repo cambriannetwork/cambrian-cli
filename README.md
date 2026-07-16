@@ -72,10 +72,10 @@ cambrian completion fish > ~/.config/fish/completions/cambrian.fish
 
 ## Runtime Endpoint Discovery
 
-The installed 74-endpoint snapshot is an immutable compatibility baseline. At
-runtime, the CLI safely layers compatible new API operations over that snapshot,
-so an ordinary new endpoint can appear without reinstalling `cambrian` or
-publishing another npm version.
+The installed 70-endpoint public snapshot is the offline safety fallback. After a
+successful refresh, validated production OpenAPI is authoritative for the
+active command group, so compatible endpoint additions, updates, and removals
+appear without reinstalling `cambrian` or publishing another npm version.
 
 - A group command loads its pinned production OpenAPI document and caches the
   normalized result for 15 minutes. ETag and `Last-Modified` revalidation avoid
@@ -85,18 +85,20 @@ publishing another npm version.
 - Shell completion is cache-only and never waits on network access. A normal
   command, group help, or explicit refresh populates it.
 - Only concrete `GET` operations with query parameters in the supported
-  primitive/array profile can be added. Bodies, path parameters, catch-all
+  primitive/array profile are exposed. Bodies, path parameters, catch-all
   routes, non-GET methods, ambiguous names, and malformed schemas stay hidden.
-- Live metadata can add commands, but it cannot remove or redefine an installed
-  command. A failed or invalid refresh falls back to the last-known-good cache,
-  then to the installed snapshot.
-- `schema status` reports cached additions that have disappeared from live
-  OpenAPI or acquired an incompatible live definition. They remain executable
-  from their last-known-good definition until the cache is explicitly cleared.
+- A valid refresh atomically replaces the active registry, including changed or
+  removed operations. A failed or structurally invalid refresh leaves the
+  last-known-good cache active, then falls back to the installed snapshot when
+  no valid cache exists.
+- `schema status` reports operations added or changed relative to the bundle,
+  bundled operations removed upstream, operations hidden by `llms.txt`, and
+  cached additions changed or removed by the latest successful refresh.
 - When at least five compatible operations for a group are present in
-  `llms.txt`, only that documented intersection is eligible for runtime
-  additions. With fewer than five, the CLI falls back to the compatible OpenAPI
-  list. The installed baseline is never filtered by this rule.
+  `llms.txt`, only that documented intersection is exposed. With fewer than
+  five, the CLI falls back to the complete compatible OpenAPI list. This policy
+  applies to the whole live registry. The bundled snapshot is generated with
+  the same policy at release time and is not re-filtered while offline.
 
 The cache honors `XDG_CACHE_HOME` (and the platform cache directory elsewhere),
 uses private directory/file modes, and never stores API keys.
@@ -151,7 +153,7 @@ logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 ## Features
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details, holders, security audits; OHLCV candles; prices (current, hourly, unix, multi); pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3; LP provider positions and fee metrics; TVL rankings; lending protocols; chain and DEX discovery; EVM token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3; LP provider summaries and fee metrics; TVL rankings; DEX discovery; EVM token prices and lists
 - **Social intelligence**: alpha tweet detection with multi-dimensional scoring, influencer credibility rankings with track records, sentiment shift detection for identifying market-moving changes
 - **Perpetual risk**: risk engine simulations for position sizing and liquidation analysis
 - Agent-friendly CLI with clean error output, scoped subcommand help, and self-description via `cambrian describe opencli`
@@ -164,7 +166,7 @@ logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 | Service | Endpoints | Coverage |
 |---------|-----------|----------|
 | Solana (Opabinia) | 41 | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
-| EVM (Opabinia) | 27 | Pools (7 DEXes), TVL, LP providers, lending protocols, chain/DEX discovery, prices, tokens |
+| EVM (Opabinia) | 27 compatible / 23 currently documented | Pools (7 DEXes), TVL, LP provider summaries, DEX discovery, prices, tokens |
 | Deep42 | 5 | Alpha tweet detection, influencer credibility, sentiment shifts, token analysis, trending momentum |
 | Risk | 1 | Perp risk engine |
 
@@ -176,7 +178,7 @@ npm install -g cambrian
 export CAMBRIAN_API_KEY=<your-api-key>
 cambrian solana trending-tokens
 cambrian solana price-current --token-address So11111111111111111111111111111111111111112
-cambrian base chains
+cambrian base dexes
 cambrian deep42 social-data/alpha-tweet-detection --limit 3
 cambrian describe opencli
 cambrian mcp config --mode hosted
@@ -193,7 +195,7 @@ What success looks like:
 
 - `trending-tokens` returns a list of currently trending Solana tokens
 - `price-current` returns a price snapshot for the given mint
-- `chains` returns supported Base chains with chain IDs
+- `dexes` returns supported Base DEX metadata
 - `alpha-tweet-detection` returns high-alpha tweets with multi-dimensional scoring
 - `describe opencli` prints the machine-readable CLI contract that tool-aware runtimes can ingest
 
@@ -218,8 +220,8 @@ Execution best practice after setup:
 | Solana wallet analysis | `solana wallet-balance-history` | `solana holder-token-balances` |
 | Base pool metrics | `base <dex>-v3-pool` | `base <dex>-v3-pools` |
 | Base TVL rankings | `base tvl-status` | `base tvl-top-owners` |
-| Base LP provider analysis | `base aero-v2-provider-positions` | `base aero-v2-provider-summary` |
-| Base chain or DEX discovery | `base chains` or `base dexes` | the appropriate pool resource |
+| Base LP provider analysis | `base aero-v2-provider-summary` | the appropriate pool resource |
+| Base DEX discovery | `base dexes` | the appropriate pool resource |
 | Base token price | `base price-current` | `base price-hour` |
 | social sentiment or trending | `deep42 social-data/sentiment-shifts` | `deep42 social-data/alpha-tweet-detection` |
 | influencer credibility | `deep42 social-data/influencer-credibility` | `deep42 social-data/alpha-tweet-detection` |
@@ -256,14 +258,12 @@ cambrian solana traders-leaderboard --token-address <mint> --interval "24 HOUR"
 cambrian solana wallet-balance-history --wallet-address <wallet> --token-address <mint> --after-time <unix> --before-time <unix>
 
 # Base (alias: evm)
-cambrian base chains
 cambrian base dexes
 cambrian base uniswap-v3-pool --pool-address <pool>
 cambrian base uniswap-v3-pools
 cambrian base aero-v2-pool --pool-address <pool>
 cambrian base aero-v2-pools
 cambrian base aero-v2-fee-metrics --pool-address <pool>
-cambrian base aero-v2-provider-positions --wallet-address <address>
 cambrian base aero-v2-provider-summary --wallet-address <address>
 cambrian base tvl-status --wallet-address <wallet>
 cambrian base tvl-top-owners --token-address <token>
@@ -323,7 +323,7 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | Command | Description |
 | --- | --- |
 | `cambrian solana <resource> [--flags]` | Solana DeFi data (41 endpoints) |
-| `cambrian base <resource> [--flags]` | Base DeFi data (27 endpoints; alias: evm) |
+| `cambrian base <resource> [--flags]` | Base DeFi data (23 public endpoints; 27 compatible in OpenAPI; alias: evm) |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |

@@ -20,7 +20,8 @@ It provides:
 - a typed TypeScript client
 - shared server metadata from `cambrian/metadata`
 - schema-aware `--help` plus live documentation from `docs.cambrian.org/llms.txt`
-- additive runtime discovery for compatible new API endpoints
+- authoritative runtime discovery for compatible OpenAPI additions, updates,
+  and removals
 
 The published package is intentionally narrow.
 
@@ -71,7 +72,7 @@ Use this order when the goal is to get an agent productive quickly:
 
 1. confirm the CLI is installed or install `cambrian`
 2. confirm the runtime process can read `CAMBRIAN_API_KEY`
-3. verify one successful read with `cambrian solana latest-block` or `cambrian base chains`
+3. verify one successful read with `cambrian solana latest-block` or `cambrian base dexes`
 4. for MCP-capable runtimes, use `cambrian mcp config --mode hosted`
 5. for other tool-aware runtimes, inspect `cambrian describe opencli`
 6. for deeper command chains, use [references/cli.md](references/cli.md) and [references/workflows.md](references/workflows.md)
@@ -79,7 +80,7 @@ Use this order when the goal is to get an agent productive quickly:
 Shortest live-path check:
 
 ```bash
-cambrian base chains
+cambrian base dexes
 cambrian solana price-current --token-address So11111111111111111111111111111111111111112
 cambrian mcp config --mode hosted
 cambrian describe opencli
@@ -93,14 +94,14 @@ Execution rule after setup:
 
 Runtime endpoint rule:
 
-- The CLI refreshes a private OpenAPI-backed endpoint cache automatically; a
-  compatible new GET/query endpoint can appear without reinstalling the npm
-  package.
+- The CLI refreshes a private OpenAPI-backed endpoint cache automatically;
+  compatible GET/query additions, updates, and removals can appear without
+  reinstalling the npm package.
 - If a newly deployed endpoint is expected but not visible, run
   `cambrian schema refresh <solana|base|deep42|risk>` once, then retry it.
 - Use `--offline` when a command must use only installed/cached metadata.
-- Do not assume a refresh can remove or redefine an installed command; the
-  bundled command contract always wins.
+- Treat validated runtime OpenAPI as the executable source of truth. Failed or
+  invalid refreshes fall back to the last-known-good cache, then the bundle.
 
 ## Agent Workflow
 
@@ -128,7 +129,7 @@ Suggested agent workflow:
 Covered reads include:
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details and security; holder distributions; OHLCV candles; current, hourly, unix, and multi prices; pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, Clones v3, PancakeSwap v3, and Uniswap v3; LP provider positions and fee metrics; TVL rankings and top owners; chain and DEX discovery; token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, Clones v3, PancakeSwap v3, and Uniswap v3; LP provider summaries and fee metrics; TVL rankings and top owners; DEX discovery; token prices and lists
 - **Social intelligence (Deep42)**: alpha tweet detection, influencer credibility scoring, sentiment shifts, token analysis, and trending momentum
 - **Perpetual risk**: Monte Carlo liquidation simulations for long/short positions with configurable risk horizons
 
@@ -164,7 +165,7 @@ Covered reads include:
 | EVM pool metrics (Uniswap) | `base uniswap-v3-pool --pool-address <pool>` | `base uniswap-v3-pools` |
 | EVM pool metrics (Aerodrome) | `base aero-v2-pool --pool-address <pool>` or `base aero-v3-pool --pool-address <pool>` | `base aero-v2-pools` |
 | EVM TVL rankings | `base tvl-top-owners --token-address <token>` | `base tvl-status` |
-| EVM chain or DEX discovery | `base chains` or `base dexes` | the appropriate pool resource |
+| EVM DEX discovery | `base dexes` | the appropriate pool resource |
 | EVM token price | `base price-current --token-address <token>` | `base price-hour` |
 | social sentiment shifts | `deep42 sentiment-shifts --limit 10` | `deep42 alpha-tweets` |
 | influencer credibility | `deep42 influencer-credibility --limit 10` | `deep42 alpha-tweets` |
@@ -230,8 +231,7 @@ cambrian solana token-transactions --token-address <mint> --days 1 --limit 20
 cambrian solana traders-leaderboard --token-address <mint> --interval "24 HOUR"
 cambrian solana wallet-balance-history --wallet-address <wallet> --token-address <mint> --after-time <unix> --before-time <unix>
 
-# EVM chains, dexes, tokens
-cambrian base chains
+# EVM dexes and tokens
 cambrian base dexes
 cambrian base tokens
 
@@ -256,9 +256,7 @@ cambrian base clones-v3-pools --limit 20
 cambrian base tvl-top-owners --token-address <token> --limit 20
 cambrian base tvl-status --wallet-address <wallet>
 
-# EVM LP providers
-cambrian base aero-v2-providers --limit 20
-cambrian base aero-v2-provider-positions --wallet-address <wallet>
+# EVM LP provider summary
 cambrian base aero-v2-provider-summary --wallet-address <wallet>
 
 # Deep42 social intelligence (documented endpoints)
@@ -286,7 +284,7 @@ Practical defaults:
 - Use `solana price-current` for quick single-token price lookups; `solana price-multi` for batch
 - Use `solana token-details` when the user asks "what is this token?" with a mint address
 - Use `solana token-pool-search` to find pools for a token when the pool address is unknown
-- Use `base chains` and `base dexes` to discover supported chains and DEXes
+- Use `base dexes` to discover supported Base DEXes
 - Use `deep42 sentiment-shifts` for broad market sentiment overview
 - Use `deep42 alpha-tweets` for high-signal tweet discovery
 - Use `risk perp-risk-engine` only for perpetual futures risk analysis

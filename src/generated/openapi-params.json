@@ -1,448 +1,4 @@
 {
-  "evm": {
-    "aero-v2-fee-metrics": {
-      "apiPath": "/api/v1/evm/aero/v2/fee-metrics",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "aero-v2-pool": {
-      "apiPath": "/api/v1/evm/aero/v2/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        },
-        "apr_days_annualized": {
-          "required": true,
-          "type": "integer",
-          "min": 1,
-          "max": 30
-        }
-      }
-    },
-    "aero-v2-pool-volume": {
-      "apiPath": "/api/v1/evm/aero/v2/pool-volume",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "aero-v2-pools": {
-      "apiPath": "/api/v1/evm/aero/v2/pools",
-      "method": "GET",
-      "params": {
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        }
-      }
-    },
-    "aero-v2-provider-positions": {
-      "apiPath": "/api/v1/evm/aero/v2/provider-positions",
-      "method": "GET",
-      "params": {
-        "wallet_address": {
-          "required": true,
-          "type": "string"
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "aero-v2-provider-summary": {
-      "apiPath": "/api/v1/evm/aero/v2/provider-summary",
-      "method": "GET",
-      "params": {
-        "wallet_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "aero-v2-providers": {
-      "apiPath": "/api/v1/evm/aero/v2/providers",
-      "method": "GET",
-      "params": {
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        }
-      }
-    },
-    "aero-v3-pool": {
-      "apiPath": "/api/v1/evm/aero/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "aero-v3-pools": {
-      "apiPath": "/api/v1/evm/aero/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "alien-v3-pool": {
-      "apiPath": "/api/v1/evm/alien/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "alien-v3-pools": {
-      "apiPath": "/api/v1/evm/alien/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "chains": {
-      "apiPath": "/api/v1/evm/chains",
-      "method": "GET",
-      "params": {}
-    },
-    "clones-v3-pool": {
-      "apiPath": "/api/v1/evm/clones/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "clones-v3-pools": {
-      "apiPath": "/api/v1/evm/clones/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "dexes": {
-      "apiPath": "/api/v1/evm/dexes",
-      "method": "GET",
-      "params": {}
-    },
-    "lending-protocols": {
-      "apiPath": "/api/v1/evm/lending/protocols",
-      "method": "GET",
-      "params": {}
-    },
-    "pancake-v3-pool": {
-      "apiPath": "/api/v1/evm/pancake/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "pancake-v3-pools": {
-      "apiPath": "/api/v1/evm/pancake/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "price-current": {
-      "apiPath": "/api/v1/evm/price-current",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string",
-          "default": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-        }
-      }
-    },
-    "price-hour": {
-      "apiPath": "/api/v1/evm/price-hour",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": true,
-          "type": "string"
-        },
-        "hours": {
-          "required": true,
-          "type": "integer",
-          "min": 1,
-          "max": 1000
-        }
-      }
-    },
-    "sushi-v3-pool": {
-      "apiPath": "/api/v1/evm/sushi/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "sushi-v3-pools": {
-      "apiPath": "/api/v1/evm/sushi/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    },
-    "tokens": {
-      "apiPath": "/api/v1/evm/tokens",
-      "method": "GET",
-      "params": {}
-    },
-    "tvl-status": {
-      "apiPath": "/api/v1/evm/tvl/status",
-      "method": "GET",
-      "params": {
-        "wallet_address": {
-          "required": true,
-          "type": "string"
-        },
-        "whitelisted": {
-          "required": false,
-          "type": "boolean",
-          "default": false
-        }
-      }
-    },
-    "tvl-top-owners": {
-      "apiPath": "/api/v1/evm/tvl/top-owners",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": true,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 20
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        }
-      }
-    },
-    "uniswap-v3-pool": {
-      "apiPath": "/api/v1/evm/uniswap/v3/pool",
-      "method": "GET",
-      "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string"
-        }
-      }
-    },
-    "uniswap-v3-pools": {
-      "apiPath": "/api/v1/evm/uniswap/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "min": 1,
-          "max": 1000,
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "min": 0,
-          "max": 100000,
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array"
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array"
-        }
-      }
-    }
-  },
   "solana": {
     "holder-token-balances": {
       "apiPath": "/api/v1/solana/holder-token-balances",
@@ -450,20 +6,26 @@
       "params": {
         "wallet_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Wallet address"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 10
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -479,7 +41,9 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Pool identifier"
         }
       }
     },
@@ -489,7 +53,9 @@
       "params": {
         "pool_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
         }
       }
     },
@@ -500,15 +66,19 @@
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -519,23 +89,32 @@
       "params": {
         "base_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Base token mint address (base58 format)"
         },
         "quote_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Quote token mint address (base58 format)"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "interval": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1m",
             "5m",
@@ -550,7 +129,8 @@
             "1d",
             "3d",
             "1w"
-          ]
+          ],
+          "description": "Time interval for OHLCV data aggregation"
         }
       }
     },
@@ -560,19 +140,26 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Pool/pair contract address (base58 format)"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "interval": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1m",
             "5m",
@@ -587,7 +174,8 @@
             "1d",
             "3d",
             "1w"
-          ]
+          ],
+          "description": "Time interval for OHLCV data aggregation"
         }
       }
     },
@@ -597,19 +185,26 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "SPL token mint address (base58 format)"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "interval": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1m",
             "5m",
@@ -624,7 +219,8 @@
             "1d",
             "3d",
             "1w"
-          ]
+          ],
+          "description": "Time interval for OHLCV data aggregation"
         }
       }
     },
@@ -634,7 +230,9 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The program ID (address) of the Solana pool."
         }
       }
     },
@@ -644,7 +242,9 @@
       "params": {
         "pool_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
         }
       }
     },
@@ -655,9 +255,11 @@
         "dex": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "orca"
-          ]
+          ],
+          "description": "The Decentralized Exchange (DEX) name. Must be 'orca' for this endpoint."
         }
       }
     },
@@ -667,12 +269,16 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The public key address of the Orca Whirlpool."
         },
         "days": {
           "required": true,
           "type": "integer",
-          "min": 1
+          "strict": true,
+          "min": 1,
+          "description": "The number of past days to include in the analysis (e.g., 1, 7, 30)."
         }
       }
     },
@@ -682,12 +288,16 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The public key address of the Orca Whirlpool."
         },
         "days": {
           "required": true,
           "type": "integer",
-          "min": 1
+          "strict": true,
+          "min": 1,
+          "description": "The number of past days to include in the analysis."
         }
       }
     },
@@ -697,12 +307,16 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The public key address of the Orca Whirlpool."
         },
         "days": {
           "required": true,
           "type": "integer",
-          "min": 1
+          "strict": true,
+          "min": 1,
+          "description": "The number of past days to include in the analysis."
         }
       }
     },
@@ -712,13 +326,17 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The public key address of the Orca Whirlpool."
         },
         "resolution": {
           "required": true,
           "type": "integer",
+          "strict": true,
           "min": 10,
-          "max": 1000
+          "max": 1000,
+          "description": "The approximate number of data points (tick intervals) desired in the output map. Higher values mean finer granularity."
         }
       }
     },
@@ -728,24 +346,33 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Pool address (base58-44 string) to get transaction history for",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "days": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Number of days to look back for transactions. Default is 1 day."
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -756,28 +383,39 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Pool address (base58-44 string).",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -788,7 +426,10 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The Solana token program address (base58 string).",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         }
       }
     },
@@ -798,11 +439,15 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Token program address (base58-44 string). See tokens for valid addresses.",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "interval": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1H",
             "2H",
@@ -814,20 +459,25 @@
             "3D",
             "1W",
             "1M"
-          ]
+          ],
+          "description": "Time interval for price aggregation. One of: 1H, 2H, 4H, 6H, 8H, 12H, 1D, 3D, 1W, 1M."
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 24
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -838,7 +488,9 @@
       "params": {
         "token_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated list of Solana token program addresses (base58 strings)."
         }
       }
     },
@@ -848,11 +500,15 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Solana token mint address (base58 format). Example: So11111111111111111111111111111111111111112"
         },
         "unixtime": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Hour in unix timestamp to query price for (0 to 10000000000, rounded down to the nearest hour). Example: 1726700000"
         }
       }
     },
@@ -862,18 +518,23 @@
       "params": {
         "token_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated SPL token mint addresses (max 50, base58)",
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         },
         "timeframe": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1h",
             "2h",
             "4h",
             "8h",
             "24h"
-          ]
+          ],
+          "description": "Timeframe: 1h, 2h, 4h, 8h, 24h"
         }
       }
     },
@@ -883,18 +544,23 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "SPL token mint address (base58, 44 chars)",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "timeframe": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1h",
             "2h",
             "4h",
             "8h",
             "24h"
-          ]
+          ],
+          "description": "Timeframe: 1h, 2h, 4h, 8h, 24h"
         }
       }
     },
@@ -904,7 +570,9 @@
       "params": {
         "pool_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Program ID for raydium clmm pool"
         }
       }
     },
@@ -914,7 +582,9 @@
       "params": {
         "pool_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
         }
       }
     },
@@ -925,15 +595,19 @@
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -944,7 +618,10 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The Solana token program address (base58 string)",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         }
       }
     },
@@ -954,7 +631,10 @@
       "params": {
         "token_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated Solana token mint addresses (max 50, base58). Example: So11111111111111111111111111111111111111112,DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}(,[1-9A-HJ-NP-Za-km-z]{32,44})*$"
         }
       }
     },
@@ -964,37 +644,85 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "SPL token mint address (base58 format, 44 characters)"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - only return transactions after this time"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - only return transactions before this time"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         },
         "order_asc": {
           "required": false,
-          "type": "array"
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "blockTime",
+              "blockNumber",
+              "txSignature",
+              "tokenAddress",
+              "operationType",
+              "accountCount",
+              "authority",
+              "amount",
+              "amountUI",
+              "decimals"
+            ]
+          },
+          "style": "form",
+          "explode": false
         },
         "order_desc": {
           "required": false,
-          "type": "array"
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "blockTime",
+              "blockNumber",
+              "txSignature",
+              "tokenAddress",
+              "operationType",
+              "accountCount",
+              "authority",
+              "amount",
+              "amountUI",
+              "decimals"
+            ]
+          },
+          "style": "form",
+          "explode": false
         }
       }
     },
@@ -1004,20 +732,26 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Token contract address (base58 format) to search pools for"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 20
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1028,67 +762,89 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Token program address (base58-44 string). See tokens for valid addresses.",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "after_time": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
+          "description": "Unix timestamp - start time for data range",
           "default": 1735689600
         },
         "before_time": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
+          "description": "Unix timestamp - end time for data range",
           "default": 1735776000
         },
         "days": {
           "required": true,
           "type": "integer",
+          "strict": true,
           "min": 1,
-          "max": 30
+          "max": 30,
+          "description": "Number of days to look back for transactions. Default is 1 day.."
         },
         "tx_type": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "buy",
             "sell",
             "add_liquidity",
             "remove_liquidity"
-          ]
+          ],
+          "description": "Transaction type filter: buy, sell, add_liquidity or remove_liquidity."
         },
         "dex": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "Meteora",
             "Raydium CLMM",
             "Pump.fun AMM",
             "Orca"
-          ]
+          ],
+          "description": "Filter by DEX: Meteora , Raydium CLMM, Pump.fun AMM or Orca"
         },
         "pool_address": {
           "required": false,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Filter trades by pool contract address",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "min_value_usd": {
           "required": false,
           "type": "number",
-          "min": 0
+          "strict": true,
+          "min": 0,
+          "description": "Minimum trade value in USD"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1099,28 +855,39 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Token program address (base58-44 string). See tokens for valid addresses.",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1132,15 +899,19 @@
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1151,20 +922,28 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Token mint address (program id)"
         },
         "interval": {
           "required": true,
           "type": "integer",
-          "min": 1
+          "strict": true,
+          "min": 1,
+          "description": "Block interval to use"
         },
         "start_block": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Block to start from"
         },
         "end_block": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Block to end at"
         }
       }
     },
@@ -1174,20 +953,27 @@
       "params": {
         "program_id": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The program ID (mint address) of the token.",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1198,20 +984,29 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The program ID (mint address) of the token.",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "interval": {
           "required": true,
           "type": "integer",
-          "min": 1
+          "strict": true,
+          "min": 1,
+          "description": "Block interval for sampling balances."
         },
         "start_block": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Starting block number for the time range."
         },
         "end_block": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Ending block number for the time range."
         }
       }
     },
@@ -1221,7 +1016,9 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "The token address to analyze"
         }
       }
     },
@@ -1231,11 +1028,15 @@
       "params": {
         "token_addresses": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Comma-separated token addresses"
         },
         "timeframe": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Time interval: 1h, 4h, 12h, 24h, 7d"
         }
       }
     },
@@ -1245,17 +1046,21 @@
       "params": {
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "SPL token mint address (base58)"
         },
         "interval": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "24 HOUR",
             "12 HOUR",
             "1 HOUR",
             "30 MINUTE"
-          ]
+          ],
+          "description": "Lookback window for trades (SQL Interval, e.g. '24 HOUR', '12 HOUR', '1 HOUR', '30 MINUTE')"
         }
       }
     },
@@ -1266,24 +1071,30 @@
         "order_by": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "price_change_percentage",
             "volume_usd_24h",
             "current_price_usd"
-          ]
+          ],
+          "description": "Column to sort the results by. This parameter is required."
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 10
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
       }
@@ -1294,41 +1105,850 @@
       "params": {
         "wallet_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Solana wallet address (base58 format, 32-44 characters)"
         },
         "token_address": {
           "required": true,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Filter by specific token address (base58 format)"
         },
         "after_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - start time for data range"
         },
         "before_time": {
           "required": true,
-          "type": "integer"
+          "type": "integer",
+          "strict": true,
+          "description": "Unix timestamp - end time for data range"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 1000,
+          "description": "Limit the number of results.",
           "default": 100
         },
         "offset": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 0,
           "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         },
         "order_asc": {
           "required": false,
-          "type": "array"
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "txHash",
+              "slot",
+              "blockTime",
+              "blockHumanTime",
+              "tokenAddress",
+              "tokenSymbol",
+              "tokenDecimals",
+              "preBalance",
+              "postBalance",
+              "changeAmount",
+              "uiPreBalance",
+              "uiPostBalance",
+              "uiChangeAmount"
+            ]
+          },
+          "style": "form",
+          "explode": false
         },
         "order_desc": {
           "required": false,
-          "type": "array"
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "txHash",
+              "slot",
+              "blockTime",
+              "blockHumanTime",
+              "tokenAddress",
+              "tokenSymbol",
+              "tokenDecimals",
+              "preBalance",
+              "postBalance",
+              "changeAmount",
+              "uiPreBalance",
+              "uiPostBalance",
+              "uiChangeAmount"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    }
+  },
+  "evm": {
+    "aero-v2-fee-metrics": {
+      "apiPath": "/api/v1/evm/aero/v2/fee-metrics",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "aero-v2-pool": {
+      "apiPath": "/api/v1/evm/aero/v2/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "apr_days_annualized": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 30,
+          "description": "Number of previous days to calculate APR from. 7 would mean the APR is annualized from the past 7 days of activity on the pool."
+        }
+      }
+    },
+    "aero-v2-pool-volume": {
+      "apiPath": "/api/v1/evm/aero/v2/pool-volume",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "aero-v2-pools": {
+      "apiPath": "/api/v1/evm/aero/v2/pools",
+      "method": "GET",
+      "params": {
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        }
+      }
+    },
+    "aero-v2-provider-summary": {
+      "apiPath": "/api/v1/evm/aero/v2/provider-summary",
+      "method": "GET",
+      "params": {
+        "wallet_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Liquidity provider address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "aero-v3-pool": {
+      "apiPath": "/api/v1/evm/aero/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "aero-v3-pools": {
+      "apiPath": "/api/v1/evm/aero/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "alien-v3-pool": {
+      "apiPath": "/api/v1/evm/alien/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "alien-v3-pools": {
+      "apiPath": "/api/v1/evm/alien/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "clones-v3-pool": {
+      "apiPath": "/api/v1/evm/clones/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "clones-v3-pools": {
+      "apiPath": "/api/v1/evm/clones/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "dexes": {
+      "apiPath": "/api/v1/evm/dexes",
+      "method": "GET",
+      "params": {}
+    },
+    "pancake-v3-pool": {
+      "apiPath": "/api/v1/evm/pancake/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "pancake-v3-pools": {
+      "apiPath": "/api/v1/evm/pancake/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "price-current": {
+      "apiPath": "/api/v1/evm/price-current",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Address of the token prefixed with 0x. See white listed tokens",
+          "default": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      }
+    },
+    "price-hour": {
+      "apiPath": "/api/v1/evm/price-hour",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Token address. See tokens for valid address for a chain.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "hours": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Maximum number of hours to return"
+        }
+      }
+    },
+    "sushi-v3-pool": {
+      "apiPath": "/api/v1/evm/sushi/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "sushi-v3-pools": {
+      "apiPath": "/api/v1/evm/sushi/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "tokens": {
+      "apiPath": "/api/v1/evm/tokens",
+      "method": "GET",
+      "params": {}
+    },
+    "tvl-status": {
+      "apiPath": "/api/v1/evm/tvl/status",
+      "method": "GET",
+      "params": {
+        "wallet_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Address that hold tokens prefixed with 0x"
+        },
+        "whitelisted": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only whitelisted tokens will be returned",
+          "default": false
+        }
+      }
+    },
+    "tvl-top-owners": {
+      "apiPath": "/api/v1/evm/tvl/top-owners",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "token address"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 20
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        }
+      }
+    },
+    "uniswap-v3-pool": {
+      "apiPath": "/api/v1/evm/uniswap/v3/pool",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Pool address with 0x prefix",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        }
+      }
+    },
+    "uniswap-v3-pools": {
+      "apiPath": "/api/v1/evm/uniswap/v3/pools",
+      "method": "GET",
+      "params": {
+        "token_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Pool token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "dexAddress",
+              "dexName",
+              "poolAddress",
+              "token0Address",
+              "token0Symbol",
+              "token0Decimals",
+              "token1Address",
+              "token1Symbol",
+              "token1Decimals",
+              "createdAt",
+              "fee",
+              "tickSpacing"
+            ]
+          },
+          "style": "form",
+          "explode": false
         }
       }
     }
@@ -1341,12 +1961,16 @@
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "max": 100,
+          "description": "Number of tweets to analyze Default: 20",
           "default": 20
         },
         "token_filter": {
           "required": false,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Filter tweets by specific token symbol for focused alpha analysis"
         }
       }
     },
@@ -1357,24 +1981,32 @@
         "min_tweets": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 100,
+          "description": "Minimum number of high-quality tweets required for inclusion (not follower count). Filters out influencers with insufficient track record. Default: 5",
           "default": 5
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 100,
+          "description": "Maximum number of influencers to return. Default: 25",
           "default": 25
         },
         "token_focus": {
           "required": false,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Filter by specific token symbol (e.g., 'BTC', 'ETH', 'SOL'). Returns influencers who have tweeted about this token.",
+          "pattern": "^[A-Z0-9]{1,10}$"
         },
         "sort_by": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "credibility",
             "tweets",
@@ -1383,20 +2015,26 @@
             "alpha",
             "accuracy"
           ],
+          "description": "Sort results by specified metric. Default: credibility",
           "default": "credibility"
         },
         "order": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "asc",
             "desc"
           ],
+          "description": "Sort direction. Default: desc (highest first)",
           "default": "desc"
         },
         "time_window": {
           "required": false,
-          "type": "string"
+          "type": "string",
+          "strict": true,
+          "description": "Filter influencers by recent activity. Returns only influencers who posted within the specified time window (e.g., '24h', '48h', '7d', '30d'). This addresses the issue of inactive influencers appearing in results.",
+          "pattern": "^[0-9]+[hd]$"
         }
       }
     },
@@ -1407,17 +2045,21 @@
         "comparison_period": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "24h",
             "3d",
             "7d"
           ],
+          "description": "Period to compare against",
           "default": "3d"
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "max": 50,
+          "description": "Number of tokens to return",
           "default": 20
         }
       }
@@ -1429,36 +2071,25 @@
         "token_symbol": {
           "required": false,
           "type": "string",
-          "default": "SOL"
+          "strict": true,
+          "description": "Token symbol to analyze (e.g. BTC, ETH, SOL). Defaults to SOL when omitted; in that case the response includes tokenSymbolDefaulted=true."
         },
         "days_back": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
-          "max": 30,
+          "max": 730,
+          "description": "Number of days of history to analyze. Values are clamped to the range 1 to 730 (out-of-range values are silently clamped to the nearest bound, not rejected). Non-integer values return a 400.",
           "default": 7
         },
         "granularity": {
           "required": false,
           "type": "string",
-          "enum": [
-            "total",
-            "1h",
-            "3h",
-            "6h",
-            "12h",
-            "24h",
-            "1d",
-            "3d",
-            "7d",
-            "30d"
-          ],
+          "strict": true,
+          "description": "Aggregation granularity. Use 'total' for a single aggregate object, or a fixed bucket width expressed as <N>h (hours) or <N>d (days) for a time series, e.g. 1h, 4h, 6h, 1d, 7d, 30d. Bucket widths from 1h to 365d are supported. Time-series buckets are returned most-recent first, up to 1000.",
+          "pattern": "^(total|[1-9][0-9]*[hd])$",
           "default": "total"
-        },
-        "include_price_correlation": {
-          "required": false,
-          "type": "boolean",
-          "default": false
         }
       }
     },
@@ -1469,25 +2100,32 @@
         "lookback_hours": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "min": 1,
           "max": 168,
+          "description": "Hours to look back for trend detection Default: 24",
           "default": 24
         },
         "min_velocity": {
           "required": false,
           "type": "number",
+          "strict": true,
           "min": 0,
+          "description": "Minimum velocity score (rate of change)",
           "default": 0.3
         },
         "limit": {
           "required": false,
           "type": "integer",
+          "strict": true,
           "max": 50,
+          "description": "Number of trending tokens to return",
           "default": 15
         },
         "granularity": {
           "required": false,
           "type": "string",
+          "strict": true,
           "enum": [
             "total",
             "1h",
@@ -1500,6 +2138,7 @@
             "7d",
             "30d"
           ],
+          "description": "Time granularity for momentum analysis. 'total' returns aggregate momentum ranking (single result set). Other values return time-series momentum data showing velocity changes over time. Time-series responses limited to 1000 rows maximum for performance.",
           "default": "total"
         }
       }
@@ -1507,45 +2146,55 @@
   },
   "risk": {
     "perp-risk-engine": {
-      "apiPath": "api/v1/perp-risk-engine",
+      "apiPath": "/api/v1/perp-risk-engine",
       "method": "GET",
       "params": {
         "token_address": {
           "required": true,
           "type": "string",
+          "strict": true,
+          "description": "Solana token address",
           "default": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
         },
         "entry_price": {
           "required": true,
           "type": "number",
+          "strict": true,
           "min": 0,
+          "description": "Entry price in USD",
           "default": 2800
         },
         "leverage": {
           "required": true,
           "type": "number",
+          "strict": true,
           "min": 0,
           "max": 1000,
+          "description": "Leverage multiplier",
           "default": 10
         },
         "direction": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "long",
             "short"
           ],
+          "description": "Position direction",
           "default": "long"
         },
         "risk_horizon": {
           "required": true,
           "type": "string",
+          "strict": true,
           "enum": [
             "1h",
             "1d",
             "1w",
             "1mo"
           ],
+          "description": "Risk time horizon",
           "default": "1d"
         }
       }

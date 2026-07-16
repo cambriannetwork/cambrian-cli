@@ -26,16 +26,34 @@ const llms = `
 - GET /api/v1/deep42/social-data/token-analysis
 `;
 
-function deep42Schema(options: { includeNew?: boolean; driftTokenAnalysis?: boolean } = {}): unknown {
+function deep42Schema(options: {
+  includeNew?: boolean;
+  driftTokenAnalysis?: boolean;
+  modernTokenAnalysis?: boolean;
+} = {}): unknown {
   const paths: Record<string, unknown> = {
     '/api/v1/deep42/social-data/alpha-tweet-detection': { get: { parameters: [] } },
     '/api/v1/deep42/social-data/influencer-credibility': { get: { parameters: [] } },
     '/api/v1/deep42/social-data/sentiment-shifts': { get: { parameters: [] } },
     '/api/v1/deep42/social-data/token-analysis': {
       get: {
-        parameters: options.driftTokenAnalysis
-          ? [{ name: 'breaking_required', in: 'query', required: true, schema: { type: 'string' } }]
-          : [],
+        parameters: options.modernTokenAnalysis
+          ? [{
+              name: 'token_symbol',
+              in: 'query',
+              schema: { type: 'string' },
+            }, {
+              name: 'days_back',
+              in: 'query',
+              schema: { type: 'integer', default: 7, minimum: 1, maximum: 730 },
+            }, {
+              name: 'granularity',
+              in: 'query',
+              schema: { type: 'string', default: 'total', pattern: '^(total|[1-9][0-9]*[hd])$' },
+            }]
+          : options.driftTokenAnalysis
+            ? [{ name: 'breaking_required', in: 'query', required: true, schema: { type: 'string' } }]
+            : [],
       },
     },
     '/api/v1/deep42/social-data/trending-momentum': { get: { parameters: [] } },
@@ -204,18 +222,107 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(pay.stderr).not.toContain('Unknown deep42 resource');
   });
 
-  it('does not let live schema drift change an installed command definition', async () => {
+  it('uses a changed live OpenAPI definition for an installed command', async () => {
     const root = cacheRoot();
     const requests: string[] = [];
     const result = await run(
-      ['deep42', 'social-data/token-analysis', '--json'],
+      [
+        'deep42',
+        'social-data/token-analysis',
+        '--breaking-required',
+        'live-contract',
+        '--json',
+      ],
       routedFetch(deep42Schema({ driftTokenAnalysis: true }), requests),
       root,
     );
 
     expect(result.code).toBe(0);
-    expect(result.stderr).not.toContain('breaking-required');
-    expect(requests.some((url) => url.includes('/social-data/token-analysis'))).toBe(true);
+    expect(requests.some((url) =>
+      url.endsWith('/social-data/token-analysis?breaking_required=live-contract'))).toBe(true);
+  });
+
+  it('uses an updated existing-operation contract for x402 preflight validation', async () => {
+    const root = cacheRoot();
+    const requests: string[] = [];
+    const fetch = routedFetch(deep42Schema({ driftTokenAnalysis: true }), requests);
+    const refreshed = await run(['schema', 'refresh', 'deep42'], fetch, root);
+    expect(refreshed.code).toBe(0);
+
+    const noNetwork = (async () => {
+      throw new Error('invalid pay preflight must not fetch');
+    }) as typeof globalThis.fetch;
+    const pay = await run([
+      'pay',
+      'deep42',
+      'social-data/token-analysis',
+      '--offline',
+    ], noNetwork, root);
+
+    expect(pay.code).toBe(2);
+    expect(pay.stderr).toContain('Missing required option --breaking-required');
+  });
+
+  it('adapts token-analysis validation, help, and flags to the current OpenAPI contract', async () => {
+    const root = cacheRoot();
+    const requests: string[] = [];
+    const fetch = routedFetch(deep42Schema({ modernTokenAnalysis: true }), requests);
+
+    const result = await run([
+      'deep42',
+      'social-data/token-analysis',
+      '--token-symbol',
+      'SOL',
+      '--days-back',
+      '31',
+      '--granularity',
+      '4h',
+      '--json',
+    ], fetch, root);
+
+    expect(result.code).toBe(0);
+    expect(requests.some((url) => url.endsWith(
+      '/social-data/token-analysis?token_symbol=SOL&days_back=31&granularity=4h',
+    ))).toBe(true);
+
+    const noNetwork = (async () => {
+      throw new Error('fresh cached help must not fetch');
+    }) as typeof globalThis.fetch;
+    const help = await run([
+      'deep42',
+      'social-data/token-analysis',
+      '--help',
+    ], noNetwork, root);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain('--days-back (default: 7, 1-730)');
+    expect(help.stdout).toContain('--granularity (default: total)');
+    expect(help.stdout).toContain(
+      'CLI validation enforces these active OpenAPI constraints before sending a request.',
+    );
+    expect(help.stdout).toContain(
+      'Structural fields (required/default/enum/pattern/range) take precedence over descriptive prose.',
+    );
+    expect(help.stdout).not.toContain('--include-price-correlation');
+
+    const outOfRange = await run([
+      'deep42',
+      'social-data/token-analysis',
+      '--days-back',
+      '731',
+      '--offline',
+    ], noNetwork, root);
+    expect(outOfRange.code).toBe(2);
+    expect(outOfRange.stderr).toContain('--days-back must be at most 730');
+
+    const removedFlag = await run([
+      'deep42',
+      'social-data/token-analysis',
+      '--include-price-correlation',
+      'true',
+      '--offline',
+    ], noNetwork, root);
+    expect(removedFlag.code).toBe(2);
+    expect(removedFlag.stderr).toContain('--include-price-correlation');
   });
 
   it('keeps bundled commands working in offline mode without schema traffic', async () => {
@@ -282,6 +389,17 @@ describe('runtime endpoint discovery through the CLI', () => {
     const status = await run(['schema', 'status', 'deep42'], noNetwork, root);
     expect(status.code).toBe(0);
     expect(JSON.parse(status.stdout)).toMatchObject({ group: 'deep42', source: 'cache' });
+
+    const offlineStatus = await run(
+      ['--offline', 'schema', 'status', 'deep42'],
+      noNetwork,
+      root,
+    );
+    expect(offlineStatus.code).toBe(0);
+    expect(JSON.parse(offlineStatus.stdout)).toMatchObject({
+      group: 'deep42',
+      source: 'cache',
+    });
 
     const cleared = await run(['schema', 'clear-cache', 'deep42'], noNetwork, root);
     expect(cleared.code).toBe(0);

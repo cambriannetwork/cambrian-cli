@@ -381,9 +381,11 @@ export async function handlePay(
           throw new CliUsageError(`--${cliFlag} must be true or false.`);
         }
         queryParams[apiParam] = rawBoolean === 'true';
-      } else if (paramSpec.strict && paramSpec.default !== undefined) {
+      } else if (paramSpec.default !== undefined) {
         queryParams[apiParam] = paramSpec.default;
-      } else if (paramSpec.strict && paramSpec.required && paramSpec.default === undefined) {
+      } else if (apiParam in defaults) {
+        queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
+      } else if (paramSpec.required) {
         throw new CliUsageError(`Missing required option --${cliFlag}.`);
       }
       continue;
@@ -392,12 +394,12 @@ export async function handlePay(
     const rawValue = getOption(parsed, cliFlag);
     if (rawValue && rawValue !== 'true') {
       queryParams[apiParam] = coerceValue(rawValue, paramSpec, cliFlag);
-    } else if (apiParam in defaults) {
-      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.default !== undefined) {
       queryParams[apiParam] = paramSpec.strict
         ? paramSpec.default
         : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
+    } else if (apiParam in defaults) {
+      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
     } else if (paramSpec.required) {
       throw new CliUsageError(`Missing required option --${cliFlag}.`);
     }
@@ -406,8 +408,8 @@ export async function handlePay(
   const query = new URLSearchParams();
   for (const [apiParam, value] of Object.entries(serialized)) {
     if (Array.isArray(value)) {
-      // Preserve the existing comma-separated pay behavior for the bundled
-      // snapshot. Runtime additions honor their explicit OpenAPI serialization.
+      // Preserve the existing comma-separated pay behavior in bundled mode.
+      // Runtime OpenAPI metadata honors its explicit serialization contract.
       if (!entry.params[apiParam]?.strict) {
         query.set(apiParam, String(value));
       } else {

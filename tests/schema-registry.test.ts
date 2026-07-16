@@ -9,9 +9,9 @@ import {
   applyVisibilityPolicy,
   clearRegistryCache,
   loadRuntimeMetadataGroup,
-  mergeAdditiveSpec,
   normalizeOpenApiGroup,
   parseLlmsEndpointKeys,
+  REGISTRY_CACHE_VERSION,
   registryCachePath,
 } from '../src/schema/registry.js';
 
@@ -54,7 +54,7 @@ describe('normalizeOpenApiGroup', () => {
     const result = normalizeOpenApiGroup('solana', openApi({
       '/api/v1/solana/new-metrics': {
         get: {
-          description: 'New additive metrics endpoint.',
+          description: 'New runtime metrics endpoint.',
           parameters: [
             {
               name: 'token_address',
@@ -212,71 +212,6 @@ describe('normalizeOpenApiGroup', () => {
   });
 });
 
-describe('additive registry merge', () => {
-  const bundled: GroupSpec = {
-    existing: {
-      apiPath: '/api/v1/solana/existing',
-      method: 'GET',
-      params: {
-        legacy_flag: { required: false, type: 'string', default: 'stable' },
-        legacy_list: { required: false, type: 'array' },
-      },
-    },
-  };
-
-  it('preserves bundled endpoint behavior while adding new endpoints', () => {
-    const live: GroupSpec = {
-      existing: {
-        apiPath: '/api/v1/solana/renamed-upstream',
-        method: 'GET',
-        params: {
-          breaking_required: { required: true, type: 'string', strict: true },
-        },
-      },
-      'new-endpoint': {
-        apiPath: '/api/v1/solana/new-endpoint',
-        method: 'GET',
-        params: {},
-      },
-    };
-
-    const merged = mergeAdditiveSpec(bundled, live);
-    expect(merged.spec.existing).toEqual(bundled.existing);
-    expect(merged.spec['new-endpoint']).toEqual(live['new-endpoint']);
-    expect(merged.additions).toEqual(['new-endpoint']);
-    expect(merged.driftedBundled).toEqual(['existing']);
-  });
-
-  it('does not report descriptive enrichment as breaking drift', () => {
-    const live: GroupSpec = {
-      existing: {
-        apiPath: '/api/v1/solana/existing',
-        method: 'GET',
-        params: {
-          legacy_flag: {
-            required: false,
-            type: 'string',
-            default: 'changed-server-default',
-            description: 'A richer live description.',
-            pattern: '^[a-z-]+$',
-            strict: true,
-          },
-          legacy_list: {
-            required: false,
-            type: 'array',
-            items: { type: 'string' },
-            style: 'form',
-            explode: true,
-            strict: true,
-          },
-        },
-      },
-    };
-
-    expect(mergeAdditiveSpec(bundled, live).driftedBundled).toEqual([]);
-  });
-});
-
 describe('runtime parameter validation and serialization', () => {
   it('uses strict integers for discovered params without changing legacy coercion', () => {
     expect(() => coerceValue('12abc', {
@@ -356,7 +291,7 @@ describe('runtime parameter validation and serialization', () => {
   });
 });
 
-describe('llms visibility for runtime additions', () => {
+describe('llms visibility for authoritative runtime operations', () => {
   const discovered: GroupSpec = Object.fromEntries(
     ['one', 'two', 'three', 'four', 'five', 'six'].map((name) => [
       name,
@@ -571,7 +506,7 @@ describe('runtime registry cache and fallback', () => {
     expect(result.status.lastError).toContain('aborted at timeout');
   });
 
-  it('keeps the installed definition when live OpenAPI changes a bundled endpoint', async () => {
+  it('applies the authoritative live definition when OpenAPI changes a bundled endpoint', async () => {
     const cacheRoot = temporaryCacheRoot();
     const document = openApi({
       '/api/v1/deep42/social-data/token-analysis': {
@@ -593,7 +528,11 @@ describe('runtime registry cache and fallback', () => {
 
     expect(result.status.driftedBundled).toContain('social-data/token-analysis');
     expect(result.metadata.spec['social-data/token-analysis'].params)
-      .not.toHaveProperty('breaking_required');
+      .toMatchObject({
+        breaking_required: { required: true, type: 'string', strict: true },
+      });
+    expect(result.metadata.spec['social-data/token-analysis'].params)
+      .not.toHaveProperty('include_price_correlation');
   });
 
   it('forces a refresh for an unknown resource even while cache is fresh', async () => {
@@ -642,7 +581,7 @@ describe('runtime registry cache and fallback', () => {
     expect(laterStatus.status.lastError).toContain('network unavailable');
   });
 
-  it('rejects a syntactically valid document with no known compatible operations', async () => {
+  it('accepts a valid authoritative document that removes all compatible operations', async () => {
     const cacheRoot = temporaryCacheRoot();
     await loadRuntimeMetadataGroup(
       'deep42',
@@ -655,9 +594,179 @@ describe('runtime registry cache and fallback', () => {
       testRuntime(schemaFetch(openApi({})), cacheRoot),
       { refresh: true, now: 2_000 },
     );
+    expect(result.status.source).toBe('live');
+    expect(result.status.lastError).toBeUndefined();
+    expect(result.metadata.resources).toEqual([]);
+  });
+
+  it('uses the last-known-good cache when a refresh is not structurally valid OpenAPI', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    await loadRuntimeMetadataGroup(
+      'deep42',
+      testRuntime(schemaFetch(deep42Document()), cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+
+    const invalid = {
+      openapi: '3.1.0',
+      info: { title: 'Missing paths', version: '1.0.0' },
+    };
+    const result = await loadRuntimeMetadataGroup(
+      'deep42',
+      testRuntime(schemaFetch(invalid), cacheRoot),
+      { refresh: true, now: 2_000 },
+    );
+
     expect(result.status.source).toBe('cache');
-    expect(result.status.lastError).toContain('no known compatible operations');
+    expect(result.status.lastError).toContain('did not return an OpenAPI 3 document');
     expect(result.metadata.resources).toContain('social-data/new-signal');
+  });
+
+  it('applies llms.txt visibility to the entire authoritative registry', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const paths = Object.fromEntries(
+      ['one', 'two', 'three', 'four', 'five', 'six'].map((name) => [
+        `/api/v1/deep42/social-data/${name}`,
+        { get: { parameters: [] } },
+      ]),
+    );
+    const documented = ['one', 'two', 'three', 'four', 'five']
+      .map((name) => `GET /api/v1/deep42/social-data/${name}`)
+      .join('\n');
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://deep42.cambrian.network/openapi.json') {
+        return new Response(JSON.stringify(openApi(paths)), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response(documented, { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await loadRuntimeMetadataGroup(
+      'deep42',
+      testRuntime(fetch, cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+
+    expect(result.status.visibilityMode).toBe('llms-filtered');
+    expect(result.metadata.resources).toEqual([
+      'social-data/one',
+      'social-data/two',
+      'social-data/three',
+      'social-data/four',
+      'social-data/five',
+    ]);
+    expect(result.status.hiddenByLlms).toEqual(['social-data/six']);
+    expect(result.metadata.resources).not.toContain('social-data/token-analysis');
+  });
+
+  it('retains a CLI compatibility default only while active OpenAPI accepts it', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const document = openApi({
+      '/api/v1/evm/aero/v2/pool': {
+        get: {
+          parameters: [{
+            name: 'apr_days_annualized',
+            in: 'query',
+            required: true,
+            schema: { type: 'integer', minimum: 1 },
+          }],
+        },
+      },
+    });
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+        return new Response(JSON.stringify(document), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response('', { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await loadRuntimeMetadataGroup(
+      'base',
+      testRuntime(fetch, cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+
+    expect(result.metadata.cliDefaults).toEqual({
+      'aero-v2-pool': { apr_days_annualized: '30' },
+    });
+    expect(result.metadata.spec['aero-v2-pool'].params.apr_days_annualized)
+      .toMatchObject({ required: true, type: 'integer', min: 1, strict: true });
+  });
+
+  it('drops a CLI compatibility default when active OpenAPI rejects it', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const document = openApi({
+      '/api/v1/evm/aero/v2/pool': {
+        get: {
+          parameters: [{
+            name: 'apr_days_annualized',
+            in: 'query',
+            required: true,
+            schema: { type: 'integer', minimum: 1, maximum: 29 },
+          }],
+        },
+      },
+    });
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+        return new Response(JSON.stringify(document), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response('', { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await loadRuntimeMetadataGroup(
+      'base',
+      testRuntime(fetch, cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+
+    expect(result.metadata.cliDefaults).toEqual({});
+  });
+
+  it('lets an OpenAPI default replace a CLI compatibility default', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const document = openApi({
+      '/api/v1/evm/aero/v2/pool': {
+        get: {
+          parameters: [{
+            name: 'apr_days_annualized',
+            in: 'query',
+            required: true,
+            schema: { type: 'integer', minimum: 1, maximum: 30, default: 7 },
+          }],
+        },
+      },
+    });
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+        return new Response(JSON.stringify(document), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response('', { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await loadRuntimeMetadataGroup(
+      'base',
+      testRuntime(fetch, cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+
+    expect(result.metadata.cliDefaults).toEqual({});
+    expect(result.metadata.spec['aero-v2-pool'].params.apr_days_annualized.default).toBe(7);
   });
 
   it('uses the OpenAPI fallback when llms.txt cannot be fetched', async () => {
@@ -696,7 +805,7 @@ describe('runtime registry cache and fallback', () => {
       },
     };
     writeFileSync(path, JSON.stringify({
-      version: 1,
+      version: REGISTRY_CACHE_VERSION,
       group: 'deep42',
       fetchedAt: 1_000,
       expiresAt: 2_000,
@@ -718,7 +827,7 @@ describe('runtime registry cache and fallback', () => {
     expect(result.metadata.resources).not.toContain('social-data/new-signal');
   });
 
-  it('does not silently remove or redefine a previously cached addition', async () => {
+  it('removes a previously cached addition when authoritative OpenAPI removes it', async () => {
     const cacheRoot = temporaryCacheRoot();
     const runtime = testRuntime(schemaFetch(deep42Document()), cacheRoot);
     await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 1_000 });
@@ -734,13 +843,12 @@ describe('runtime registry cache and fallback', () => {
       testRuntime(schemaFetch(withoutAddition), cacheRoot),
       { refresh: true, now: 2_000 },
     );
-    expect(refreshed.metadata.resources).toContain('social-data/new-signal');
-    expect(refreshed.metadata.spec['social-data/new-signal'].params.limit.default).toBe(3);
+    expect(refreshed.metadata.resources).not.toContain('social-data/new-signal');
     expect(refreshed.status.missingLiveAdditions).toEqual(['social-data/new-signal']);
     expect(refreshed.status.driftedLiveAdditions).toEqual([]);
   });
 
-  it('reports incompatible drift in a cached runtime addition without applying it', async () => {
+  it('replaces a cached runtime addition when authoritative OpenAPI changes it', async () => {
     const cacheRoot = temporaryCacheRoot();
     await loadRuntimeMetadataGroup(
       'deep42',
@@ -772,8 +880,8 @@ describe('runtime registry cache and fallback', () => {
 
     expect(refreshed.status.missingLiveAdditions).toEqual([]);
     expect(refreshed.status.driftedLiveAdditions).toEqual(['social-data/new-signal']);
-    expect(refreshed.metadata.spec['social-data/new-signal'].params.limit.type).toBe('integer');
-    expect(refreshed.metadata.spec['social-data/new-signal'].params.limit.required).toBe(false);
+    expect(refreshed.metadata.spec['social-data/new-signal'].params.limit.type).toBe('string');
+    expect(refreshed.metadata.spec['social-data/new-signal'].params.limit.required).toBe(true);
   });
 
   it('revalidates with ETags and reuses normalized cache on 304 responses', async () => {

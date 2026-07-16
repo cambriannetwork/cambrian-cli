@@ -39,7 +39,7 @@ describe('buildSchemaFallbackDocs', () => {
     const result = buildSchemaFallbackDocs('solana', 'price-current');
     expect(result).not.toBeNull();
     expect(result).toContain('# cambrian solana price-current');
-    expect(result).toContain('bundled schema');
+    expect(result).toContain('active OpenAPI schema');
     expect(result).toContain('--token-address');
   });
 
@@ -52,7 +52,7 @@ describe('buildSchemaFallbackDocs', () => {
     const result = buildSchemaFallbackDocs('solana');
     expect(result).not.toBeNull();
     expect(result).toContain('# cambrian solana');
-    expect(result).toContain('bundled schema resource list');
+    expect(result).toContain('active schema resource list');
     expect(result).toContain('price-current');
   });
 
@@ -68,6 +68,13 @@ describe('buildSchemaFallbackDocs', () => {
     // limit has default: 100, range 1-1000
     expect(result).toContain('default: 100');
     expect(result).toContain('range 1-1000');
+  });
+
+  it('documents a validated CLI compatibility default in the executable contract', () => {
+    const result = buildSchemaFallbackDocs('evm', 'aero-v2-pool');
+    expect(result).toContain(
+      '--apr-days-annualized  (integer, optional, CLI compatibility default: 30, range 1-30)',
+    );
   });
 
   it('resolves deep42 aliases', () => {
@@ -97,27 +104,27 @@ describe('fetchDocs — schema fallback on llms.txt failure', () => {
   it('returns schema text (not null) when fetch rejects for an endpoint', async () => {
     const result = await fetchDocs(fetchFailing(), 'solana', 'price-current');
     expect(result).not.toBeNull();
-    expect(result).toContain('bundled schema');
+    expect(result).toContain('active OpenAPI schema');
     expect(result).toContain('--token-address');
   });
 
   it('returns schema text when endpoint fetch returns 404', async () => {
     const result = await fetchDocs(fetchReturning(404), 'solana', 'price-current');
     expect(result).not.toBeNull();
-    expect(result).toContain('bundled schema');
+    expect(result).toContain('active OpenAPI schema');
   });
 
   it('returns schema text when endpoint fetch returns 500', async () => {
     const result = await fetchDocs(fetchReturning(500), 'evm', 'aero-v2-pools');
     expect(result).not.toBeNull();
-    expect(result).toContain('bundled schema');
+    expect(result).toContain('active OpenAPI schema');
     expect(result).toContain('--limit');
   });
 
   it('returns schema group list when group fetch fails and no resource given', async () => {
     const result = await fetchDocs(fetchFailing(), 'solana');
     expect(result).not.toBeNull();
-    expect(result).toContain('bundled schema resource list');
+    expect(result).toContain('active schema resource list');
     expect(result).toContain('price-current');
   });
 
@@ -130,7 +137,35 @@ describe('fetchDocs — schema fallback on llms.txt failure', () => {
     const liveText = 'LIVE ENDPOINT DOCS CONTENT';
     const fetch = fetchReturning(200, liveText);
     const result = await fetchDocs(fetch, 'solana', 'price-current');
-    expect(result).toBe(liveText);
+    expect(result).toContain('Authoritative executable contract');
+    expect(result).toContain('--token-address');
+    expect(result).toContain(liveText);
+  });
+
+  it('replaces stale llms.txt parameter tables with the active OpenAPI contract', async () => {
+    const liveText = [
+      '# Aerodrome pools',
+      '',
+      '## Query Parameters',
+      '',
+      '| Parameter | Description |',
+      '| --- | --- |',
+      '| limit | Accepted range 1 to 90. |',
+      '',
+      '## Response Fields',
+      '',
+      'Pool response semantics remain useful.',
+    ].join('\n');
+    const result = await fetchDocs(
+      fetchReturning(200, liveText),
+      'base',
+      'aero-v2-pools',
+    );
+
+    expect(result).toContain('Authoritative executable contract');
+    expect(result).toContain('--limit  (integer, optional, default: 100, range 1-1000)');
+    expect(result).not.toContain('Accepted range 1 to 90');
+    expect(result).toContain('Pool response semantics remain useful.');
   });
 
   it('does not throw even when fetch throws unexpected errors', async () => {
@@ -171,7 +206,7 @@ describe('per-resource --help includes schema hints', () => {
   it('evm aero-v2-pool --help shows range for --apr-days-annualized', async () => {
     const { stdout } = await captureStdout(['evm', 'aero-v2-pool', '--help']);
     expect(stdout).toContain('--apr-days-annualized');
-    expect(stdout).toContain('1-30');
+    expect(stdout).toContain('(CLI default: 30, 1-30)');
   });
 
   it('risk perp-risk-engine --help still shows required/optional markers', async () => {
