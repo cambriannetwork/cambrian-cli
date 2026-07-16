@@ -5,6 +5,18 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-16
+
+### Fixed
+
+- Hosted MCP configuration, installation, help, and smoke tests now use the
+  canonical `https://mcp.cambrian.org/mcp` endpoint and verify a public tool.
+- If `llms.txt` is unavailable before any valid inventory is cached, live
+  OpenAPI contracts remain usable but visibility falls back to the bundled
+  public endpoint inventory instead of exposing intentionally hidden routes.
+- Bumped the disposable schema cache format so older unfiltered outage caches
+  cannot survive the safer visibility fallback.
+
 ## [1.1.1] - 2026-07-16
 
 ### Fixed

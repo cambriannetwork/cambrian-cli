@@ -151,7 +151,7 @@ async function testHosted(parsed: ParsedArgs, runtime: Runtime): Promise<number>
     result?: { tools?: { name: string }[] };
   };
   const tools = parsedResponse.result?.tools ?? [];
-  const expectedTool = 'cambrian_base_chains';
+  const expectedTool = 'cambrian_base_dexes';
   if (!tools.some((tool) => tool.name === expectedTool)) {
     throw new Error(`Hosted MCP test did not find expected tool ${expectedTool}.`);
   }

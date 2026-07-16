@@ -86,7 +86,7 @@ describe('CLI help output', () => {
     expect(code).toBe(0);
     const config = JSON.parse(stdout);
     expect(config.mcpServers.cambrian.type).toBe('http');
-    expect(config.mcpServers.cambrian.url).toContain('/mcp');
+    expect(config.mcpServers.cambrian.url).toBe('https://mcp.cambrian.org/mcp');
     expect(config.mcpServers.cambrian.headers.Authorization).toBe('Bearer ${CAMBRIAN_API_KEY}');
   });
 
@@ -115,5 +115,33 @@ describe('CLI help output', () => {
     });
     expect(code).toBe(2);
     expect(stderr).toContain('CAMBRIAN_API_KEY required');
+  });
+
+  it('cambrian mcp test checks a public tool at the canonical hosted endpoint', async () => {
+    let requestedUrl = '';
+    let stdout = '';
+    const code = await runCli(['mcp', 'test'], {
+      stdout: (msg: string) => { stdout += msg + '\n'; },
+      stderr: () => {},
+      fetch: (async (input) => {
+        requestedUrl = String(input);
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          result: { tools: [{ name: 'cambrian_base_dexes' }] },
+        }));
+      }) as typeof globalThis.fetch,
+      env: {
+        CAMBRIAN_API_KEY: 'test-key',
+        CAMBRIAN_SCHEMA_MODE: 'bundled',
+      },
+    });
+
+    expect(code).toBe(0);
+    expect(requestedUrl).toBe('https://mcp.cambrian.org/mcp');
+    expect(JSON.parse(stdout)).toMatchObject({
+      checkedTool: 'cambrian_base_dexes',
+      url: 'https://mcp.cambrian.org/mcp',
+    });
   });
 });

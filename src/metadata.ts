@@ -84,7 +84,7 @@ export const DEEP42_CLI_DEFAULTS: Record<string, Record<string, string>> = {};
 export const RISK_CLI_DEFAULTS: Record<string, Record<string, string>> = {};
 
 export const CAMBRIAN_HOSTED_MCP_URL =
-  'https://cambrian-mcp-server-prod-981646676182.us-central1.run.app/mcp';
+  'https://mcp.cambrian.org/mcp';
 
 export const CAMBRIAN_MCP_PACKAGE = 'cambrian-api-mcp';
 export const CAMBRIAN_MCP_SERVER_NAME = 'cambrian';

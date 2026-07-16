@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 2;
+export const REGISTRY_CACHE_VERSION = 3;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -505,6 +505,11 @@ export function endpointKey(method: string, apiPath: string): string {
   return `${method.toUpperCase()} ${normalizeApiPath(apiPath)}`;
 }
 
+function bundledEndpointKeys(group: CambrianGroup): Set<string> {
+  return new Set(Object.values(CAMBRIAN_METADATA_GROUPS[group].spec).map((endpoint) =>
+    endpointKey(endpoint.method, endpoint.apiPath)));
+}
+
 export function parseLlmsEndpointKeys(text: string): Set<string> {
   const keys = new Set<string>();
   const pattern = /\b(GET|POST|PUT|PATCH|DELETE)\s+(\/api\/v1\/[A-Za-z0-9._~%/-]+)/g;
@@ -935,18 +940,20 @@ async function refreshGroup(
   let llmsValidators: SourceValidators;
   let warning: string | undefined;
   if ('error' in llmsOutcome) {
-    llmsEndpointKeys = new Set(cache?.llmsEndpointKeys ?? []);
+    llmsEndpointKeys = cache
+      ? new Set(cache.llmsEndpointKeys)
+      : bundledEndpointKeys(group);
     llmsValidators = cache?.llms ?? {};
     warning = `llms.txt refresh failed: ${errorMessage(llmsOutcome.error)}; ` +
-      (cache ? 'using cached endpoint inventory' : 'using compatible OpenAPI fallback');
+      (cache ? 'using cached endpoint inventory' : 'using bundled public endpoint inventory');
   } else if (llmsOutcome.response.notModified) {
     if (cache) {
       llmsEndpointKeys = new Set(cache.llmsEndpointKeys);
       llmsValidators = cache.llms;
     } else {
-      llmsEndpointKeys = new Set();
+      llmsEndpointKeys = bundledEndpointKeys(group);
       llmsValidators = {};
-      warning = 'llms.txt returned 304 without a cache; using compatible OpenAPI fallback';
+      warning = 'llms.txt returned 304 without a cache; using bundled public endpoint inventory';
     }
   } else {
     llmsEndpointKeys = parseLlmsEndpointKeys(llmsOutcome.response.text ?? '');

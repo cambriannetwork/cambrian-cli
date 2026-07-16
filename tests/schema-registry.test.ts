@@ -769,7 +769,7 @@ describe('runtime registry cache and fallback', () => {
     expect(result.metadata.spec['aero-v2-pool'].params.apr_days_annualized.default).toBe(7);
   });
 
-  it('uses the OpenAPI fallback when llms.txt cannot be fetched', async () => {
+  it('uses bundled public visibility when llms.txt cannot be fetched without a cache', async () => {
     const cacheRoot = temporaryCacheRoot();
     const fetch = (async (input) => {
       const url = String(input);
@@ -785,9 +785,17 @@ describe('runtime registry cache and fallback', () => {
       { refresh: true, now: 1_000 },
     );
     expect(result.status.source).toBe('live');
-    expect(result.status.visibilityMode).toBe('openapi-sparse');
+    expect(result.status.visibilityMode).toBe('llms-filtered');
     expect(result.status.warning).toContain('docs unavailable');
-    expect(result.metadata.resources).toContain('social-data/new-signal');
+    expect(result.status.warning).toContain('bundled public endpoint inventory');
+    expect(result.metadata.resources).toEqual([
+      'social-data/alpha-tweet-detection',
+      'social-data/influencer-credibility',
+      'social-data/sentiment-shifts',
+      'social-data/token-analysis',
+      'social-data/trending-momentum',
+    ]);
+    expect(result.metadata.resources).not.toContain('social-data/new-signal');
   });
 
   it('ignores a structurally plausible cache whose discovered params are not strict', async () => {
