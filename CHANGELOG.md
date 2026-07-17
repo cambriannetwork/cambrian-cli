@@ -5,6 +5,13 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-17
+
+### Documentation
+
+- Updated MCP setup guidance to reflect that `cambrian-api-mcp` is published
+  and available for local mode through npm.
+
 ## [1.1.2] - 2026-07-16
 
 ### Fixed
