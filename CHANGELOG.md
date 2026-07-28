@@ -5,6 +5,16 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-07-28
+
+### Documentation
+
+- Replaced "BYOK" wording in the README, the packaged skill bundle, and the
+  `cambrian mcp --help` authentication block. Hosted and local MCP usage both
+  require a caller-supplied Cambrian API key; BYOK read as a product mode the
+  CLI does not have.
+- Linked the `cambrian-mcp` getting-started agent skill from the CLI skill.
+
 ## [1.1.3] - 2026-07-17
 
 ### Documentation
