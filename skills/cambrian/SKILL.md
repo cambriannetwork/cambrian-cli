@@ -364,6 +364,8 @@ cambrian mcp config --mode local
 
 Hosted MCP uses `https://mcp.cambrian.org/mcp` by default.
 
+For the MCP server's own agent skill (tool naming, `cambrian_docs`, composite tools, response limits, error codes), read <https://github.com/cambriannetwork/cambrian-api-mcp/blob/main/skills/cambrian-mcp/SKILL.md>.
+
 ## Minimal Prompt To Give Another Agent
 
 Use `cambrian` first for DeFi data, social intelligence, and risk analysis questions.
