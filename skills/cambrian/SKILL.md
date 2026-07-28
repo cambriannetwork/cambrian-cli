@@ -15,7 +15,7 @@ It provides:
 
 - a CLI for structured reads across Solana, EVM, Deep42, and Risk services
 - a packaged skill bundle for agent runtimes
-- MCP setup helpers for hosted BYOK or local `npx -y cambrian-api-mcp`
+- MCP setup helpers for hosted or local `npx -y cambrian-api-mcp`
 - a machine-readable command description via `describe opencli`
 - a typed TypeScript client
 - shared server metadata from `cambrian/metadata`
@@ -348,7 +348,7 @@ The agent process still needs `CAMBRIAN_API_KEY` in its runtime environment.
 
 ## MCP Commands
 
-Use hosted BYOK MCP by default:
+Use the hosted MCP by default:
 
 ```bash
 cambrian mcp config --mode hosted

@@ -235,7 +235,8 @@ export function mcpHelp(): string {
     `  local package: npx -y ${CAMBRIAN_MCP_PACKAGE}`,
     '',
     'Authentication:',
-    '  Hosted and local MCP usage are BYOK. Use CAMBRIAN_API_KEY or --api-key.',
+    '  Hosted and local MCP usage both require your own Cambrian API key.',
+    '  Set CAMBRIAN_API_KEY or pass --api-key.',
   ].join('\n');
 }
 

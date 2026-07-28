@@ -159,7 +159,7 @@ logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 - Agent-friendly CLI with clean error output, scoped subcommand help, and self-description via `cambrian describe opencli`
 - Packaged skill bundle for Claude and OpenCode installs
 - Typed TypeScript client from the root package export
-- MCP setup helpers for hosted BYOK and local `npx -y cambrian-api-mcp` usage
+- MCP setup helpers for hosted and local `npx -y cambrian-api-mcp` usage
 
 ## Coverage
 
@@ -342,7 +342,7 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 Agents only need one of these setups:
 
 - CLI-native: give the agent shell access plus `CAMBRIAN_API_KEY`
-- MCP-native: configure hosted BYOK MCP or local `npx -y cambrian-api-mcp`
+- MCP-native: configure the hosted MCP or local `npx -y cambrian-api-mcp`
 - Skill-native: install the packaged skill bundle for the agent runtime
 - Tool-native: load `cambrian describe opencli` and let the runtime call commands directly
 
