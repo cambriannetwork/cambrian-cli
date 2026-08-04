@@ -2,7 +2,10 @@ import { BaseClient } from './base-client.js';
 import type { BaseClientOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://deep42.cambrian.network';
-const OPENAPI_SPEC_URL = 'https://deep42.cambrian.network/openapi.json';
+const OPENAPI_SPEC_PATH = '/openapi.json';
+
+/** Operation keys defined by the OpenAPI path item object. */
+const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 
 export interface Deep42EndpointInfo {
   path: string;
@@ -45,22 +48,24 @@ export class Deep42Client extends BaseClient {
   async discoverEndpoints(): Promise<Map<string, Deep42EndpointInfo>> {
     if (this._endpointCache) return this._endpointCache;
 
-    const res = await this.fetchFn(OPENAPI_SPEC_URL);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Deep42 OpenAPI spec: ${res.status}`);
-    }
-    const spec = await res.json() as {
+    // Go through request() rather than fetchFn directly so spec discovery gets
+    // the same timeout, retry, auth header and ApiError mapping as every other
+    // call, and so it honours a custom baseUrl instead of a hardcoded host.
+    const spec = await this.request<{
       paths?: Record<string, Record<string, {
         summary?: string;
         parameters?: { name: string; required?: boolean; in?: string; schema?: { type?: string; enum?: string[] } }[];
       }>>;
-    };
+    }>(OPENAPI_SPEC_PATH);
 
     const endpoints = new Map<string, Deep42EndpointInfo>();
     if (spec.paths) {
       for (const [path, methods] of Object.entries(spec.paths)) {
         for (const [method, detail] of Object.entries(methods)) {
-          if (method === 'parameters' || typeof detail !== 'object' || !detail) continue;
+          // Path items also carry non-operation keys ($ref, summary, description,
+          // servers, parameters). `servers` is an array, so a bare typeof check
+          // lets it through and registers a bogus "SERVERS" endpoint.
+          if (!HTTP_METHODS.has(method) || typeof detail !== 'object' || !detail) continue;
           // Convert /api/v1/deep42/social-data/alpha-tweet-detection -> social-data/alpha-tweet-detection
           const shortPath = path.replace(/^\/api\/v1\/deep42\//, '');
           // Convert to CLI resource name: social-data/alpha-tweet-detection -> alpha-tweet-detection
