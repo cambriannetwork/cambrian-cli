@@ -93,7 +93,10 @@ export function installSkill(options: {
 
   const explicitTools = options.tools ?? [];
   const explicitPaths = options.paths ?? [];
-  const autoDetectedTools = explicitTools.length === 0 ? detectInstalledToolTargets(home) : [];
+  const autoDetectedTools =
+    explicitTools.length === 0 && explicitPaths.length === 0
+      ? detectInstalledToolTargets(home)
+      : [];
   const selectedTools = explicitTools.length > 0 ? explicitTools : autoDetectedTools;
 
   if (selectedTools.length === 0 && explicitPaths.length === 0) {
