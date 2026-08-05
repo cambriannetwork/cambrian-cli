@@ -16,7 +16,7 @@ import {
 } from '../src/x402/payment.js';
 import { CliUsageError } from '../src/cli/core.js';
 
-// The live contract shape (verified against x402.cambrian.network): note the V2
+// The live x402.cambrian.org contract shape: note the V2
 // `amount` field and CAIP-2 network.
 const PR: PaymentRequired = {
   x402Version: 2,
@@ -31,7 +31,7 @@ const PR: PaymentRequired = {
       extra: { name: 'USD Coin', version: '2' },
     },
   ],
-  resource: { url: 'https://x402.cambrian.network/api/v1/deep42/x', description: 'x' },
+  resource: { url: 'https://x402.cambrian.org/api/v1/deep42/x', description: 'x' },
 };
 
 describe('parse & select', () => {

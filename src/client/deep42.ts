@@ -1,8 +1,8 @@
 import { BaseClient } from './base-client.js';
 import type { BaseClientOptions } from './types.js';
 
-const DEFAULT_BASE_URL = 'https://deep42.cambrian.network';
-const OPENAPI_SPEC_URL = 'https://deep42.cambrian.network/openapi.json';
+const DEFAULT_BASE_URL = 'https://api.cambrian.org/deep42';
+const OPENAPI_SPEC_URL = 'https://api.cambrian.org/deep42/openapi.json';
 
 export interface Deep42EndpointInfo {
   path: string;
@@ -27,8 +27,9 @@ export class Deep42Client extends BaseClient {
     params: Record<string, string | number | boolean | undefined> = {},
     paymentSignature?: string,
   ): Promise<unknown> {
+    const path = apiPath.replace(/^\/api\/v1\/deep42/, '');
     const qs = this.buildParams(params);
-    const fullPath = qs ? `${apiPath}?${qs}` : apiPath;
+    const fullPath = qs ? `${path}?${qs}` : path;
     const init: RequestInit = {};
     if (paymentSignature) {
       const headers = new Headers();

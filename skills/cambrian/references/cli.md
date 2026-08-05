@@ -539,9 +539,9 @@ Default env vars:
 - `CAMBRIAN_API_KEY`
 
 Base URLs:
-- Opabinia (Solana + Base): `https://opabinia.cambrian.network`
-- Deep42: `https://deep42.cambrian.network`
-- Risk: `https://risk.cambrian.network`
+- Solana + Base: `https://api.cambrian.org`
+- Deep42: `https://api.cambrian.org/deep42`
+- Risk: `https://api.cambrian.org/risk`
 
 ## Skill Commands
 

@@ -39,10 +39,10 @@ const REJECTION_REASONS = new Set<RegistryRejectionReason>([
 ]);
 
 const OPENAPI_URLS: Record<CambrianGroup, string> = {
-  solana: 'https://opabinia.cambrian.network/openapi.json',
-  base: 'https://opabinia.cambrian.network/openapi.json',
-  deep42: 'https://deep42.cambrian.network/openapi.json',
-  risk: 'https://risk.cambrian.network/openapi.json',
+  solana: 'https://api.cambrian.org/openapi.json',
+  base: 'https://api.cambrian.org/openapi.json',
+  deep42: 'https://api.cambrian.org/deep42/openapi.json',
+  risk: 'https://api.cambrian.org/risk/openapi.json',
 };
 
 export type RegistryRejectionReason =
@@ -160,12 +160,23 @@ function normalizeApiPath(path: string): string {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
+function canonicalApiPath(group: CambrianGroup, rawPath: string): string {
+  const path = normalizeApiPath(rawPath);
+  if (path.startsWith('/api/v1/')) return path;
+  if (group === 'risk' && path === '/risk/perp-risk-engine') {
+    return '/api/v1/perp-risk-engine';
+  }
+  return path.startsWith(`/${group === 'base' ? 'evm' : group}/`)
+    ? `/api/v1${path}`
+    : path;
+}
+
 function isSafeRecordKey(value: string): boolean {
   return !UNSAFE_RECORD_KEYS.has(value);
 }
 
 function resourceFromPath(group: CambrianGroup, rawPath: string): string | null {
-  const path = normalizeApiPath(rawPath);
+  const path = canonicalApiPath(group, rawPath);
   const prefix = groupPathPrefix(group);
   if (group === 'risk') {
     return path === prefix ? 'perp-risk-engine' : null;
@@ -205,9 +216,19 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
   if (parameter.allowReserved === true) return null;
   if (parameter.style !== undefined && parameter.style !== 'form') return null;
   if (parameter.explode !== undefined && typeof parameter.explode !== 'boolean') return null;
-  const enumValues = stringEnum(schema.enum);
+  const enumValues = type === 'string' ? stringEnum(schema.enum) : undefined;
   if (enumValues === null) return null;
-  if (enumValues !== undefined && type !== 'string') return null;
+  const numericEnum = type === 'integer' || type === 'number'
+    ? schema.enum
+    : undefined;
+  if (numericEnum !== undefined && (
+    !Array.isArray(numericEnum) ||
+    numericEnum.length !== 1 ||
+    typeof numericEnum[0] !== 'number' ||
+    !Number.isFinite(numericEnum[0]) ||
+    (type === 'integer' && !Number.isSafeInteger(numericEnum[0]))
+  )) return null;
+  if (schema.enum !== undefined && enumValues === undefined && numericEnum === undefined) return null;
   if (schema.minimum !== undefined &&
     (typeof schema.minimum !== 'number' || !Number.isFinite(schema.minimum))) return null;
   if (schema.maximum !== undefined &&
@@ -225,8 +246,13 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
     strict: true,
   };
   if (enumValues !== undefined) result.enum = enumValues;
-  if (typeof schema.minimum === 'number') result.min = schema.minimum;
-  if (typeof schema.maximum === 'number') result.max = schema.maximum;
+  if (numericEnum !== undefined) {
+    result.min = numericEnum[0];
+    result.max = numericEnum[0];
+  } else {
+    if (typeof schema.minimum === 'number') result.min = schema.minimum;
+    if (typeof schema.maximum === 'number') result.max = schema.maximum;
+  }
   if (typeof parameter.description === 'string' && parameter.description.trim()) {
     result.description = parameter.description.trim();
   }
@@ -360,7 +386,7 @@ export function normalizeOpenApiGroup(group: CambrianGroup, document: unknown): 
   const resourcePaths = new Map<string, string>();
   for (const [rawPath, rawPathItem] of Object.entries(document.paths)) {
     if (!isObject(rawPathItem)) continue;
-    const path = normalizeApiPath(rawPath);
+    const path = canonicalApiPath(group, rawPath);
     const belongsToGroup = group === 'risk'
       ? path.startsWith(`${groupPathPrefix(group)}/`)
       : path.startsWith(groupPathPrefix(group));
@@ -932,6 +958,9 @@ async function refreshGroup(
       throw new Error(`${OPENAPI_URLS[group]} did not return an OpenAPI 3 document`);
     }
     const normalized = normalizeOpenApiGroup(group, parsed);
+    if (Object.keys(normalized.spec).length === 0) {
+      throw new Error(`No compatible ${group} operations from ${OPENAPI_URLS[group]}`);
+    }
     compatibleSpec = normalized.spec;
     rejected = normalized.rejected;
   }

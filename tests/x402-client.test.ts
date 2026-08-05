@@ -23,7 +23,7 @@ const REQUIRED_BODY = {
       extra: { name: 'USD Coin', version: '2' },
     },
   ],
-  resource: { url: 'https://x402.cambrian.network/api/v1/deep42/x', description: 'x', mimeType: 'application/json' },
+  resource: { url: 'https://x402.cambrian.org/api/v1/deep42/x', description: 'x', mimeType: 'application/json' },
 };
 
 function res(status: number, body: unknown, headers: Record<string, string> = {}): Response {
@@ -66,7 +66,7 @@ describe('payAndFetch flow', () => {
     const fetch = (async () => { probes += 1; return gateway402(); }) as unknown as typeof globalThis.fetch;
     const result = await payAndFetch({
       fetch,
-      url: 'https://x402.cambrian.network/api/v1/deep42/x?limit=1',
+      url: 'https://x402.cambrian.org/api/v1/deep42/x?limit=1',
       capMicro: 100000,
       getPayFetch: async () => fakePay,
       authorize: () => true,

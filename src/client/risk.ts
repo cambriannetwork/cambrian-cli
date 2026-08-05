@@ -1,7 +1,7 @@
 import { BaseClient } from './base-client.js';
 import type { BaseClientOptions, LiquidationRiskParams, LiquidationRiskResponse } from './types.js';
 
-const DEFAULT_BASE_URL = 'https://risk.cambrian.network';
+const DEFAULT_BASE_URL = 'https://api.cambrian.org/risk';
 
 export class RiskClient extends BaseClient {
   constructor(opts: BaseClientOptions) {
@@ -13,12 +13,13 @@ export class RiskClient extends BaseClient {
    * apiPath as stored in openapi-params.json (may lack leading slash).
    */
   async query(apiPath: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    const path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+    const normalizedPath = apiPath.replace(/^\/?api\/v1/, '');
+    const path = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
     const q = this.buildParams(params);
     return this.request(q ? `${path}?${q}` : path);
   }
 
   async getLiquidationRisk(opts: LiquidationRiskParams): Promise<LiquidationRiskResponse> {
-    return this.request(`/api/v1/perp-risk-engine?${this.buildParams(opts)}`);
+    return this.request(`/perp-risk-engine?${this.buildParams(opts)}`);
   }
 }

@@ -10,7 +10,7 @@
 
 import { CliUsageError } from '../cli/core.js';
 
-export const X402_BASE_URL = 'https://x402.cambrian.network';
+export const X402_BASE_URL = 'https://x402.cambrian.org';
 export const USDC_DECIMALS = 6;
 /** Default per-call spend ceiling in micro-USDC ($0.10). */
 export const DEFAULT_MAX_AMOUNT_MICRO = 100_000;

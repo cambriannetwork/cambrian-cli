@@ -31,6 +31,7 @@ function run(
     stdout: (line: string) => { stdout += line + '\n'; },
     stderr: (line: string) => { stderr += line + '\n'; },
     env: {},
+    homedir: () => tempHome(),
     ...overrides,
   }).then((code) => ({ code, stdout, stderr }));
 }

@@ -30,6 +30,7 @@ function run(
     stdout: (line: string) => { stdout += line + '\n'; },
     stderr: (line: string) => { stderr += line + '\n'; },
     env: { CAMBRIAN_API_KEY: 'test-key', CAMBRIAN_SCHEMA_MODE: 'bundled' },
+    homedir: () => '/tmp/cambrian-cli-errors-no-config',
     ...overrides,
   }).then((code) => ({ code, stdout, stderr }));
 }

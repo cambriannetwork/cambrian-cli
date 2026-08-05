@@ -101,6 +101,18 @@ describe('buildSchemaFallbackDocs', () => {
 // ── fetchDocs fallback integration tests ────────────────────────────
 
 describe('fetchDocs — schema fallback on llms.txt failure', () => {
+  it('requests the stripped public endpoint docs URL', async () => {
+    const urls: string[] = [];
+    const fetch = (async (input) => {
+      urls.push(String(input));
+      return new Response('LIVE DOCS', { status: 200 });
+    }) as typeof globalThis.fetch;
+
+    await fetchDocs(fetch, 'solana', 'price-current');
+
+    expect(urls).toEqual(['https://docs.cambrian.org/solana/price-current/llms.txt']);
+  });
+
   it('returns schema text (not null) when fetch rejects for an endpoint', async () => {
     const result = await fetchDocs(fetchFailing(), 'solana', 'price-current');
     expect(result).not.toBeNull();

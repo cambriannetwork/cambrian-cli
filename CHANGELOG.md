@@ -5,6 +5,17 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-08-05
+
+### Changed
+
+- Routed Solana, Base, Deep42, Risk, OpenAPI discovery, and endpoint-docs
+  requests through their public hosts without the upstream `/api/v1` prefix.
+- Moved paid calls to `x402.cambrian.org`; this separate gateway retains its
+  payable `/api/v1` routes.
+- Runtime discovery now accepts gateway-style OpenAPI paths and retains bundled
+  commands when a live schema temporarily omits an entire service group.
+
 ## [1.1.4] - 2026-07-28
 
 ### Documentation

@@ -37,7 +37,7 @@ describe('cambrian docs command falls back gracefully (exit 0, no throw)', () =>
   it('prints schema fallback for an endpoint when llms.txt 404s', async () => {
     const { code, stdout } = await runDocs(['docs', 'base', 'aero-v2-pools'], notFoundFetch);
     expect(code).toBe(0);
-    expect(stdout).toContain('GET /api/v1/evm/aero/v2/pools');
+    expect(stdout).toContain('GET /evm/aero/v2/pools');
     expect(stdout).toContain('default: 100');
   });
 

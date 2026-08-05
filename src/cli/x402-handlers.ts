@@ -1,8 +1,8 @@
 /**
  * `cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]` —
- * pay-per-call against the x402 gateway (x402.cambrian.network) instead of an
+ * pay-per-call against the x402 gateway (x402.cambrian.org) instead of an
  * API key. Covers all data groups (solana / base|evm / deep42 / risk): the
- * gateway fronts the same `/api/v1/<group>/<resource>` paths. Reuses the bundled
+ * gateway fronts `/api/v1/<group>/<resource>` paths. Reuses the bundled
  * metadata for resource/param validation, then pays via the @x402 SDK.
  *
  * Spends real USDC on Base; guarded by a spend cap, a cost preview, and --yes.

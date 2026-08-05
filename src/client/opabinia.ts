@@ -55,7 +55,7 @@ import type {
   EvmAeroV2PoolsParams,
 } from './types.js';
 
-const DEFAULT_BASE_URL = 'https://opabinia.cambrian.network/api/v1';
+const DEFAULT_BASE_URL = 'https://api.cambrian.org';
 
 export class OpabiniaClient extends BaseClient {
   constructor(opts: BaseClientOptions) {
@@ -68,10 +68,10 @@ export class OpabiniaClient extends BaseClient {
 
   /**
    * Generic query: call any Opabinia API path with arbitrary params.
-   * apiPath should include the /api/v1 prefix (as stored in openapi-params.json).
+   * apiPath may include the internal /api/v1 prefix stored in openapi-params.json.
    */
   async query(apiPath: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    // Strip /api/v1 prefix since baseUrl already includes it
+    // The public gateway does not expose the upstream /api/v1 prefix.
     const path = apiPath.replace(/^\/api\/v1/, '');
     const q = this.buildParams(params);
     return this.request(q ? `${path}?${q}` : path);

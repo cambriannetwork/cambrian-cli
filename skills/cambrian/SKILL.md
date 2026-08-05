@@ -54,9 +54,9 @@ Important runtime rules:
 
 Default production base URLs:
 
-- Solana & EVM: `https://opabinia.cambrian.network/api/v1`
-- Deep42: `https://deep42.cambrian.network`
-- Risk: `https://risk.cambrian.network`
+- Solana & EVM: `https://api.cambrian.org`
+- Deep42: `https://api.cambrian.org/deep42`
+- Risk: `https://api.cambrian.org/risk`
 
 ## Installation
 
@@ -295,9 +295,11 @@ If the CLI is unavailable, use the HTTP APIs directly.
 
 Base URLs:
 
-- Solana & EVM: `https://opabinia.cambrian.network/api/v1`
-- Deep42: `https://deep42.cambrian.network/api/v1/deep42`
-- Risk: `https://risk.cambrian.network/api/v1`
+- Solana & EVM: `https://api.cambrian.org`
+- Deep42: `https://api.cambrian.org/deep42`
+- Risk: `https://api.cambrian.org/risk`
+
+Public API-key requests omit the upstream `/api/v1` prefix.
 
 Header: `X-API-KEY: <your-key>`
 

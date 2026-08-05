@@ -25,9 +25,9 @@ const ROOT = resolve(__dirname, '..');
 const OUTPUT = resolve(ROOT, 'src', 'generated', 'openapi-params.json');
 const LLMS_URL = 'https://docs.cambrian.org/llms.txt';
 const OPENAPI_URLS = {
-  opabinia: 'https://opabinia.cambrian.network/openapi.json',
-  deep42: 'https://deep42.cambrian.network/openapi.json',
-  risk: 'https://risk.cambrian.network/openapi.json',
+  opabinia: 'https://api.cambrian.org/openapi.json',
+  deep42: 'https://api.cambrian.org/deep42/openapi.json',
+  risk: 'https://api.cambrian.org/risk/openapi.json',
 };
 
 async function fetchJson(url) {

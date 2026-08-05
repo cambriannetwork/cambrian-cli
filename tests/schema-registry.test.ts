@@ -103,6 +103,36 @@ describe('normalizeOpenApiGroup', () => {
     });
   });
 
+  it('normalizes public gateway paths to the internal metadata identity', () => {
+    const result = normalizeOpenApiGroup('base', openApi({
+      '/evm/chains': {
+        get: {
+          parameters: [{
+            name: 'chain_id',
+            in: 'query',
+            schema: { type: 'integer', enum: [8453], default: 8453 },
+          }],
+        },
+      },
+    }));
+
+    expect(result.rejected).toEqual([]);
+    expect(result.spec.chains).toEqual({
+      apiPath: '/api/v1/evm/chains',
+      method: 'GET',
+      params: {
+        chain_id: {
+          required: false,
+          type: 'integer',
+          min: 8453,
+          max: 8453,
+          default: 8453,
+          strict: true,
+        },
+      },
+    });
+  });
+
   it('rejects unsupported, catch-all, cross-group, and ambiguous operations', () => {
     const result = normalizeOpenApiGroup('base', openApi({
       '/api/v1/evm/new-post': { post: { parameters: [] } },
@@ -329,7 +359,7 @@ describe('llms visibility for authoritative runtime operations', () => {
 - GET /api/v1/solana/one
 - GET /api/v1/solana/one
 - POST /api/v1/solana/two
-- Docs: https://docs.cambrian.org/api/v1/solana/one/llms.txt
+- Docs: https://docs.cambrian.org/solana/one/llms.txt
 `);
     expect(parsed).toEqual(new Set([
       'GET /api/v1/solana/one',
@@ -372,7 +402,7 @@ describe('runtime registry cache and fallback', () => {
   function schemaFetch(document: unknown): typeof globalThis.fetch {
     return (async (input) => {
       const url = String(input);
-      if (url === 'https://deep42.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/deep42/openapi.json') {
         return new Response(JSON.stringify(document), {
           status: 200,
           headers: { 'content-type': 'application/json', etag: '"deep42-v1"' },
@@ -461,7 +491,7 @@ describe('runtime registry cache and fallback', () => {
     const cacheRoot = temporaryCacheRoot();
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://deep42.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/deep42/openapi.json') {
         return new Response('{}', {
           status: 200,
           headers: { 'content-length': String(5 * 1024 * 1024 + 1) },
@@ -581,7 +611,7 @@ describe('runtime registry cache and fallback', () => {
     expect(laterStatus.status.lastError).toContain('network unavailable');
   });
 
-  it('accepts a valid authoritative document that removes all compatible operations', async () => {
+  it('retains the last-known-good registry when OpenAPI loses the whole group', async () => {
     const cacheRoot = temporaryCacheRoot();
     await loadRuntimeMetadataGroup(
       'deep42',
@@ -594,9 +624,9 @@ describe('runtime registry cache and fallback', () => {
       testRuntime(schemaFetch(openApi({})), cacheRoot),
       { refresh: true, now: 2_000 },
     );
-    expect(result.status.source).toBe('live');
-    expect(result.status.lastError).toBeUndefined();
-    expect(result.metadata.resources).toEqual([]);
+    expect(result.status.source).toBe('cache');
+    expect(result.status.lastError).toContain('No compatible deep42 operations');
+    expect(result.metadata.resources).toContain('social-data/new-signal');
   });
 
   it('uses the last-known-good cache when a refresh is not structurally valid OpenAPI', async () => {
@@ -635,7 +665,7 @@ describe('runtime registry cache and fallback', () => {
       .join('\n');
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://deep42.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/deep42/openapi.json') {
         return new Response(JSON.stringify(openApi(paths)), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -678,7 +708,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -716,7 +746,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -750,7 +780,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://opabinia.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -773,7 +803,7 @@ describe('runtime registry cache and fallback', () => {
     const cacheRoot = temporaryCacheRoot();
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://deep42.cambrian.network/openapi.json') {
+      if (url === 'https://api.cambrian.org/deep42/openapi.json') {
         return new Response(JSON.stringify(deep42Document()), { status: 200 });
       }
       throw new Error('docs unavailable');

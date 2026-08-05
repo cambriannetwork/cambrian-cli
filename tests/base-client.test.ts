@@ -171,3 +171,27 @@ describe('BaseClient error normalization', () => {
     expect(err.retryable).toBe(true);
   });
 });
+
+describe('public API routing', () => {
+  it('uses the consolidated gateway without the internal /api/v1 prefix', async () => {
+    const urls: string[] = [];
+    const fetch = (async (input) => {
+      urls.push(String(input));
+      return new Response('{}', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof globalThis.fetch;
+    const client = new CambrianData({ apiKey: 'test-key', fetch });
+
+    await client.opabinia.query('/api/v1/solana/latest-block');
+    await client.deep42.query('/api/v1/deep42/social-data/sentiment-shifts');
+    await client.risk.query('/api/v1/perp-risk-engine');
+
+    expect(urls).toEqual([
+      'https://api.cambrian.org/solana/latest-block',
+      'https://api.cambrian.org/deep42/social-data/sentiment-shifts',
+      'https://api.cambrian.org/risk/perp-risk-engine',
+    ]);
+  });
+});

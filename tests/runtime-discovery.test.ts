@@ -85,7 +85,7 @@ function routedFetch(
   return (async (input) => {
     const url = String(input);
     requests.push(url);
-    if (url === 'https://deep42.cambrian.network/openapi.json') {
+    if (url === 'https://api.cambrian.org/deep42/openapi.json') {
       return new Response(JSON.stringify(schema), {
         status: 200,
         headers: { 'content-type': 'application/json', etag: '"schema-v1"' },
@@ -94,7 +94,7 @@ function routedFetch(
     if (url === 'https://docs.cambrian.org/llms.txt') {
       return new Response(llms, { status: 200, headers: { etag: '"docs-v1"' } });
     }
-    if (url.startsWith('https://deep42.cambrian.network/api/v1/deep42/')) {
+    if (url.startsWith('https://api.cambrian.org/deep42/')) {
       return new Response(JSON.stringify({ ok: true, url }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -180,7 +180,7 @@ describe('runtime endpoint discovery through the CLI', () => {
 
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ ok: true });
-    expect(requests).toContain('https://deep42.cambrian.network/openapi.json');
+    expect(requests).toContain('https://api.cambrian.org/deep42/openapi.json');
     expect(requests).toContain('https://docs.cambrian.org/llms.txt');
     expect(requests.some((url) =>
       url.endsWith('/social-data/new-signal?limit=2&mode=fast'))).toBe(true);
@@ -209,7 +209,7 @@ describe('runtime endpoint discovery through the CLI', () => {
       root,
     );
     expect(docs.code).toBe(0);
-    expect(docs.stdout).toContain('GET /api/v1/deep42/social-data/new-signal');
+    expect(docs.stdout).toContain('GET /deep42/social-data/new-signal');
     expect(docs.stdout).toContain('--limit');
 
     const pay = await run(
@@ -366,7 +366,7 @@ describe('runtime endpoint discovery through the CLI', () => {
     );
     expect(result.code).toBe(2);
     expect(result.stderr).toContain('Unknown deep42 resource');
-    expect(requests).toContain('https://deep42.cambrian.network/openapi.json');
+    expect(requests).toContain('https://api.cambrian.org/deep42/openapi.json');
   });
 
   it('exposes refresh, status, and clear-cache schema controls', async () => {

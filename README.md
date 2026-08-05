@@ -44,9 +44,9 @@ Installing the package is not enough for live reads.
 - the agent or CLI process itself must see the API key in its runtime environment
 
 Base URLs:
-- Opabinia (Solana + EVM): `https://opabinia.cambrian.network`
-- Deep42: `https://deep42.cambrian.network`
-- Risk: `https://risk.cambrian.network`
+- Solana + EVM: `https://api.cambrian.org`
+- Deep42: `https://api.cambrian.org/deep42`
+- Risk: `https://api.cambrian.org/risk`
 
 ## Persisted API Key & Shell Completion
 
@@ -431,10 +431,10 @@ const chains = await client.opabinia.getEvmChains();
 console.log(chains);
 
 // Deep42
-const sentiment = await client.deep42.query('/api/v1/deep42/social-data/sentiment-shifts', { limit: 10 });
+const sentiment = await client.deep42.query('/social-data/sentiment-shifts', { limit: 10 });
 console.log(sentiment);
 
-const credibility = await client.deep42.query('/api/v1/deep42/social-data/influencer-credibility', { limit: 10 });
+const credibility = await client.deep42.query('/social-data/influencer-credibility', { limit: 10 });
 console.log(credibility);
 
 // Risk

@@ -131,7 +131,7 @@ export async function fetchDocs(
     if (group && resource) {
       const apiPath = resourceToApiPath(group, resource, metadataGroups);
       if (apiPath) {
-        const url = `${LLMS_BASE}/api/v1/${apiPath}/llms.txt`;
+        const url = `${LLMS_BASE}/${apiPath}/llms.txt`;
         let endpointText: string | null = null;
         try {
           const res = await fetchFn(url);
@@ -227,7 +227,7 @@ function renderExecutableContract(
     'come from the active OpenAPI schema registry and govern CLI validation/execution.',
     'Any labeled CLI compatibility default is used only while that schema accepts it.',
     '',
-    `${entry.method} ${entry.apiPath}`,
+    `${entry.method} ${entry.apiPath.replace(/^\/api\/v1/, '')}`,
     '',
   ];
   const params = Object.entries(entry.params);
