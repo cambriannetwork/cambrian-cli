@@ -78,12 +78,13 @@ active command group, so compatible endpoint additions, updates, and removals
 appear without reinstalling `cambrian` or publishing another npm version.
 
 - A group command loads its pinned production OpenAPI document and caches the
-  normalized result for 15 minutes. ETag and `Last-Modified` revalidation avoid
-  unnecessary downloads.
-- Typing a resource not present in the cache forces one immediate refresh, even
-  while the cache is fresh. Group help also refreshes stale metadata.
+  normalized result for 15 minutes. Successful, failed, explicit, unknown-resource,
+  and concurrent attempts all share the same per-source request floor. Solana and
+  Base share their one gateway document and one refresh.
+- ETag and `Last-Modified` revalidation avoid unnecessary downloads after the
+  15-minute floor expires. Unknown resources use the current cache until then.
 - Shell completion is cache-only and never waits on network access. A normal
-  command, group help, or explicit refresh populates it.
+  command, group help, or eligible explicit refresh populates it.
 - Only concrete `GET` operations with query parameters in the supported
   primitive/array profile are exposed. Bodies, path parameters, catch-all
   routes, non-GET methods, ambiguous names, and malformed schemas stay hidden.
@@ -117,6 +118,10 @@ cambrian solana latest-block --offline
 # Emergency process-wide compatibility switch:
 CAMBRIAN_SCHEMA_MODE=bundled cambrian solana latest-block
 ```
+
+`schema refresh` checks immediately but reuses a source attempted within the
+last 15 minutes. This keeps refresh scripts, typos, failures, and concurrent CLI
+processes from turning into OpenAPI request bursts.
 
 A package release is still required when the interpreter itself needs a new
 capability, such as request bodies, another HTTP method, a new authentication

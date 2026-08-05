@@ -41,6 +41,17 @@ await build({
   external: [],
 });
 
+// Validated runtime schema registry for MCP/server consumers.
+await build({
+  entryPoints: ['src/schema/index.ts'],
+  outfile: 'dist/schema/index.js',
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node20',
+  external: [],
+});
+
 // Emit type declarations with paths that match package.json exports.
 const tscBin = process.platform === 'win32' ? 'node_modules\\.bin\\tsc.cmd' : 'node_modules/.bin/tsc';
 execSync(`${tscBin} --project tsconfig.json --emitDeclarationOnly --outDir dist`, {

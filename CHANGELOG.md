@@ -5,6 +5,28 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-08-05
+
+### Fixed
+
+- OpenAPI discovery now enforces a strict 15-minute request floor per physical
+  schema URL across normal lookups, explicit refreshes, unknown commands,
+  failures, concurrent callers, and separate CLI/MCP processes. Solana and Base
+  share one refresh because they use the same gateway document.
+- Invalid or empty cache files can no longer hide the bundled command registry,
+  and a valid service group from a shared schema remains available if the other
+  group is absent.
+
+### Added
+
+- Published the validated runtime schema resolver as `cambrian/schema` so the
+  MCP package can share the same cache, cooldown, and fallback behavior.
+
+### Changed
+
+- Runtime discovery recognizes the public, unprefixed paths now emitted by
+  `docs.cambrian.org` while retaining compatibility with upstream OpenAPI paths.
+
 ## [1.1.6] - 2026-08-05
 
 ### Fixed

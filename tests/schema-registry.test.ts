@@ -359,11 +359,17 @@ describe('llms visibility for authoritative runtime operations', () => {
 - GET /api/v1/solana/one
 - GET /api/v1/solana/one
 - POST /api/v1/solana/two
+- GET /evm/chains
+- GET /deep42/social-data/token-analysis
+- GET /risk/perp-risk-engine
 - Docs: https://docs.cambrian.org/solana/one/llms.txt
 `);
     expect(parsed).toEqual(new Set([
       'GET /api/v1/solana/one',
       'POST /api/v1/solana/two',
+      'GET /api/v1/evm/chains',
+      'GET /api/v1/deep42/social-data/token-analysis',
+      'GET /api/v1/perp-risk-engine',
     ]));
   });
 });
@@ -565,25 +571,25 @@ describe('runtime registry cache and fallback', () => {
       .not.toHaveProperty('include_price_correlation');
   });
 
-  it('forces a refresh for an unknown resource even while cache is fresh', async () => {
+  it('does not refetch for an unknown resource while the source cache is fresh', async () => {
     const cacheRoot = temporaryCacheRoot();
+    const requests: string[] = [];
     let document = deep42Document('/api/v1/deep42/social-data/first-addition');
     const fetch = schemaFetch(document);
-    const runtime = testRuntime((async (input, init) => fetch(input, init)) as typeof globalThis.fetch, cacheRoot);
+    const runtime = testRuntime((async (input, init) => {
+      requests.push(String(input));
+      return fetch(input, init);
+    }) as typeof globalThis.fetch, cacheRoot);
     await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 1_000 });
 
     document = deep42Document('/api/v1/deep42/social-data/second-addition');
-    const mutableRuntime = testRuntime((async (input) => {
-      const url = String(input);
-      if (url.includes('openapi.json')) return new Response(JSON.stringify(document), { status: 200 });
-      return new Response(llms, { status: 200 });
-    }) as typeof globalThis.fetch, cacheRoot);
-    const refreshed = await loadRuntimeMetadataGroup('deep42', mutableRuntime, {
+    const resolved = await loadRuntimeMetadataGroup('deep42', runtime, {
       missingResource: 'social-data/second-addition',
       now: 2_000,
     });
-    expect(refreshed.status.source).toBe('live');
-    expect(refreshed.metadata.resources).toContain('social-data/second-addition');
+    expect(resolved.status.source).toBe('cache');
+    expect(resolved.metadata.resources).not.toContain('social-data/second-addition');
+    expect(requests.filter((url) => url.endsWith('/openapi.json'))).toHaveLength(1);
   });
 
   it('retains last-known-good additions when a refresh fails', async () => {
@@ -598,7 +604,7 @@ describe('runtime registry cache and fallback', () => {
     }) as typeof globalThis.fetch, cacheRoot);
     const fallback = await loadRuntimeMetadataGroup('deep42', failing, {
       refresh: true,
-      now: 2_000,
+      now: 901_001,
     });
     expect(fallback.status.source).toBe('cache');
     expect(fallback.status.lastError).toContain('network unavailable');
@@ -606,9 +612,175 @@ describe('runtime registry cache and fallback', () => {
 
     const laterStatus = await loadRuntimeMetadataGroup('deep42', failing, {
       offline: true,
-      now: 2_500,
+      now: 901_500,
     });
     expect(laterStatus.status.lastError).toContain('network unavailable');
+  });
+
+  it('does not retry a failed stale refresh during the 15-minute cooldown', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    await loadRuntimeMetadataGroup(
+      'deep42',
+      testRuntime(schemaFetch(deep42Document()), cacheRoot),
+      { refresh: true, now: 1_000 },
+    );
+    let openapiAttempts = 0;
+    const failing = testRuntime((async (input) => {
+      if (String(input).endsWith('/openapi.json')) openapiAttempts += 1;
+      throw new Error('network unavailable');
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    await loadRuntimeMetadataGroup('deep42', failing, { now: 901_001 });
+    const cooledDown = await loadRuntimeMetadataGroup('deep42', failing, { now: 901_002 });
+
+    expect(openapiAttempts).toBe(1);
+    expect(cooledDown.status.source).toBe('cache');
+    expect(cooledDown.status.lastError).toContain('network unavailable');
+  });
+
+  it('does not retry a failed first refresh during the 15-minute cooldown', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let openapiAttempts = 0;
+    const failing = testRuntime((async (input) => {
+      if (String(input).endsWith('/openapi.json')) openapiAttempts += 1;
+      throw new Error('network unavailable');
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    const first = await loadRuntimeMetadataGroup('deep42', failing, { now: 1_000 });
+    const cooledDown = await loadRuntimeMetadataGroup('deep42', failing, { now: 2_000 });
+
+    expect(openapiAttempts).toBe(1);
+    expect(first.status.source).toBe('bundle');
+    expect(cooledDown.status.source).toBe('bundle');
+    expect(cooledDown.status.lastError).toContain('network unavailable');
+  });
+
+  it('does not let an explicit refresh bypass the 15-minute cooldown', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let openapiAttempts = 0;
+    const fetch = schemaFetch(deep42Document());
+    const runtime = testRuntime((async (input, init) => {
+      if (String(input).endsWith('/openapi.json')) openapiAttempts += 1;
+      return fetch(input, init);
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 1_000 });
+    const cached = await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 2_000 });
+
+    expect(openapiAttempts).toBe(1);
+    expect(cached.status.source).toBe('cache');
+  });
+
+  it('coalesces concurrent refreshes and returns the live registry to both callers', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let openapiAttempts = 0;
+    const fetch = schemaFetch(deep42Document());
+    const runtime = testRuntime((async (input, init) => {
+      if (String(input).endsWith('/openapi.json')) {
+        openapiAttempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      return fetch(input, init);
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    const results = await Promise.all([
+      loadRuntimeMetadataGroup('deep42', runtime, { now: 1_000 }),
+      loadRuntimeMetadataGroup('deep42', runtime, { now: 1_000 }),
+    ]);
+
+    expect(openapiAttempts).toBe(1);
+    expect(results.map((result) => result.status.source)).toEqual(['live', 'live']);
+    expect(results.every((result) => result.metadata.resources.includes('social-data/new-signal')))
+      .toBe(true);
+  });
+
+  it('shares one OpenAPI refresh between Solana and Base callers', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let openapiAttempts = 0;
+    const document = openApi({
+      '/api/v1/solana/new-signal': { get: { parameters: [] } },
+      '/api/v1/evm/new-signal': { get: { parameters: [] } },
+    });
+    const runtime = testRuntime((async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/openapi.json') {
+        openapiAttempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return new Response(JSON.stringify(document), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response('', { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    const [solana, base] = await Promise.all([
+      loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 }),
+      loadRuntimeMetadataGroup('base', runtime, { now: 1_000 }),
+    ]);
+
+    expect(openapiAttempts).toBe(1);
+    expect(solana.metadata.resources).toContain('new-signal');
+    expect(base.metadata.resources).toContain('new-signal');
+  });
+
+  it('keeps a compatible shared-source group when the requested group is absent', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let openapiAttempts = 0;
+    const document = openApi({
+      '/evm/new-signal': { get: { parameters: [] } },
+    });
+    const runtime = testRuntime((async (input) => {
+      if (String(input) === 'https://api.cambrian.org/openapi.json') {
+        openapiAttempts += 1;
+        return new Response(JSON.stringify(document), { status: 200 });
+      }
+      return new Response('', { status: 200 });
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    const solana = await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
+    const base = await loadRuntimeMetadataGroup('base', runtime, { now: 2_000 });
+
+    expect(openapiAttempts).toBe(1);
+    expect(solana.status.source).toBe('bundle');
+    expect(solana.status.lastError).toContain('No compatible solana operations');
+    expect(base.status.source).toBe('cache');
+    expect(base.metadata.resources).toContain('new-signal');
+  });
+
+  it('does not revalidate OpenAPI from a sibling cache when the requested cache is missing', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const document = openApi({
+      '/api/v1/solana/new-signal': { get: { parameters: [] } },
+      '/api/v1/evm/new-signal': { get: { parameters: [] } },
+    });
+    const firstFetch = (async (input) => {
+      if (String(input) === 'https://api.cambrian.org/openapi.json') {
+        return new Response(JSON.stringify(document), { status: 200, headers: { etag: '"source-v1"' } });
+      }
+      return new Response('', { status: 200, headers: { etag: '"docs-v1"' } });
+    }) as typeof globalThis.fetch;
+    const runtime = testRuntime(firstFetch, cacheRoot);
+    await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
+    expect(clearRegistryCache(runtime, 'base')).toBe(1);
+
+    let openapiValidator: string | null = null;
+    const secondFetch = (async (input, init) => {
+      if (String(input) === 'https://api.cambrian.org/openapi.json') {
+        openapiValidator = new Headers(init?.headers).get('If-None-Match');
+        return new Response(JSON.stringify(document), { status: 200, headers: { etag: '"source-v2"' } });
+      }
+      return new Response(null, { status: 304 });
+    }) as typeof globalThis.fetch;
+    const refreshed = await loadRuntimeMetadataGroup(
+      'base',
+      testRuntime(secondFetch, cacheRoot),
+      { now: 901_001 },
+    );
+
+    expect(openapiValidator).toBeNull();
+    expect(refreshed.status.source).toBe('live');
+    expect(refreshed.metadata.resources).toContain('new-signal');
   });
 
   it('retains the last-known-good registry when OpenAPI loses the whole group', async () => {
@@ -622,7 +794,7 @@ describe('runtime registry cache and fallback', () => {
     const result = await loadRuntimeMetadataGroup(
       'deep42',
       testRuntime(schemaFetch(openApi({})), cacheRoot),
-      { refresh: true, now: 2_000 },
+      { refresh: true, now: 901_001 },
     );
     expect(result.status.source).toBe('cache');
     expect(result.status.lastError).toContain('No compatible deep42 operations');
@@ -644,7 +816,7 @@ describe('runtime registry cache and fallback', () => {
     const result = await loadRuntimeMetadataGroup(
       'deep42',
       testRuntime(schemaFetch(invalid), cacheRoot),
-      { refresh: true, now: 2_000 },
+      { refresh: true, now: 901_001 },
     );
 
     expect(result.status.source).toBe('cache');
@@ -865,6 +1037,39 @@ describe('runtime registry cache and fallback', () => {
     expect(result.metadata.resources).not.toContain('social-data/new-signal');
   });
 
+  it('ignores an empty live cache instead of hiding the bundled registry', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const runtime = testRuntime((async () => {
+      throw new Error('offline');
+    }) as typeof globalThis.fetch, cacheRoot);
+    const path = registryCachePath(runtime, 'solana');
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify({
+      version: REGISTRY_CACHE_VERSION,
+      group: 'solana',
+      fetchedAt: 1_000,
+      expiresAt: 901_000,
+      compatibleSpec: {},
+      visibleSpec: {},
+      llmsEndpointKeys: [],
+      rejected: [],
+      visibilityMode: 'openapi-sparse',
+      usableLlmsCount: 0,
+      missingLiveAdditions: [],
+      driftedLiveAdditions: [],
+      openapi: {},
+      llms: {},
+    }));
+
+    const result = await loadRuntimeMetadataGroup('solana', runtime, {
+      offline: true,
+      now: 2_000,
+    });
+
+    expect(result.status.source).toBe('bundle');
+    expect(result.metadata.resources).toContain('latest-block');
+  });
+
   it('removes a previously cached addition when authoritative OpenAPI removes it', async () => {
     const cacheRoot = temporaryCacheRoot();
     const runtime = testRuntime(schemaFetch(deep42Document()), cacheRoot);
@@ -879,7 +1084,7 @@ describe('runtime registry cache and fallback', () => {
     const refreshed = await loadRuntimeMetadataGroup(
       'deep42',
       testRuntime(schemaFetch(withoutAddition), cacheRoot),
-      { refresh: true, now: 2_000 },
+      { refresh: true, now: 901_001 },
     );
     expect(refreshed.metadata.resources).not.toContain('social-data/new-signal');
     expect(refreshed.status.missingLiveAdditions).toEqual(['social-data/new-signal']);
@@ -913,7 +1118,7 @@ describe('runtime registry cache and fallback', () => {
     const refreshed = await loadRuntimeMetadataGroup(
       'deep42',
       testRuntime(schemaFetch(changed), cacheRoot),
-      { refresh: true, now: 2_000 },
+      { refresh: true, now: 901_001 },
     );
 
     expect(refreshed.status.missingLiveAdditions).toEqual([]);
@@ -937,7 +1142,7 @@ describe('runtime registry cache and fallback', () => {
     const result = await loadRuntimeMetadataGroup(
       'deep42',
       testRuntime(notModified, cacheRoot),
-      { refresh: true, now: 2_000 },
+      { refresh: true, now: 901_001 },
     );
     expect(result.status.source).toBe('live');
     expect(result.metadata.resources).toContain('social-data/new-signal');

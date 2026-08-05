@@ -98,7 +98,8 @@ Runtime endpoint rule:
   compatible GET/query additions, updates, and removals can appear without
   reinstalling the npm package.
 - If a newly deployed endpoint is expected but not visible, run
-  `cambrian schema refresh <solana|base|deep42|risk>` once, then retry it.
+  `cambrian schema refresh <solana|base|deep42|risk>` once, then retry it. All
+  attempts share a 15-minute per-source floor, including failures and typos.
 - Use `--offline` when a command must use only installed/cached metadata.
 - Treat validated runtime OpenAPI as the executable source of truth. Failed or
   invalid refreshes fall back to the last-known-good cache, then the bundle.

@@ -142,8 +142,12 @@ function titleizeResource(resource: string): string {
   return resource.replace(/[/-]/g, ' ');
 }
 
-export function buildCambrianToolMetadata(group: CambrianGroup, resource: string): CambrianToolMetadata {
-  const groupMetadata = CAMBRIAN_METADATA_GROUPS[group];
+export function buildCambrianToolMetadata(
+  group: CambrianGroup,
+  resource: string,
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
+): CambrianToolMetadata {
+  const groupMetadata = metadataGroups[group];
   const endpoint = groupMetadata.spec[resource];
   if (!endpoint) {
     throw new Error(`Unknown Cambrian ${group} resource: ${resource}`);
@@ -167,10 +171,12 @@ export function buildCambrianToolMetadata(group: CambrianGroup, resource: string
   };
 }
 
-export function listCambrianTools(): CambrianToolMetadata[] {
-  return (Object.keys(CAMBRIAN_METADATA_GROUPS) as CambrianGroup[]).flatMap((group) =>
-    CAMBRIAN_METADATA_GROUPS[group].resources.map((resource) =>
-      buildCambrianToolMetadata(group, resource),
+export function listCambrianTools(
+  metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
+): CambrianToolMetadata[] {
+  return (Object.keys(metadataGroups) as CambrianGroup[]).flatMap((group) =>
+    metadataGroups[group].resources.map((resource) =>
+      buildCambrianToolMetadata(group, resource, metadataGroups),
     ),
   );
 }

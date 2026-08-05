@@ -47,8 +47,8 @@ Endpoint discovery:
 
 - compatible new GET/query endpoints are discovered from the production
   OpenAPI registry without reinstalling the package
-- run `cambrian schema refresh <group>` when an endpoint was just deployed and
-  must be visible immediately
+- run `cambrian schema refresh <group>` after an endpoint deploy; it refreshes
+  immediately when that OpenAPI source has not been attempted in the last 15 minutes
 - inspect cache/source/fallback state with `cambrian schema status [group]`
 - use `--offline` to prevent metadata refresh for a data, docs, pay, or OpenCLI
   command

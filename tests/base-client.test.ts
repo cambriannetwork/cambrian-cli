@@ -185,11 +185,17 @@ describe('public API routing', () => {
     const client = new CambrianData({ apiKey: 'test-key', fetch });
 
     await client.opabinia.query('/api/v1/solana/latest-block');
+    await client.opabinia.query('/solana/price-current');
+    await client.opabinia.query('/api/v1/evm/chains');
+    await client.opabinia.query('/evm/dexes');
     await client.deep42.query('/api/v1/deep42/social-data/sentiment-shifts');
     await client.risk.query('/api/v1/perp-risk-engine');
 
     expect(urls).toEqual([
       'https://api.cambrian.org/solana/latest-block',
+      'https://api.cambrian.org/solana/price-current',
+      'https://api.cambrian.org/evm/chains',
+      'https://api.cambrian.org/evm/dexes',
       'https://api.cambrian.org/deep42/social-data/sentiment-shifts',
       'https://api.cambrian.org/risk/perp-risk-engine',
     ]);

@@ -41,6 +41,7 @@ import {
   CAMBRIAN_MCP_TOOLS,
   CAMBRIAN_METADATA_GROUPS,
   buildCambrianToolName,
+  listCambrianTools,
 } from '../src/metadata.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -187,6 +188,31 @@ describe('shared Cambrian metadata registry', () => {
 
     const risk = CAMBRIAN_MCP_TOOLS.find((tool) => tool.name === 'cambrian_risk_perp_risk_engine');
     expect(risk?.params.every((param) => param.required === false)).toBe(true);
+  });
+
+  it('builds MCP tools from a validated runtime registry without changing the bundled default', () => {
+    const resource = 'social-data/new-signal';
+    const groups = {
+      ...CAMBRIAN_METADATA_GROUPS,
+      deep42: {
+        ...CAMBRIAN_METADATA_GROUPS.deep42,
+        resources: [...CAMBRIAN_METADATA_GROUPS.deep42.resources, resource],
+        spec: {
+          ...CAMBRIAN_METADATA_GROUPS.deep42.spec,
+          [resource]: {
+            apiPath: '/api/v1/deep42/social-data/new-signal',
+            method: 'GET',
+            params: { limit: { required: true, type: 'integer', strict: true } },
+          },
+        },
+      },
+    };
+
+    const tools = listCambrianTools(groups);
+
+    expect(tools.find((tool) => tool.name === 'cambrian_deep42_social_data_new_signal'))
+      .toMatchObject({ resource, params: [{ name: 'limit', required: true }] });
+    expect(CAMBRIAN_MCP_TOOLS.some((tool) => tool.resource === resource)).toBe(false);
   });
 
   // These two deep42 endpoints exist in the deep42 OpenAPI spec but are hidden

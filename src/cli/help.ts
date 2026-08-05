@@ -89,7 +89,8 @@ export function schemaHelp(): string {
     '  cambrian schema clear-cache [solana|base|deep42|risk]',
     '',
     'Validated runtime OpenAPI is authoritative for supported GET/query',
-    'commands. Failed or invalid refreshes fall back to cache, then bundle.',
+    'commands. Refresh attempts share a 15-minute per-source request floor.',
+    'Failed or invalid refreshes fall back to cache, then bundle.',
   ].join('\n');
 }
 
