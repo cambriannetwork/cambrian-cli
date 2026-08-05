@@ -2,7 +2,8 @@ import { BaseClient } from './base-client.js';
 import type { BaseClientOptions } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.cambrian.org/deep42';
-const OPENAPI_SPEC_URL = 'https://api.cambrian.org/deep42/openapi.json';
+const OPENAPI_SPEC_PATH = '/openapi.json';
+const DEEP42_PATH_PREFIX = '/api/v1/deep42/';
 
 export interface Deep42EndpointInfo {
   path: string;
@@ -46,22 +47,19 @@ export class Deep42Client extends BaseClient {
   async discoverEndpoints(): Promise<Map<string, Deep42EndpointInfo>> {
     if (this._endpointCache) return this._endpointCache;
 
-    const res = await this.fetchFn(OPENAPI_SPEC_URL);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch Deep42 OpenAPI spec: ${res.status}`);
-    }
-    const spec = await res.json() as {
+    const spec = await this.request<{
       paths?: Record<string, Record<string, {
         summary?: string;
         parameters?: { name: string; required?: boolean; in?: string; schema?: { type?: string; enum?: string[] } }[];
       }>>;
-    };
+    }>(OPENAPI_SPEC_PATH);
 
     const endpoints = new Map<string, Deep42EndpointInfo>();
     if (spec.paths) {
       for (const [path, methods] of Object.entries(spec.paths)) {
+        if (!path.startsWith(DEEP42_PATH_PREFIX) || path.includes('{')) continue;
         for (const [method, detail] of Object.entries(methods)) {
-          if (method === 'parameters' || typeof detail !== 'object' || !detail) continue;
+          if (method !== 'get' || typeof detail !== 'object' || !detail) continue;
           // Convert /api/v1/deep42/social-data/alpha-tweet-detection -> social-data/alpha-tweet-detection
           const shortPath = path.replace(/^\/api\/v1\/deep42\//, '');
           // Convert to CLI resource name: social-data/alpha-tweet-detection -> alpha-tweet-detection

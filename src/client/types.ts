@@ -180,7 +180,7 @@ export interface SolanaTraderLeaderboardParams {
 }
 
 export interface SolanaTrendingTokensParams extends PaginationParams {
-  order_by?: string;
+  order_by: string;
 }
 
 export interface SolanaWalletBalanceHistoryParams extends PaginationParams {

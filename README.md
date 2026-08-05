@@ -408,7 +408,9 @@ const client = new CambrianData({
 });
 
 // Solana (via OpabiniaClient)
-const trending = await client.opabinia.getSolanaTrendingTokens();
+const trending = await client.opabinia.getSolanaTrendingTokens({
+  order_by: "volume_usd_24h",
+});
 console.log(trending);
 
 const price = await client.opabinia.getSolanaPriceCurrent({

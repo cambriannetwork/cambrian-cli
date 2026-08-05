@@ -58,6 +58,11 @@ import type {
 const DEFAULT_BASE_URL = 'https://api.cambrian.org';
 
 export class OpabiniaClient extends BaseClient {
+  private withQuery(path: string, opts: object): string {
+    const query = this.buildParams(opts);
+    return query ? `${path}?${query}` : path;
+  }
+
   constructor(opts: BaseClientOptions) {
     super({ ...opts, defaultBaseUrl: DEFAULT_BASE_URL });
   }
@@ -83,7 +88,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Token data ──────────────────────────────────────────────────
   async getSolanaTokens(opts: SolanaTokensParams = {}): Promise<TableResponse> {
-    return this.request(`/solana/tokens?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/solana/tokens', opts));
   }
 
   async getSolanaTokenDetails(opts: SolanaTokenAddressParams): Promise<TableResponse> {
@@ -195,8 +200,8 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Trending & block ────────────────────────────────────────────
-  async getSolanaTrendingTokens(opts: SolanaTrendingTokensParams = {}): Promise<TableResponse> {
-    return this.request(`/solana/trending-tokens?${this.buildParams(opts)}`);
+  async getSolanaTrendingTokens(opts: SolanaTrendingTokensParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/trending-tokens', opts));
   }
 
   async getSolanaLatestBlock(): Promise<TableResponse> {
@@ -213,7 +218,7 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getSolanaMeteoraPools(opts: SolanaMeteoraPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/solana/meteora-dlmm/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/solana/meteora-dlmm/pools', opts));
   }
 
   // ── Raydium CLMM ───────────────────────────────────────────────
@@ -226,7 +231,7 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getSolanaRaydiumPools(opts: SolanaRaydiumPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/solana/raydium-clmm/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/solana/raydium-clmm/pools', opts));
   }
 
   // ── Orca ────────────────────────────────────────────────────────
@@ -276,8 +281,7 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getEvmPriceCurrent(opts: EvmPriceCurrentParams = {}): Promise<TableResponse> {
-    const q = this.buildParams(opts);
-    return this.request(q ? `/evm/price-current?${q}` : '/evm/price-current');
+    return this.request(this.withQuery('/evm/price-current', opts));
   }
 
   async getEvmPriceHour(opts: EvmPriceHourParams): Promise<TableResponse> {
@@ -295,7 +299,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Aerodrome V2 ───────────────────────────────────────────────
   async getEvmAeroV2Pools(opts: EvmAeroV2PoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/aero/v2/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/aero/v2/pools', opts));
   }
 
   async getEvmAeroV2Pool(opts: EvmAeroV2PoolParams): Promise<TableResponse> {
@@ -311,7 +315,7 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getEvmAeroV2Providers(opts: EvmAeroV2ProvidersParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/aero/v2/providers?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/aero/v2/providers', opts));
   }
 
   async getEvmAeroV2ProviderPositions(opts: EvmAeroV2ProviderPositionsParams): Promise<TableResponse> {
@@ -324,7 +328,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Aerodrome V3 ───────────────────────────────────────────────
   async getEvmAeroV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/aero/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/aero/v3/pools', opts));
   }
 
   async getEvmAeroV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
@@ -333,7 +337,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Uniswap V3 ─────────────────────────────────────────────────
   async getEvmUniswapV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/uniswap/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/uniswap/v3/pools', opts));
   }
 
   async getEvmUniswapV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
@@ -342,7 +346,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Sushi V3 ────────────────────────────────────────────────────
   async getEvmSushiV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/sushi/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/sushi/v3/pools', opts));
   }
 
   async getEvmSushiV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
@@ -351,7 +355,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Pancake V3 ──────────────────────────────────────────────────
   async getEvmPancakeV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/pancake/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/pancake/v3/pools', opts));
   }
 
   async getEvmPancakeV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
@@ -360,7 +364,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Clones V3 ───────────────────────────────────────────────────
   async getEvmClonesV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/clones/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/clones/v3/pools', opts));
   }
 
   async getEvmClonesV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
@@ -369,7 +373,7 @@ export class OpabiniaClient extends BaseClient {
 
   // ── Alien V3 ────────────────────────────────────────────────────
   async getEvmAlienV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
-    return this.request(`/evm/alien/v3/pools?${this.buildParams(opts)}`);
+    return this.request(this.withQuery('/evm/alien/v3/pools', opts));
   }
 
   async getEvmAlienV3Pool(opts: EvmPoolParams): Promise<TableResponse> {

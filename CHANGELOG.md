@@ -5,6 +5,18 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-08-05
+
+### Fixed
+
+- Explicit `skill install --path` targets no longer also modify auto-detected
+  skill directories.
+- Deep42 endpoint discovery now uses the configured client request path and
+  returns only concrete Deep42 GET endpoints from the consolidated schema.
+- Typed requests with no optional arguments no longer emit a trailing `?`, and
+  the required `order_by` parameter for Solana trending tokens is reflected in
+  the client type.
+
 ## [1.1.5] - 2026-08-05
 
 ### Changed
