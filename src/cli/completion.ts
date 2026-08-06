@@ -68,6 +68,13 @@ export function complete(
     return [];
   }
 
+  if (args[0] === 'docs') {
+    if (args.length === 2) {
+      return startsWithFilter(['solana', 'base', 'deep42', 'risk', 'guides'], args[1] ?? '');
+    }
+    return [];
+  }
+
   // `pay <group> <resource> [flags]` — one token deeper than the data commands.
   if (args[0] === 'pay') {
     if (args.length === 2) return startsWithFilter(PAY_GROUPS, args[1] ?? '');

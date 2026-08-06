@@ -20,6 +20,7 @@ const LLMS_ROOT = `${LLMS_BASE}/llms.txt`;
 
 // Map CLI group names to llms.txt section headers
 const SECTION_HEADERS: Record<string, string> = {
+  guides: '## Available Guides',
   solana: '### Solana',
   evm: '### Evm',
   deep42: '### Deep42',
@@ -108,6 +109,15 @@ function extractSection(fullText: string, sectionHeader: string): string {
   return result.join('\n').trim();
 }
 
+function indexedGuideUrl(fullText: string, guide: string): string | null {
+  const section = extractSection(fullText, SECTION_HEADERS.guides);
+  const pattern = /https:\/\/docs\.cambrian\.org\/guides\/([a-z0-9][a-z0-9-]*)\/llms\.txt\b/g;
+  for (const match of section.matchAll(pattern)) {
+    if (match[1] === guide) return match[0];
+  }
+  return null;
+}
+
 export type FetchFn = typeof globalThis.fetch;
 
 /**
@@ -127,6 +137,22 @@ export async function fetchDocs(
 ): Promise<string | null> {
   if (offline) return buildSchemaFallbackDocs(group, resource, metadataGroups);
   try {
+    if (group === 'guides') {
+      try {
+        const rootResponse = await fetchFn(LLMS_ROOT);
+        if (!rootResponse.ok) return null;
+        const fullText = await rootResponse.text();
+        const guideIndex = extractSection(fullText, SECTION_HEADERS.guides);
+        if (!resource) return guideIndex || null;
+        const guideUrl = indexedGuideUrl(fullText, resource);
+        if (!guideUrl) return guideIndex || null;
+        const guideResponse = await fetchFn(guideUrl);
+        return guideResponse.ok ? await guideResponse.text() : guideIndex || null;
+      } catch {
+        return null;
+      }
+    }
+
     // Level 3: specific endpoint docs
     if (group && resource) {
       const apiPath = resourceToApiPath(group, resource, metadataGroups);

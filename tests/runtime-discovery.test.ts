@@ -125,6 +125,54 @@ async function run(
 }
 
 describe('runtime endpoint discovery through the CLI', () => {
+  it('groups dynamically discovered lending resources under Lending help', async () => {
+    const root = cacheRoot();
+    const lendingPaths = [
+      '/evm/lending/overview',
+      '/evm/lending/protocols',
+      '/evm/lending/aave/v3/pools',
+      '/evm/lending/euler/markets',
+      '/evm/lending/euler/v2/vaults',
+      '/evm/lending/euler/v2/vault/markets',
+      '/evm/lending/euler/curators',
+      '/evm/lending/euler/curator/vaults',
+      '/evm/lending/morpho/markets',
+      '/evm/lending/morpho/v1/vaults',
+      '/evm/lending/morpho/v1/vault/markets',
+      '/evm/lending/morpho/v2/vaults',
+      '/evm/lending/morpho/v2/vault/markets',
+      '/evm/lending/morpho/curators',
+      '/evm/lending/morpho/curator/vaults',
+    ];
+    const paths = Object.fromEntries([
+      '/evm/chains',
+      '/evm/dexes',
+      '/evm/tokens',
+      '/evm/price-current',
+      ...lendingPaths,
+    ].map((path) => [path, { get: { parameters: [] } }]));
+    const schema = { openapi: '3.1.0', info: { title: 'Base', version: '1' }, paths };
+    const documented = Object.keys(paths).map((path) => `- GET ${path}`).join('\n');
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/openapi.json') {
+        return new Response(JSON.stringify(schema), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response(documented, { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await run(['base', '--help'], fetch, root);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Lending:');
+    for (const path of lendingPaths) {
+      expect(result.stdout).toContain(path.slice('/evm/'.length).replaceAll('/', '-'));
+    }
+  });
+
   it('preserves the preflight auth failure without making schema requests', async () => {
     let fetches = 0;
     let stderr = '';
@@ -141,6 +189,10 @@ describe('runtime endpoint discovery through the CLI', () => {
 
     expect(code).toBe(2);
     expect(stderr).toContain('API key required');
+    expect(stderr).toContain('Get an API key: https://console.cambrian.org/');
+    expect(stderr).toContain('No API key? Use x402 pay-per-call: cambrian pay --help');
+    expect(stderr).toContain('https://docs.cambrian.org/guides/x402/llms.txt');
+    expect(stderr).not.toContain('form.typeform.com');
     expect(fetches).toBe(0);
   });
 

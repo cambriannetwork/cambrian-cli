@@ -172,6 +172,16 @@ export function buildOpenCliDocument(
         commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions),
       },
       {
+        name: 'docs',
+        description: 'Read live Cambrian API documentation and dynamically indexed guides.',
+        commands: [
+          {
+            name: 'guides',
+            description: 'List live guides or fetch one by its indexed URL slug.',
+          },
+        ],
+      },
+      {
         name: 'schema',
         description: 'Inspect and refresh the authoritative runtime endpoint registry.',
         commands: [

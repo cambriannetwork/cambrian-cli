@@ -30,6 +30,7 @@ function getEvmCategory(resource: string): string {
   if (resource.startsWith('pancake')) return 'PancakeSwap V3';
   if (resource.startsWith('alien')) return 'Alienbase V3';
   if (resource.startsWith('clones')) return 'Clones V3';
+  if (resource.startsWith('lending-')) return 'Lending';
   if (resource.startsWith('tvl')) return 'TVL';
   if (resource.startsWith('price')) return 'Prices';
   return 'Discovery';
@@ -43,6 +44,7 @@ const EVM_CATEGORY_ORDER = [
   'PancakeSwap V3',
   'Alienbase V3',
   'Clones V3',
+  'Lending',
   'TVL',
   'Discovery',
   'Prices',

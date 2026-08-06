@@ -56,6 +56,13 @@ describe('complete', () => {
     expect(flags).toContain('--timeout');
     expect(flags).toContain('--limit'); // a resource param
   });
+
+  it('completes the live guide discovery command without a static guide list', () => {
+    expect(complete(['docs', ''])).toEqual(
+      expect.arrayContaining(['solana', 'base', 'deep42', 'risk', 'guides']),
+    );
+    expect(complete(['docs', 'guides', ''])).toEqual([]);
+  });
 });
 
 describe('completionScript', () => {

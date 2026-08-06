@@ -321,6 +321,7 @@ export function payHelp(): string {
     'Wallet:',
     '  Set CAMBRIAN_X402_PRIVATE_KEY=0x<key> (Base mainnet, funded with USDC).',
     `  Requires the x402 SDK: ${X402_SDK_INSTALL_COMMAND}`,
+    '  Guide: https://docs.cambrian.org/guides/x402/llms.txt',
     '',
     'Examples:',
     '  cambrian pay deep42 social-data/alpha-tweet-detection --limit 1 --yes',
