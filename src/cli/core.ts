@@ -256,7 +256,9 @@ function formatAuthRequiredError(): string {
     '  cambrian config get-key                  (inspect the stored key)\n' +
     '  cambrian config set-key <your-key>       (replace it, all shells)\n' +
     '  export CAMBRIAN_API_KEY=<your-key>       (current shell)\n\n' +
-    'Get a key at: https://form.typeform.com/to/FlAoEzva'
+    'Get an API key: https://console.cambrian.org/\n' +
+    'No API key? Use x402 pay-per-call: cambrian pay --help\n' +
+    'x402 guide: https://docs.cambrian.org/guides/x402/llms.txt'
   );
 }
 

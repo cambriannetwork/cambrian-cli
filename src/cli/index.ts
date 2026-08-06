@@ -154,7 +154,9 @@ function createClient(parsed: ParsedArgs, runtime: Runtime): CambrianData {
       '  export CAMBRIAN_API_KEY=<your-key>       (current shell)\n\n' +
       'Or pass per-command:\n\n' +
       '  cambrian solana latest-block --api-key <your-key>\n\n' +
-      'Get a key at: https://form.typeform.com/to/FlAoEzva',
+      'Get an API key: https://console.cambrian.org/\n' +
+      'No API key? Use x402 pay-per-call: cambrian pay --help\n' +
+      'x402 guide: https://docs.cambrian.org/guides/x402/llms.txt',
     );
   }
 
@@ -178,6 +180,12 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
   const group = parsed.positionals[1] ?? undefined;
   const resource = parsed.positionals[2] ?? undefined;
   assertNoUnknownOptions(parsed, ['help', 'offline'], 'docs');
+  if (group === 'guides' && resource && !/^[a-z0-9][a-z0-9-]*$/.test(resource)) {
+    throw new CliUsageError(
+      'Guide name must use lowercase letters, numbers, and hyphens. ' +
+      'Run "cambrian docs guides" to list available guides.',
+    );
+  }
 
   const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
   const registryGroup = registryGroupForToken(group);

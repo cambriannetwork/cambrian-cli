@@ -22,6 +22,15 @@ describe('CLI help output', () => {
     expect(stdout).toContain('Aliases');
   });
 
+  it('cambrian --help points to console signup and the x402 alternative', async () => {
+    const { stdout } = await captureStdout(['--help']);
+    expect(stdout).toContain('Get an API key: https://console.cambrian.org/');
+    expect(stdout).toContain('No API key? Use x402 pay-per-call: cambrian pay --help');
+    expect(stdout).toContain('https://docs.cambrian.org/guides/x402/llms.txt');
+    expect(stdout).toContain('cambrian docs guides');
+    expect(stdout).not.toContain('form.typeform.com');
+  });
+
   it('cambrian solana --help shows categorized resources', async () => {
     const { stdout } = await captureStdout(['solana', '--help']);
     expect(stdout).toContain('Pools - Orca');
@@ -40,6 +49,9 @@ describe('CLI help output', () => {
     const { stdout } = await captureStdout(['docs', '--help']);
     expect(stdout).toContain('Usage');
     expect(stdout).toContain('cambrian docs');
+    expect(stdout).toContain('cambrian docs guides');
+    expect(stdout).toContain('cambrian docs guides x402');
+    expect(stdout).toContain('Guides require an internet connection');
     expect(stdout).not.toContain('# '); // should not contain markdown headers from actual docs
   });
 
@@ -47,6 +59,16 @@ describe('CLI help output', () => {
     const { stdout } = await captureStdout(['describe', '--help']);
     expect(stdout).toContain('machine-readable');
     expect(stdout).toContain('OpenCLI');
+  });
+
+  it('OpenCLI discovery advertises the dynamic guides command', async () => {
+    const { code, stdout } = await captureStdout(['describe', 'opencli', '--offline']);
+    expect(code).toBe(0);
+    const document = JSON.parse(stdout);
+    const docs = document.commands.find((command: { name: string }) => command.name === 'docs');
+    expect(docs).toBeDefined();
+    expect(docs.commands).toContainEqual(expect.objectContaining({ name: 'guides' }));
+    expect(JSON.stringify(docs)).not.toContain('x402');
   });
 
   it('per-resource --help marks required flags', async () => {

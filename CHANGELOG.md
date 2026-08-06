@@ -5,6 +5,21 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-08-06
+
+### Added
+
+- `cambrian docs guides` now discovers the guide catalog from the live
+  `docs.cambrian.org/llms.txt` index, and `cambrian docs guides <slug>` fetches
+  any indexed guide without requiring another CLI release.
+
+### Changed
+
+- API-key guidance now links to `console.cambrian.org` and also points users to
+  the separate x402 pay-per-call flow.
+- Dynamically discovered `lending-*` Base resources are grouped under Lending
+  in command help.
+
 ## [1.1.7] - 2026-08-05
 
 ### Fixed

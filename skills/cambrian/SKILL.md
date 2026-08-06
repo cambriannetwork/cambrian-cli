@@ -20,6 +20,7 @@ It provides:
 - a typed TypeScript client
 - shared server metadata from `cambrian/metadata`
 - schema-aware `--help` plus live documentation from `docs.cambrian.org/llms.txt`
+- live guide discovery through `cambrian docs guides [name]`
 - authoritative runtime discovery for compatible OpenAPI additions, updates,
   and removals
 
@@ -30,6 +31,7 @@ It is for:
 - `cambrian solana|base|deep42|risk <resource> ...`
 - `cambrian skill ...`
 - `cambrian mcp ...`
+- `cambrian docs guides [name]`
 - `cambrian describe opencli`
 - the typed client export
 - the `cambrian/metadata` export for MCP/server consumers
@@ -43,6 +45,9 @@ The package and skill bundle can be installed freely, but live reads require ser
 - Prefer a runtime-provided `CAMBRIAN_API_KEY`.
 - The `--api-key` flag is also accepted and takes precedence over the environment variable.
 - If credentials are missing, ask the user to configure them before retrying covered reads.
+- API keys are available from `https://console.cambrian.org/`. x402 pay-per-call
+  is available without an API key through `cambrian pay --help`; its live guide
+  is `https://docs.cambrian.org/guides/x402/llms.txt`.
 
 HTTP auth header: `X-API-KEY: <your-key>`
 
@@ -103,6 +108,9 @@ Runtime endpoint rule:
 - Use `--offline` when a command must use only installed/cached metadata.
 - Treat validated runtime OpenAPI as the executable source of truth. Failed or
   invalid refreshes fall back to the last-known-good cache, then the bundle.
+- Guide discovery is separate and comes from the live `## Available Guides`
+  section. Use `cambrian docs guides` to list it and `cambrian docs guides
+  <slug>` to fetch any indexed guide; do not assume a compiled guide list.
 
 ## Agent Workflow
 
@@ -130,7 +138,7 @@ Suggested agent workflow:
 Covered reads include:
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details and security; holder distributions; OHLCV candles; current, hourly, unix, and multi prices; pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, Clones v3, PancakeSwap v3, and Uniswap v3; LP provider summaries and fee metrics; TVL rankings and top owners; DEX discovery; token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, Clones v3, PancakeSwap v3, and Uniswap v3; lending data for Aave, Euler, and Morpho; LP provider summaries and fee metrics; TVL rankings and top owners; DEX discovery; token prices and lists
 - **Social intelligence (Deep42)**: alpha tweet detection, influencer credibility scoring, sentiment shifts, token analysis, and trending momentum
 - **Perpetual risk**: Monte Carlo liquidation simulations for long/short positions with configurable risk horizons
 

@@ -139,6 +139,10 @@ describe('CLI default (non-json) error output stays plain text', () => {
     expect(stderr).toContain('API key rejected (HTTP 401)');
     expect(stderr).toContain('cambrian config set-key');
     expect(stderr).toContain('CAMBRIAN_API_KEY');
+    expect(stderr).toContain('Get an API key: https://console.cambrian.org/');
+    expect(stderr).toContain('No API key? Use x402 pay-per-call: cambrian pay --help');
+    expect(stderr).toContain('https://docs.cambrian.org/guides/x402/llms.txt');
+    expect(stderr).not.toContain('form.typeform.com');
     expect(stderr).not.toContain('non-JSON');
     expect(stderr).not.toContain('<html');
   });

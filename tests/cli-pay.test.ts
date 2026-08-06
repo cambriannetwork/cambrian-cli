@@ -90,6 +90,7 @@ describe('cambrian pay', () => {
     expect(stdout).toContain('solana | base (evm) | deep42 | risk');
     expect(stdout).toContain('--timeout <ms>');
     expect(stdout).toContain('npm install -g @x402/core @x402/fetch @x402/evm viem');
+    expect(stdout).toContain('https://docs.cambrian.org/guides/x402/llms.txt');
   });
 
   it('errors (exit 2) on an unknown group with a suggestion', async () => {

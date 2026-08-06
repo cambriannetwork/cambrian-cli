@@ -9,6 +9,7 @@ DeFi data, social intelligence, and perpetual risk analysis for agents across So
 - `cambrian deep42 <resource> [--flags]` -- social intelligence endpoints
 - `cambrian risk <resource> [--flags]` -- perp risk endpoint
 - `cambrian pay <group> <resource> [--flags]` -- pay-per-call via x402 (Base USDC, no API key)
+- `cambrian docs guides [name]` -- discover and read live guides from `llms.txt`
 - `cambrian skill ...` -- packaged skill bundle management
 - `cambrian mcp ...` -- hosted/local MCP setup helpers
 - `cambrian schema ...` -- inspect, refresh, or clear the runtime endpoint registry
@@ -40,6 +41,8 @@ If the goal is fast agent activation, the usual order is:
 Installing the package is not enough for live reads.
 
 - You need a valid `CAMBRIAN_API_KEY` or `--api-key <key>`
+- Get an API key at `https://console.cambrian.org/`, or use `cambrian pay --help`
+  for x402 pay-per-call access without an API key
 - `skill install` only installs the packaged skill bundle; it does not provision API access
 - the agent or CLI process itself must see the API key in its runtime environment
 
@@ -127,6 +130,16 @@ A package release is still required when the interpreter itself needs a new
 capability, such as request bodies, another HTTP method, a new authentication
 model, or a previously unsupported OpenAPI construct.
 
+Documentation guides are indexed independently from the API schema. The CLI
+reads the live `## Available Guides` section, so publishing another guide there
+requires no CLI release:
+
+```bash
+cambrian docs guides
+cambrian docs guides faqs
+cambrian docs guides x402
+```
+
 ## Pay-Per-Call With x402 (No API Key)
 
 As an alternative to an API key, `cambrian pay <group> <resource>` pays for a
@@ -153,12 +166,13 @@ bounds both the unpaid probe and paid gateway request (default `90000`); the
 pay path validates endpoint params before the x402 probe and blocks identical
 retries while a previous paid attempt may still be pending; the wallet key is
 read only from `CAMBRIAN_X402_PRIVATE_KEY` at runtime and is never stored or
-logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
+logged. See the [live x402 guide](https://docs.cambrian.org/guides/x402/llms.txt)
+or [docs/x402.md](docs/x402.md) for the full protocol details.
 
 ## Features
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details, holders, security audits; OHLCV candles; prices (current, hourly, unix, multi); pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3; LP provider summaries and fee metrics; TVL rankings; DEX discovery; EVM token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3; lending coverage for Aave, Euler, and Morpho; LP provider summaries and fee metrics; TVL rankings; DEX discovery; EVM token prices and lists
 - **Social intelligence**: alpha tweet detection with multi-dimensional scoring, influencer credibility rankings with track records, sentiment shift detection for identifying market-moving changes
 - **Perpetual risk**: risk engine simulations for position sizing and liquidation analysis
 - Agent-friendly CLI with clean error output, scoped subcommand help, and self-description via `cambrian describe opencli`
@@ -171,7 +185,7 @@ logged. See [docs/x402.md](docs/x402.md) for the full protocol details.
 | Service | Endpoints | Coverage |
 |---------|-----------|----------|
 | Solana (Opabinia) | 41 | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
-| EVM (Opabinia) | 27 compatible / 23 currently documented | Pools (7 DEXes), TVL, LP provider summaries, DEX discovery, prices, tokens |
+| EVM (Opabinia) | 38 compatible / 38 currently documented | Pools (7 DEXes), lending (Aave, Euler, Morpho), TVL, LP provider summaries, DEX discovery, prices, tokens |
 | Deep42 | 5 | Alpha tweet detection, influencer credibility, sentiment shifts, token analysis, trending momentum |
 | Risk | 1 | Perp risk engine |
 
@@ -328,10 +342,11 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | Command | Description |
 | --- | --- |
 | `cambrian solana <resource> [--flags]` | Solana DeFi data (41 endpoints) |
-| `cambrian base <resource> [--flags]` | Base DeFi data (23 public endpoints; 27 compatible in OpenAPI; alias: evm) |
+| `cambrian base <resource> [--flags]` | Base DeFi data (38 documented OpenAPI endpoints; alias: evm) |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |
+| `cambrian docs guides [name]` | List or read guides dynamically indexed by the live `llms.txt` |
 | `cambrian config set-key\|get-key\|clear` | Persist, print, or remove the stored API key |
 | `cambrian completion <bash\|zsh\|fish>` | Print a shell completion script |
 | `cambrian schema status\|refresh\|clear-cache` | Inspect or control runtime endpoint discovery |
