@@ -30,12 +30,18 @@ function fetchJson(body: unknown): typeof globalThis.fetch {
 }
 
 /** Serves synthetic TableResponse pages keyed off the URL's offset/limit. */
-function fetchPaged(total: number): { fetch: typeof globalThis.fetch; getCalls: () => number } {
+function fetchPaged(total: number): {
+  fetch: typeof globalThis.fetch;
+  getCalls: () => number;
+  getLimits: () => number[];
+} {
   let calls = 0;
+  const limits: number[] = [];
   const fetch = (async (url: string) => {
     calls += 1;
     const u = new URL(url);
     const limit = Number(u.searchParams.get('limit') ?? '100');
+    limits.push(limit);
     const offset = Number(u.searchParams.get('offset') ?? '0');
     const slice = Array.from({ length: total }, (_, i) => [i, `t${i}`]).slice(offset, offset + limit);
     return new Response(
@@ -50,7 +56,7 @@ function fetchPaged(total: number): { fetch: typeof globalThis.fetch; getCalls: 
       { status: 200, headers: { 'content-type': 'application/json' } },
     );
   }) as unknown as typeof globalThis.fetch;
-  return { fetch, getCalls: () => calls };
+  return { fetch, getCalls: () => calls, getLimits: () => limits };
 }
 
 function run(
@@ -139,17 +145,18 @@ describe('--fields projection', () => {
 });
 
 describe('--all auto-pagination', () => {
-  it('merges all pages and respects --max-items', async () => {
-    const { fetch, getCalls } = fetchPaged(1000);
+  it('uses the schema maximum page size and respects --max-items', async () => {
+    const { fetch, getCalls, getLimits } = fetchPaged(1000);
     const { code, stdout } = await run(
-      ['solana', 'tokens', '--all', '--max-items', '50', '--limit', '20'],
+      ['solana', 'tokens', '--all', '--max-items', '50', '--limit', '1'],
       { fetch },
     );
     expect(code).toBe(0);
     const out = JSON.parse(stdout);
     expect(out.rows).toBe(50);
     expect(out.data.at(-1)[0]).toBe(49);
-    expect(getCalls()).toBe(3); // 20 + 20 + 10
+    expect(getCalls()).toBe(1);
+    expect(getLimits()).toEqual([1000]);
   });
 
   it('--all on a non-paginated resource (risk) is a usage error (exit 2)', async () => {

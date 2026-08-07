@@ -33,10 +33,11 @@ function publicPackage(overrides: Record<string, unknown> = {}): Record<string, 
   };
 }
 
-function runCheck(pkg: Record<string, unknown>) {
+function runCheck(pkg: Record<string, unknown>, source?: string) {
   const directory = mkdtempSync(join(tmpdir(), 'cambrian-public-check-'));
   temporaryDirectories.push(directory);
   writeFileSync(join(directory, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`);
+  if (source) writeFileSync(join(directory, 'runtime.js'), source);
   return spawnSync(process.execPath, [checker, directory], { encoding: 'utf8' });
 }
 
@@ -55,5 +56,17 @@ describe('public release safety check', () => {
     }));
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('package.json must not declare runtime dependencies');
+  });
+
+  it('rejects retired OpenAPI source URLs', () => {
+    const result = runCheck(
+      publicPackage(),
+      [
+        'https://api.cambrian.org/' + 'openapi.json',
+        'opabinia.cambrian.' + 'network',
+      ].join('\n'),
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Forbidden internal marker');
   });
 });

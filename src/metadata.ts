@@ -81,7 +81,15 @@ export const EVM_CLI_DEFAULTS: Record<string, Record<string, string>> = {
 };
 
 export const DEEP42_CLI_DEFAULTS: Record<string, Record<string, string>> = {};
-export const RISK_CLI_DEFAULTS: Record<string, Record<string, string>> = {};
+export const RISK_CLI_DEFAULTS: Record<string, Record<string, string>> = {
+  'perp-risk-engine': {
+    token_address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    entry_price: '2800',
+    leverage: '10',
+    direction: 'long',
+    risk_horizon: '1d',
+  },
+};
 
 export const CAMBRIAN_HOSTED_MCP_URL =
   'https://mcp.cambrian.org/mcp';

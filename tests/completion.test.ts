@@ -54,6 +54,7 @@ describe('complete', () => {
     expect(flags).toContain('--yes');
     expect(flags).toContain('--max-amount');
     expect(flags).toContain('--timeout');
+    expect(flags).toContain('--offline');
     expect(flags).toContain('--limit'); // a resource param
   });
 
@@ -62,6 +63,10 @@ describe('complete', () => {
       expect.arrayContaining(['solana', 'base', 'deep42', 'risk', 'guides']),
     );
     expect(complete(['docs', 'guides', ''])).toEqual([]);
+  });
+
+  it('completes the safe config status command', () => {
+    expect(complete(['config', 'st'])).toEqual(['status']);
   });
 });
 
@@ -72,6 +77,11 @@ describe('completionScript', () => {
       expect(script).toContain('cambrian __complete');
       expect(script.length).toBeGreaterThan(0);
     }
+  });
+
+  it('warns that shell-file append installation is one-time', () => {
+    expect(completionScript('bash')).toContain('Run once');
+    expect(completionScript('zsh')).toContain('Run once');
   });
 });
 

@@ -230,13 +230,14 @@ describe('shared Cambrian metadata registry', () => {
     expect(CAMBRIAN_MCP_TOOLS.some((t) => t.resource.startsWith('discovery/'))).toBe(false);
   });
 
-  it('bundles only Base endpoints visible under the current llms.txt policy', () => {
+  it('bundles all Base endpoints visible under the current llms.txt policy', () => {
     const base = CAMBRIAN_METADATA_GROUPS.base.resources;
-    expect(base).toHaveLength(23);
+    expect(base).toHaveLength(38);
     expect(base).not.toContain('aero-v2-provider-positions');
     expect(base).not.toContain('aero-v2-providers');
-    expect(base).not.toContain('chains');
-    expect(base).not.toContain('lending-protocols');
+    expect(base).toContain('chains');
+    expect(base).toContain('lending-protocols');
+    expect(base.filter((resource) => resource.startsWith('lending-'))).toHaveLength(15);
   });
 
   it('bundles the current token-analysis OpenAPI contract', () => {

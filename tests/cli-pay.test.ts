@@ -89,6 +89,8 @@ describe('cambrian pay', () => {
     expect(stdout).toContain('Pay-per-call via x402');
     expect(stdout).toContain('solana | base (evm) | deep42 | risk');
     expect(stdout).toContain('--timeout <ms>');
+    expect(stdout).toContain('--json');
+    expect(stdout).toContain('--offline');
     expect(stdout).toContain('npm install -g @x402/core @x402/fetch @x402/evm viem');
     expect(stdout).toContain('https://docs.cambrian.org/guides/x402/llms.txt');
   });
@@ -174,7 +176,7 @@ describe('cambrian pay', () => {
 
   it('routes base/evm and risk to the right paths in the preview', async () => {
     const fetch = gw402();
-    await run(['pay', 'base', 'price-current', '--token-address', '0xabc'], {
+    await run(['pay', 'base', 'price-current', '--token-address', `0x${'a'.repeat(40)}`], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/api/v1/evm/price-current');

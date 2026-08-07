@@ -58,7 +58,6 @@ const BARE_BOOLEAN_OPTIONS = new Set([
   'all',
   'yes',
   'dry-run',
-  'discover',
   'offline',
   // Current schema boolean params. Keeping them here prevents boolean API flags
   // from accidentally consuming the next token as a value.
@@ -153,6 +152,19 @@ export function optionalOptionValue(parsed: ParsedArgs, name: string): string | 
   return requireOptionValue(parsed, name);
 }
 
+export function validateHttpUrl(value: string, optionName: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new CliUsageError(`--${optionName} must be a valid HTTP(S) URL.`);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new CliUsageError(`--${optionName} must be a valid HTTP(S) URL.`);
+  }
+  return url.toString();
+}
+
 export function assertNoUnknownOptions(parsed: ParsedArgs, allowed: string[], context: string): void {
   const allowedOptions = new Set(allowed);
   const unknown = [...parsed.options.keys()].filter((name) => !allowedOptions.has(name));
@@ -161,6 +173,16 @@ export function assertNoUnknownOptions(parsed: ParsedArgs, allowed: string[], co
   const rendered = unknown.map((name) => `--${name}`).join(', ');
   const noun = unknown.length === 1 ? 'option' : 'options';
   throw new CliUsageError(`Unknown ${noun} for ${context}: ${rendered}`);
+}
+
+export function assertNoExtraPositionals(
+  parsed: ParsedArgs,
+  maximum: number,
+  context: string,
+): void {
+  if (parsed.positionals.length > maximum) {
+    throw new CliUsageError(`Too many arguments for ${context}.`);
+  }
 }
 
 export function parsePositiveInt(value: string, optionName: string): number {
@@ -253,7 +275,7 @@ function formatRateLimitError(error: ApiError): string {
 function formatAuthRequiredError(): string {
   return (
     'API key rejected (HTTP 401). The key sent with this request is invalid or expired.\n\n' +
-    '  cambrian config get-key                  (inspect the stored key)\n' +
+    '  cambrian config status                   (check configuration safely)\n' +
     '  cambrian config set-key <your-key>       (replace it, all shells)\n' +
     '  export CAMBRIAN_API_KEY=<your-key>       (current shell)\n\n' +
     'Get an API key: https://console.cambrian.org/\n' +

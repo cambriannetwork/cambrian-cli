@@ -2,10 +2,13 @@ import { spawnSync } from 'child_process';
 import type { ParsedArgs, Runtime } from './core.js';
 import {
   assertNoUnknownOptions,
+  assertNoExtraPositionals,
   firstConfiguredApiKey,
   getOption,
   hasOption,
+  readPackageVersion,
   requireOptionValue,
+  validateHttpUrl,
   printJson,
   CliUsageError,
 } from './core.js';
@@ -52,8 +55,8 @@ function resolveMode(parsed: ParsedArgs): McpMode {
 }
 
 function resolveHostedUrl(parsed: ParsedArgs): string {
-  if (!hasOption(parsed, 'url')) return CAMBRIAN_HOSTED_MCP_URL;
-  return requireOptionValue(parsed, 'url');
+  const value = hasOption(parsed, 'url') ? requireOptionValue(parsed, 'url') : CAMBRIAN_HOSTED_MCP_URL;
+  return validateHttpUrl(value, 'url');
 }
 
 function configApiKeyPlaceholder(): string {
@@ -165,22 +168,80 @@ async function testHosted(parsed: ParsedArgs, runtime: Runtime): Promise<number>
   return 0;
 }
 
+export function parseLocalMcpSmokeOutput(rawText: string): {
+  version: string;
+  protocolVersion: string;
+  toolCount: number;
+  checkedTool: string;
+} {
+  const responses = rawText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as {
+      id?: number;
+      error?: { message?: string };
+      result?: {
+        protocolVersion?: string;
+        serverInfo?: { version?: string };
+        tools?: { name?: string }[];
+      };
+    });
+  const initialize = responses.find((response) => response.id === 1);
+  const toolList = responses.find((response) => response.id === 2);
+  if (initialize?.error || !initialize?.result?.serverInfo?.version || !initialize.result.protocolVersion) {
+    throw new Error(`Local MCP initialize failed${initialize?.error?.message ? `: ${initialize.error.message}` : '.'}`);
+  }
+  if (toolList?.error || !Array.isArray(toolList?.result?.tools)) {
+    throw new Error(`Local MCP tools/list failed${toolList?.error?.message ? `: ${toolList.error.message}` : '.'}`);
+  }
+  const expectedTool = 'cambrian_base_dexes';
+  if (!toolList.result.tools.some((tool) => tool.name === expectedTool)) {
+    throw new Error(`Local MCP test did not find expected tool ${expectedTool}.`);
+  }
+  return {
+    version: initialize.result.serverInfo.version,
+    protocolVersion: initialize.result.protocolVersion,
+    toolCount: toolList.result.tools.length,
+    checkedTool: expectedTool,
+  };
+}
+
 function testLocal(parsed: ParsedArgs, runtime: Runtime): number {
   const apiKey = resolveInstallApiKey(parsed, runtime);
-  const result = spawnSync('npx', ['-y', CAMBRIAN_MCP_PACKAGE, '--version'], {
+  const protocolVersion = '2025-06-18';
+  const input = [
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion,
+        capabilities: {},
+        clientInfo: { name: 'cambrian-cli', version: readPackageVersion() },
+      },
+    },
+    { jsonrpc: '2.0', method: 'notifications/initialized', params: {} },
+    { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
+  ].map((message) => JSON.stringify(message)).join('\n') + '\n';
+  const result = spawnSync('npx', ['-y', CAMBRIAN_MCP_PACKAGE], {
     encoding: 'utf8',
-    env: { ...process.env, CAMBRIAN_API_KEY: apiKey },
+    env: { ...runtime.env, CAMBRIAN_API_KEY: apiKey },
+    input,
+    timeout: 60_000,
+    maxBuffer: 5 * 1024 * 1024,
   });
-  if (result.status !== 0) {
+  if (result.error || result.status !== 0) {
     throw new Error(
-      `Local MCP test failed. Ensure ${CAMBRIAN_MCP_PACKAGE} is published or installed. ${result.stderr.trim()}`,
+      `Local MCP test failed. Ensure ${CAMBRIAN_MCP_PACKAGE} is published or installed. ${result.error?.message ?? result.stderr.trim()}`,
     );
   }
+  const smoke = parseLocalMcpSmokeOutput(result.stdout);
   printJson(runtime, {
     ok: true,
     mode: 'local',
     package: CAMBRIAN_MCP_PACKAGE,
-    version: result.stdout.trim(),
+    ...smoke,
   });
   return 0;
 }
@@ -207,7 +268,7 @@ function installClaude(parsed: ParsedArgs, runtime: Runtime, mode: McpMode): num
 
   const result = spawnSync(command[0], command.slice(1), {
     encoding: 'utf8',
-    env: process.env,
+    env: runtime.env,
   });
   if (result.status !== 0) {
     throw new Error(`claude mcp add-json failed: ${result.stderr.trim() || result.stdout.trim()}`);
@@ -225,7 +286,7 @@ export function mcpHelp(): string {
   return [
     'Usage:',
     '  cambrian mcp config [--client <claude|cursor|codex>] [--mode <hosted|local>] [--url <url>]',
-    '  cambrian mcp install --client claude [--mode <hosted|local>] [--api-key <key>] [--dry-run]',
+    '  cambrian mcp install --client claude [--mode <hosted|local>] [--api-key <key>] [--url <url>] [--dry-run]',
     '  cambrian mcp test [--mode <hosted|local>] [--api-key <key>] [--url <url>]',
     '',
     'Defaults:',
@@ -233,6 +294,7 @@ export function mcpHelp(): string {
     `  --mode hosted`,
     `  hosted URL: ${CAMBRIAN_HOSTED_MCP_URL}`,
     `  local package: npx -y ${CAMBRIAN_MCP_PACKAGE}`,
+    '  --url accepts HTTP(S) hosted endpoints only and is rejected in local mode.',
     '',
     'Authentication:',
     '  Hosted and local MCP usage both require your own Cambrian API key.',
@@ -242,19 +304,25 @@ export function mcpHelp(): string {
 
 export async function handleMcp(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const subcommand = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, 2, subcommand ? `mcp ${subcommand}` : 'mcp');
   if (!subcommand || hasOption(parsed, 'help')) {
+    assertNoUnknownOptions(parsed, ['help'], 'mcp');
     runtime.stdout(mcpHelp());
     return 0;
   }
 
-  assertNoUnknownOptions(
-    parsed,
-    ['help', 'client', 'mode', 'url', 'api-key', 'dry-run'],
-    `mcp ${subcommand}`,
-  );
+  const allowedOptions: Record<string, string[]> = {
+    config: ['help', 'client', 'mode', 'url'],
+    install: ['help', 'client', 'mode', 'url', 'api-key', 'dry-run'],
+    test: ['help', 'mode', 'url', 'api-key'],
+  };
+  assertNoUnknownOptions(parsed, allowedOptions[subcommand] ?? ['help'], `mcp ${subcommand}`);
 
   const client = resolveClient(parsed);
   const mode = resolveMode(parsed);
+  if (mode === 'local' && hasOption(parsed, 'url')) {
+    throw new CliUsageError('--url is only valid with --mode hosted.');
+  }
 
   switch (subcommand) {
     case 'config':

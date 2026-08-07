@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { runCli } from '../src/cli/index.js';
+import { parseLocalMcpSmokeOutput } from '../src/cli/mcp.js';
 
 function captureStdout(argv: string[]): Promise<{ code: number; stdout: string }> {
   let stdout = '';
@@ -20,6 +21,22 @@ describe('CLI help output', () => {
     const { stdout } = await captureStdout(['--help']);
     expect(stdout).toContain('cambrian base');
     expect(stdout).toContain('Aliases');
+    expect(stdout).toContain('Advanced:');
+    expect(stdout).toContain('cambrian schema');
+  });
+
+  it('documents safe config inspection and advanced schema controls precisely', async () => {
+    const config = await captureStdout(['config', '--help']);
+    expect(config.stdout).toContain('cambrian config status');
+    expect(config.stdout).toContain('shell history');
+    expect(config.stdout).toContain('compatibility command');
+
+    const schema = await captureStdout(['schema', '--help']);
+    expect(schema.stdout).toContain('never bypasses the floor');
+    expect(schema.stdout).toContain('leaves the request cooldown intact');
+
+    const completion = await captureStdout(['completion', '--help']);
+    expect(completion.stdout).toContain('Run each append command only once');
   });
 
   it('cambrian --help points to console signup and the x402 alternative', async () => {
@@ -69,6 +86,36 @@ describe('CLI help output', () => {
     expect(docs).toBeDefined();
     expect(docs.commands).toContainEqual(expect.objectContaining({ name: 'guides' }));
     expect(JSON.stringify(docs)).not.toContain('x402');
+    expect(document.commands.map((command: { name: string }) => command.name)).toEqual(
+      expect.arrayContaining(['pay', 'config', 'completion']),
+    );
+
+    const solana = document.commands.find((command: { name: string }) => command.name === 'solana');
+    expect(solana.options.map((option: { name: string }) => option.name)).toEqual(
+      expect.arrayContaining([
+        'api-key', 'json', 'output', 'fields', 'all', 'max-items',
+        'timeout', 'retries', 'offline',
+      ]),
+    );
+
+    const mcp = document.commands.find((command: { name: string }) => command.name === 'mcp');
+    const mcpTest = mcp.commands.find((command: { name: string }) => command.name === 'test');
+    expect(mcpTest.options.map((option: { name: string }) => option.name)).toEqual([
+      'mode', 'url', 'api-key',
+    ]);
+
+    const config = document.commands.find((command: { name: string }) => command.name === 'config');
+    expect(config.commands).toContainEqual(expect.objectContaining({ name: 'status' }));
+    const schema = document.commands.find((command: { name: string }) => command.name === 'schema');
+    expect(schema.commands.find((command: { name: string }) => command.name === 'clear-cache').description)
+      .toContain('cooldown');
+    expect(schema.commands.find((command: { name: string }) => command.name === 'status').options)
+      .toContainEqual(expect.objectContaining({ name: 'offline' }));
+    const pay = document.commands.find((command: { name: string }) => command.name === 'pay');
+    expect(pay.options.map((option: { name: string }) => option.name)).toContain('offline');
+    const describe = document.commands.find((command: { name: string }) => command.name === 'describe');
+    expect(describe.commands.find((command: { name: string }) => command.name === 'opencli').options)
+      .toContainEqual(expect.objectContaining({ name: 'offline' }));
   });
 
   it('per-resource --help marks required flags', async () => {
@@ -85,6 +132,7 @@ describe('CLI help output', () => {
     expect(stdout).toContain('$ cambrian solana trending-tokens');
     expect(stdout).toContain('--retries');
     expect(stdout).toContain('Global options:');
+    expect(stdout).toContain('--json            Emit structured JSON errors on stderr.');
     expect(stdout).toContain('cambrian docs solana trending-tokens');
   });
 
@@ -118,6 +166,22 @@ describe('CLI help output', () => {
     const config = JSON.parse(stdout);
     expect(config.mcpServers.cambrian.command).toBe('npx');
     expect(config.mcpServers.cambrian.args).toEqual(['-y', 'cambrian-api-mcp']);
+  });
+
+  it('rejects invalid hosted URLs and URLs that local mode would ignore', async () => {
+    for (const argv of [
+      ['mcp', 'config', '--url', 'file:///tmp/server'],
+      ['mcp', 'config', '--mode', 'local', '--url', 'https://ignored.example'],
+    ]) {
+      let stderr = '';
+      const code = await runCli(argv, {
+        stdout: () => {},
+        stderr: (msg: string) => { stderr += msg + '\n'; },
+        env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
+      });
+      expect(code).toBe(2);
+      expect(stderr).toContain('--url');
+    }
   });
 
   it('cambrian mcp install supports dry-run without requiring secrets', async () => {
@@ -164,6 +228,23 @@ describe('CLI help output', () => {
     expect(JSON.parse(stdout)).toMatchObject({
       checkedTool: 'cambrian_base_dexes',
       url: 'https://mcp.cambrian.org/mcp',
+    });
+  });
+
+  it('validates local MCP initialize and tools/list responses', () => {
+    expect(parseLocalMcpSmokeOutput([
+      JSON.stringify({ jsonrpc: '2.0', id: 1, result: {
+        protocolVersion: '2025-06-18',
+        serverInfo: { name: 'cambrian-api-mcp', version: '1.3.4' },
+      } }),
+      JSON.stringify({ jsonrpc: '2.0', id: 2, result: {
+        tools: [{ name: 'cambrian_base_dexes' }, { name: 'cambrian_solana_latest_block' }],
+      } }),
+    ].join('\n'))).toEqual({
+      version: '1.3.4',
+      protocolVersion: '2025-06-18',
+      toolCount: 2,
+      checkedTool: 'cambrian_base_dexes',
     });
   });
 });

@@ -694,19 +694,21 @@ describe('runtime registry cache and fallback', () => {
       .toBe(true);
   });
 
-  it('shares one OpenAPI refresh between Solana and Base callers', async () => {
+  it('uses each split primary without consulting the legacy fallback', async () => {
     const cacheRoot = temporaryCacheRoot();
-    let openapiAttempts = 0;
-    const document = openApi({
-      '/api/v1/solana/new-signal': { get: { parameters: [] } },
-      '/api/v1/evm/new-signal': { get: { parameters: [] } },
-    });
+    const attempts = new Map<string, number>();
     const runtime = testRuntime((async (input) => {
       const url = String(input);
-      if (url === 'https://api.cambrian.org/openapi.json') {
-        openapiAttempts += 1;
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return new Response(JSON.stringify(document), { status: 200 });
+      attempts.set(url, (attempts.get(url) ?? 0) + 1);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/solana/primary-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/evm/primary-only': { get: { parameters: [] } },
+        })), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
         return new Response('', { status: 200 });
@@ -719,68 +721,265 @@ describe('runtime registry cache and fallback', () => {
       loadRuntimeMetadataGroup('base', runtime, { now: 1_000 }),
     ]);
 
-    expect(openapiAttempts).toBe(1);
-    expect(solana.metadata.resources).toContain('new-signal');
-    expect(base.metadata.resources).toContain('new-signal');
+    expect(solana.metadata.resources).toContain('primary-only');
+    expect(base.metadata.resources).toContain('primary-only');
+    expect(solana.status.openapi.url).toBe('https://api.cambrian.org/solana/openapi.json');
+    expect(base.status.openapi.url).toBe('https://api.cambrian.org/evm/openapi.json');
+    expect(attempts.get('https://opabinia.cambrian.org/openapi.json')).toBeUndefined();
   });
 
-  it('keeps a compatible shared-source group when the requested group is absent', async () => {
+  it('falls back to one shared legacy fetch for concurrent Solana and Base failures', async () => {
     const cacheRoot = temporaryCacheRoot();
-    let openapiAttempts = 0;
-    const document = openApi({
-      '/evm/new-signal': { get: { parameters: [] } },
+    const attempts = new Map<string, number>();
+    const fallbackDocument = openApi({
+      '/api/v1/solana/fallback-only': { get: { parameters: [] } },
+      '/api/v1/evm/fallback-only': { get: { parameters: [] } },
     });
     const runtime = testRuntime((async (input) => {
-      if (String(input) === 'https://api.cambrian.org/openapi.json') {
-        openapiAttempts += 1;
-        return new Response(JSON.stringify(document), { status: 200 });
+      const url = String(input);
+      attempts.set(url, (attempts.get(url) ?? 0) + 1);
+      if (url === 'https://api.cambrian.org/solana/openapi.json' ||
+        url === 'https://api.cambrian.org/evm/openapi.json') {
+        return new Response('unavailable', { status: 503 });
       }
-      return new Response('', { status: 200 });
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return new Response(JSON.stringify(fallbackDocument), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
     }) as typeof globalThis.fetch, cacheRoot);
 
-    const solana = await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
-    const base = await loadRuntimeMetadataGroup('base', runtime, { now: 2_000 });
+    const [solana, base] = await Promise.all([
+      loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 }),
+      loadRuntimeMetadataGroup('base', runtime, { now: 1_000 }),
+    ]);
 
-    expect(openapiAttempts).toBe(1);
-    expect(solana.status.source).toBe('bundle');
-    expect(solana.status.lastError).toContain('No compatible solana operations');
-    expect(base.status.source).toBe('cache');
-    expect(base.metadata.resources).toContain('new-signal');
+    expect(attempts.get('https://api.cambrian.org/solana/openapi.json')).toBe(1);
+    expect(attempts.get('https://api.cambrian.org/evm/openapi.json')).toBe(1);
+    expect(attempts.get('https://opabinia.cambrian.org/openapi.json')).toBe(1);
+    expect(solana.metadata.resources).toContain('fallback-only');
+    expect(base.metadata.resources).toContain('fallback-only');
+    expect(solana.status.openapi.url).toBe('https://opabinia.cambrian.org/openapi.json');
+    expect(base.status.openapi.url).toBe('https://opabinia.cambrian.org/openapi.json');
+    expect(solana.status.warning).toContain('using fallback');
+    expect(base.status.warning).toContain('using fallback');
+    expect(solana.status.lastError).toBeUndefined();
+    expect(base.status.lastError).toBeUndefined();
   });
 
-  it('does not revalidate OpenAPI from a sibling cache when the requested cache is missing', async () => {
+  it('uses the legacy fallback when a split primary is malformed', async () => {
     const cacheRoot = temporaryCacheRoot();
-    const document = openApi({
-      '/api/v1/solana/new-signal': { get: { parameters: [] } },
-      '/api/v1/evm/new-signal': { get: { parameters: [] } },
-    });
-    const firstFetch = (async (input) => {
-      if (String(input) === 'https://api.cambrian.org/openapi.json') {
-        return new Response(JSON.stringify(document), { status: 200, headers: { etag: '"source-v1"' } });
+    const runtime = testRuntime((async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response(JSON.stringify({ openapi: '3.1.0' }), { status: 200 });
       }
-      return new Response('', { status: 200, headers: { etag: '"docs-v1"' } });
-    }) as typeof globalThis.fetch;
-    const runtime = testRuntime(firstFetch, cacheRoot);
-    await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
-    expect(clearRegistryCache(runtime, 'base')).toBe(1);
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/api/v1/solana/fallback-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch, cacheRoot);
 
-    let openapiValidator: string | null = null;
-    const secondFetch = (async (input, init) => {
-      if (String(input) === 'https://api.cambrian.org/openapi.json') {
-        openapiValidator = new Headers(init?.headers).get('If-None-Match');
-        return new Response(JSON.stringify(document), { status: 200, headers: { etag: '"source-v2"' } });
+    const result = await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
+
+    expect(result.status.openapi.url).toBe('https://opabinia.cambrian.org/openapi.json');
+    expect(result.status.warning).toContain('did not return an OpenAPI 3 document');
+    expect(result.metadata.resources).toContain('fallback-only');
+  });
+
+  it('revalidates the shared fallback cache with its own ETag on 304', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let fallbackRequests = 0;
+    const conditionalHeaders: string[] = [];
+    const runtime = testRuntime((async (input, init) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response('unavailable', { status: 503 });
       }
-      return new Response(null, { status: 304 });
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        fallbackRequests += 1;
+        conditionalHeaders.push(new Headers(init?.headers).get('If-None-Match') ?? '');
+        if (fallbackRequests === 2) return new Response(null, { status: 304 });
+        return new Response(JSON.stringify(openApi({
+          '/api/v1/solana/fallback-only': { get: { parameters: [] } },
+        })), { status: 200, headers: { etag: '"fallback-v1"' } });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') {
+        return new Response('', { status: 200, headers: { etag: '"docs-v1"' } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
+    const revalidated = await loadRuntimeMetadataGroup('solana', runtime, { now: 901_001 });
+
+    expect(fallbackRequests).toBe(2);
+    expect(conditionalHeaders).toEqual(['', '"fallback-v1"']);
+    expect(revalidated.status.source).toBe('live');
+    expect(revalidated.status.openapi.url).toBe('https://opabinia.cambrian.org/openapi.json');
+    expect(revalidated.metadata.resources).toContain('fallback-only');
+  });
+
+  it('keeps a stale fallback cache when both physical sources disappear', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const firstFetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response('unavailable', { status: 503 });
+      }
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/api/v1/solana/fallback-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
     }) as typeof globalThis.fetch;
-    const refreshed = await loadRuntimeMetadataGroup(
-      'base',
-      testRuntime(secondFetch, cacheRoot),
+    await loadRuntimeMetadataGroup('solana', testRuntime(firstFetch, cacheRoot), { now: 1_000 });
+
+    const unavailable = (async () => {
+      throw new Error('source removed');
+    }) as typeof globalThis.fetch;
+    const recovered = await loadRuntimeMetadataGroup(
+      'solana',
+      testRuntime(unavailable, cacheRoot),
       { now: 901_001 },
     );
 
-    expect(openapiValidator).toBeNull();
-    expect(refreshed.status.source).toBe('live');
-    expect(refreshed.metadata.resources).toContain('new-signal');
+    expect(recovered.status.source).toBe('cache');
+    expect(recovered.status.lastError).toContain('fallback failed');
+    expect(recovered.metadata.resources).toContain('fallback-only');
+  });
+
+  it('recovers the newest last-known-good cache when every source fails', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const fallbackFetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response('unavailable', { status: 503 });
+      }
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/api/v1/solana/fallback-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+    await loadRuntimeMetadataGroup('solana', testRuntime(fallbackFetch, cacheRoot), { now: 1_000 });
+
+    const primaryFetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/solana/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/solana/primary-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+    await loadRuntimeMetadataGroup(
+      'solana',
+      testRuntime(primaryFetch, cacheRoot),
+      { now: 901_001 },
+    );
+
+    const removed = (async () => {
+      throw new Error('source removed');
+    }) as typeof globalThis.fetch;
+    const recovered = await loadRuntimeMetadataGroup(
+      'solana',
+      testRuntime(removed, cacheRoot),
+      { now: 1_801_002 },
+    );
+
+    expect(recovered.status.source).toBe('cache');
+    expect(recovered.status.openapi.url).toBe('https://api.cambrian.org/solana/openapi.json');
+    expect(recovered.metadata.resources).toContain('primary-only');
+    expect(recovered.metadata.resources).not.toContain('fallback-only');
+  });
+
+  it('does not merge legacy-only operations into a valid primary', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let fallbackAttempts = 0;
+    const fetch = (async (input) => {
+      const url = String(input);
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
+        return new Response(JSON.stringify(openApi({
+          '/evm/primary-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://opabinia.cambrian.org/openapi.json') {
+        fallbackAttempts += 1;
+        return new Response(JSON.stringify(openApi({
+          '/api/v1/evm/legacy-only': { get: { parameters: [] } },
+        })), { status: 200 });
+      }
+      if (url === 'https://docs.cambrian.org/llms.txt') return new Response('', { status: 200 });
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof globalThis.fetch;
+
+    const result = await loadRuntimeMetadataGroup('base', testRuntime(fetch, cacheRoot), {
+      now: 1_000,
+    });
+
+    expect(result.metadata.resources).toContain('primary-only');
+    expect(result.metadata.resources).not.toContain('legacy-only');
+    expect(fallbackAttempts).toBe(0);
+  });
+
+  it('bounds failed primary and fallback attempts independently for 15 minutes', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const attempts = new Map<string, number>();
+    const runtime = testRuntime((async (input) => {
+      const url = String(input);
+      attempts.set(url, (attempts.get(url) ?? 0) + 1);
+      throw new Error(`${url} unavailable`);
+    }) as typeof globalThis.fetch, cacheRoot);
+
+    const first = await loadRuntimeMetadataGroup('solana', runtime, { now: 1_000 });
+    const second = await loadRuntimeMetadataGroup('solana', runtime, {
+      refresh: true,
+      now: 2_000,
+    });
+
+    expect(first.status.source).toBe('bundle');
+    expect(second.status.source).toBe('bundle');
+    expect(second.metadata.resources).toContain('latest-block');
+    expect(attempts.get('https://api.cambrian.org/solana/openapi.json')).toBe(1);
+    expect(attempts.get('https://opabinia.cambrian.org/openapi.json')).toBe(1);
+  });
+
+  it('honors per-URL cooldown records persisted by another process', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    let fetches = 0;
+    const runtime = testRuntime((async () => {
+      fetches += 1;
+      throw new Error('must not fetch during persisted cooldown');
+    }) as typeof globalThis.fetch, cacheRoot);
+    const cacheDirectory = dirname(registryCachePath(runtime, 'solana'));
+    mkdirSync(cacheDirectory, { recursive: true });
+    for (const [name, url] of [
+      ['solana-primary', 'https://api.cambrian.org/solana/openapi.json'],
+      ['opabinia-fallback', 'https://opabinia.cambrian.org/openapi.json'],
+    ]) {
+      writeFileSync(join(cacheDirectory, `${name}.attempt.json`), JSON.stringify({
+        version: REGISTRY_CACHE_VERSION,
+        url,
+        lastAttemptAt: 1_000,
+        lastError: `${url} unavailable`,
+      }));
+    }
+
+    const result = await loadRuntimeMetadataGroup('solana', runtime, { now: 2_000 });
+
+    expect(fetches).toBe(0);
+    expect(result.status.source).toBe('bundle');
+    expect(result.status.lastError).toContain('fallback failed');
   });
 
   it('retains the last-known-good registry when OpenAPI loses the whole group', async () => {
@@ -880,7 +1079,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://api.cambrian.org/openapi.json') {
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -918,7 +1117,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://api.cambrian.org/openapi.json') {
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -952,7 +1151,7 @@ describe('runtime registry cache and fallback', () => {
     });
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://api.cambrian.org/openapi.json') {
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
         return new Response(JSON.stringify(document), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {
@@ -1160,5 +1359,28 @@ describe('runtime registry cache and fallback', () => {
     });
     expect(bundled.status.source).toBe('bundle');
     expect(bundled.metadata.resources).not.toContain('social-data/new-signal');
+  });
+
+  it('keeps the source request cooldown after clearing endpoint metadata', async () => {
+    const cacheRoot = temporaryCacheRoot();
+    const schema = schemaFetch(deep42Document());
+    let requests = 0;
+    const trackedFetch = (async (input, init) => {
+      requests += 1;
+      return schema(input, init);
+    }) as typeof globalThis.fetch;
+    const runtime = testRuntime(trackedFetch, cacheRoot);
+
+    await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 1_000 });
+    expect(requests).toBe(2);
+    expect(clearRegistryCache(runtime, 'deep42')).toBe(1);
+
+    const result = await loadRuntimeMetadataGroup('deep42', runtime, {
+      refresh: true,
+      now: 2_000,
+    });
+
+    expect(requests).toBe(2);
+    expect(result.status.source).toBe('bundle');
   });
 });

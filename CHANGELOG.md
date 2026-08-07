@@ -5,6 +5,44 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-07
+
+### Added
+
+- OpenCLI self-description now covers every top-level command, nested resource,
+  and supported option, including x402, configuration, completions, and MCP.
+- `cambrian mcp test --mode local` now performs a real MCP initialize and
+  `tools/list` exchange and verifies a representative public tool.
+- Added `cambrian config status` for checking API-key configuration without
+  printing either environment or stored secrets.
+
+### Changed
+
+- EVM and Solana endpoint discovery now prefer their chain-specific OpenAPI
+  documents. Either can use the legacy combined Opabinia document when its
+  primary is unavailable, then a last-known-good cache or bundled snapshot.
+- OpenAPI attempts, validators, caches, and concurrent refreshes are isolated by
+  physical source URL while preserving the 15-minute request floor across
+  failures, explicit refreshes, processes, and both shared fallback groups.
+- `--all` uses each endpoint's maximum supported page size to minimize requests,
+  and help text clarifies that `--offline` only disables metadata refreshes.
+- x402 help discovers and previews gateway pricing at request time instead of
+  advertising a hardcoded price.
+- Schema controls are documented as advanced commands with explicit cooldown
+  behavior, and completion installation warns that shell-file appends are one-time.
+- `config get-key` remains compatible but warns before printing the full secret;
+  help recommends safe status checks and warns that `set-key` can enter shell history.
+
+### Fixed
+
+- Commands now reject ignored positional arguments and subcommand-inapplicable
+  options instead of appearing to accept them.
+- Custom API and hosted MCP URLs must be valid HTTP(S) URLs, and MCP rejects a
+  hosted-only `--url` when local mode would otherwise ignore it.
+- Retained compatible deprecated client request types for launch stability,
+  removed the unused `--discover` flag and duplicate contracts, and ensured MCP
+  subprocesses receive the caller-injected runtime environment.
+
 ## [1.1.8] - 2026-08-06
 
 ### Added
