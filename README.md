@@ -56,18 +56,22 @@ Base URLs:
 To avoid exporting `CAMBRIAN_API_KEY` in every shell, persist it once:
 
 ```bash
+cambrian config status                   # check setup without exposing the key
 cambrian config set-key <your-api-key>   # writes ~/.config/cambrian/config.json (mode 0600)
-cambrian config get-key                  # print the stored key
+cambrian config get-key                  # compatibility command: prints the full key
 cambrian config clear                    # remove it
 ```
 
 Key precedence (highest first): `--api-key` → `CAMBRIAN_API_KEY` → stored config
-file. Storage honors `XDG_CONFIG_HOME` (and `%APPDATA%` on Windows).
+file. Storage honors `XDG_CONFIG_HOME` (and `%APPDATA%` on Windows). Prefer
+`config status` for inspection. A key supplied to `set-key` may remain in shell
+history, so use `CAMBRIAN_API_KEY` when persistence is not required.
 
 Shell completion delegates to the CLI's own metadata, so it stays in sync with
 the endpoint list:
 
 ```bash
+# Run each append command only once; rerunning it duplicates shell configuration.
 cambrian completion bash >> ~/.bashrc
 cambrian completion zsh  >> ~/.zshrc
 cambrian completion fish > ~/.config/fish/completions/cambrian.fish
@@ -75,15 +79,18 @@ cambrian completion fish > ~/.config/fish/completions/cambrian.fish
 
 ## Runtime Endpoint Discovery
 
-The installed 70-endpoint public snapshot is the offline safety fallback. After a
+The installed 84-endpoint public snapshot is the offline safety fallback. After a
 successful refresh, validated production OpenAPI is authoritative for the
 active command group, so compatible endpoint additions, updates, and removals
 appear without reinstalling `cambrian` or publishing another npm version.
 
-- A group command loads its pinned production OpenAPI document and caches the
-  normalized result for 15 minutes. Successful, failed, explicit, unknown-resource,
-  and concurrent attempts all share the same per-source request floor. Solana and
-  Base share their one gateway document and one refresh.
+- EVM and Solana each load their chain-specific production OpenAPI document.
+  Either group uses the legacy combined document only when its primary is
+  unavailable; primary and fallback schemas are never merged.
+- Validated results are cached for 15 minutes. Successful, failed, explicit,
+  unknown-resource, and concurrent attempts all share the same per-physical-URL
+  request floor. EVM and Solana share a fallback attempt only when both need the
+  same legacy document.
 - ETag and `Last-Modified` revalidation avoid unnecessary downloads after the
   15-minute floor expires. Unknown resources use the current cache until then.
 - Shell completion is cache-only and never waits on network access. A normal
@@ -122,8 +129,10 @@ cambrian solana latest-block --offline
 CAMBRIAN_SCHEMA_MODE=bundled cambrian solana latest-block
 ```
 
-`schema refresh` checks immediately but reuses a source attempted within the
-last 15 minutes. This keeps refresh scripts, typos, failures, and concurrent CLI
+`schema refresh` requests a refresh only after the source's 15-minute cooldown
+has elapsed; it never bypasses that floor. `schema clear-cache` removes
+last-known-good endpoint metadata but intentionally leaves the request cooldown
+intact. These rules keep refresh scripts, typos, failures, and concurrent CLI
 processes from turning into OpenAPI request bursts.
 
 A package release is still required when the interpreter itself needs a new
@@ -143,9 +152,10 @@ cambrian docs guides x402
 ## Pay-Per-Call With x402 (No API Key)
 
 As an alternative to an API key, `cambrian pay <group> <resource>` pays for a
-single call with USDC on Base via the [x402](https://x402.org) protocol — $0.05
-per request, settled by a facilitator (you pay no gas). Works for every data
-group (`solana`, `base`/`evm`, `deep42`, `risk`).
+single call with USDC on Base via the [x402](https://x402.org) protocol. The
+gateway supplies the current price and the CLI previews it before payment;
+settlement is facilitator-backed, so you pay no gas. Works for every data group
+(`solana`, `base`/`evm`, `deep42`, `risk`).
 
 This path is opt-in and keeps the core install dependency-free, so the signing
 libraries are **not bundled** — install them once alongside the CLI:
@@ -184,7 +194,7 @@ or [docs/x402.md](docs/x402.md) for the full protocol details.
 
 | Service | Endpoints | Coverage |
 |---------|-----------|----------|
-| Solana (Opabinia) | 41 | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
+| Solana (Opabinia) | 41 compatible / 40 currently documented | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
 | EVM (Opabinia) | 38 compatible / 38 currently documented | Pools (7 DEXes), lending (Aave, Euler, Morpho), TVL, LP provider summaries, DEX discovery, prices, tokens |
 | Deep42 | 5 | Alpha tweet detection, influencer credibility, sentiment shifts, token analysis, trending momentum |
 | Risk | 1 | Perp risk engine |
@@ -324,10 +334,10 @@ default output is unchanged (pretty JSON), so all flags are opt-in.
 | `--all` | Auto-paginate and merge all pages (paginated resources only) |
 | `--max-items <n>` | Cap total rows when paginating (default `10000`) |
 | `--retries <n>` | Retry transient failures (408/429/5xx) with jittered backoff (default `0`) |
-| `--json` | Machine-readable output; errors emit structured JSON on stderr |
+| `--json` | Emit structured JSON errors on stderr; successful output is controlled by `--output` and already defaults to JSON |
 | `--timeout <ms>` | Per-request timeout (default `90000`) |
 | `--api-key <key>` | API key for this call (else `CAMBRIAN_API_KEY`) |
-| `--offline` | Use installed/cached endpoint metadata without a schema refresh |
+| `--offline` | Do not refresh endpoint metadata; data requests still require network |
 
 ```bash
 cambrian solana trending-tokens --output table
@@ -341,13 +351,13 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 
 | Command | Description |
 | --- | --- |
-| `cambrian solana <resource> [--flags]` | Solana DeFi data (41 endpoints) |
+| `cambrian solana <resource> [--flags]` | Solana DeFi data (40 endpoints) |
 | `cambrian base <resource> [--flags]` | Base DeFi data (38 documented OpenAPI endpoints; alias: evm) |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |
 | `cambrian docs guides [name]` | List or read guides dynamically indexed by the live `llms.txt` |
-| `cambrian config set-key\|get-key\|clear` | Persist, print, or remove the stored API key |
+| `cambrian config status\|set-key\|get-key\|clear` | Safely inspect, persist, print, or remove the stored API key |
 | `cambrian completion <bash\|zsh\|fish>` | Print a shell completion script |
 | `cambrian schema status\|refresh\|clear-cache` | Inspect or control runtime endpoint discovery |
 | `cambrian skill install` | Install the packaged skill bundle |

@@ -260,6 +260,24 @@
             "orca"
           ],
           "description": "The Decentralized Exchange (DEX) name. Must be 'orca' for this endpoint."
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
         }
       }
     },
@@ -573,18 +591,6 @@
           "type": "string",
           "strict": true,
           "description": "Program ID for raydium clmm pool"
-        }
-      }
-    },
-    "raydium-clmm-pool-multi": {
-      "apiPath": "/api/v1/solana/raydium-clmm/pool-multi",
-      "method": "GET",
-      "params": {
-        "pool_addresses": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
         }
       }
     },
@@ -1205,6 +1211,15 @@
       "apiPath": "/api/v1/evm/aero/v2/fee-metrics",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1218,6 +1233,15 @@
       "apiPath": "/api/v1/evm/aero/v2/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1231,7 +1255,7 @@
           "strict": true,
           "min": 1,
           "max": 30,
-          "description": "Number of previous days to calculate APR from. 7 would mean the APR is annualized from the past 7 days of activity on the pool."
+          "description": "Number of previous completed UTC days to calculate APR from. 7 annualizes activity from the previous 7 completed UTC days."
         }
       }
     },
@@ -1239,6 +1263,15 @@
       "apiPath": "/api/v1/evm/aero/v2/pool-volume",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1252,6 +1285,15 @@
       "apiPath": "/api/v1/evm/aero/v2/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "limit": {
           "required": false,
           "type": "integer",
@@ -1276,6 +1318,15 @@
       "apiPath": "/api/v1/evm/aero/v2/provider-summary",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "wallet_address": {
           "required": true,
           "type": "string",
@@ -1289,6 +1340,15 @@
       "apiPath": "/api/v1/evm/aero/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1298,91 +1358,19 @@
         }
       }
     },
-    "aero-v3-pools": {
-      "apiPath": "/api/v1/evm/aero/v3/pools",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": false,
-          "type": "string",
-          "strict": true,
-          "description": "Pool token address. See tokens for valid addresses.",
-          "pattern": "^0x[a-fA-F0-9]{40}$"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "min": 1,
-          "max": 1000,
-          "description": "Limit the number of results.",
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "min": 0,
-          "max": 100000,
-          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array",
-          "strict": true,
-          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
-          "items": {
-            "type": "string",
-            "enum": [
-              "dexAddress",
-              "dexName",
-              "poolAddress",
-              "token0Address",
-              "token0Symbol",
-              "token0Decimals",
-              "token1Address",
-              "token1Symbol",
-              "token1Decimals",
-              "createdAt",
-              "fee",
-              "tickSpacing"
-            ]
-          },
-          "style": "form",
-          "explode": false
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array",
-          "strict": true,
-          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
-          "items": {
-            "type": "string",
-            "enum": [
-              "dexAddress",
-              "dexName",
-              "poolAddress",
-              "token0Address",
-              "token0Symbol",
-              "token0Decimals",
-              "token1Address",
-              "token1Symbol",
-              "token1Decimals",
-              "createdAt",
-              "fee",
-              "tickSpacing"
-            ]
-          },
-          "style": "form",
-          "explode": false
-        }
-      }
-    },
     "alien-v3-pool": {
       "apiPath": "/api/v1/evm/alien/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1396,6 +1384,15 @@
       "apiPath": "/api/v1/evm/alien/v3/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
@@ -1475,10 +1472,24 @@
         }
       }
     },
+    "chains": {
+      "apiPath": "/api/v1/evm/chains",
+      "method": "GET",
+      "params": {}
+    },
     "clones-v3-pool": {
       "apiPath": "/api/v1/evm/clones/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1492,6 +1503,15 @@
       "apiPath": "/api/v1/evm/clones/v3/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
@@ -1574,12 +1594,1770 @@
     "dexes": {
       "apiPath": "/api/v1/evm/dexes",
       "method": "GET",
-      "params": {}
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        }
+      }
+    },
+    "lending-aave-v3-pools": {
+      "apiPath": "/api/v1/evm/lending/aave/v3/pools",
+      "method": "GET",
+      "params": {
+        "pool_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Aave V3 pool address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "borrowable": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only lending pools/vaults with borrowing enabled will be returned"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-euler-curator-vaults": {
+      "apiPath": "/api/v1/evm/lending/euler/curator/vaults",
+      "method": "GET",
+      "params": {
+        "curator_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Euler curator address.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: euler-lend"
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-euler-curators": {
+      "apiPath": "/api/v1/evm/lending/euler/curators",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "totalTvlUsd",
+              "vaultCount",
+              "verified",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "totalTvlUsd",
+              "vaultCount",
+              "verified",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-euler-markets": {
+      "apiPath": "/api/v1/evm/lending/euler/markets",
+      "method": "GET",
+      "params": {
+        "loan_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Loan token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "collateral_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Collateral token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyUsd",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "ltv",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyUsd",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "ltv",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-euler-v2-vault-markets": {
+      "apiPath": "/api/v1/evm/lending/euler/v2/vault/markets",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "vault_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Euler V2 vault address.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "ltv",
+              "supplyCapUsd",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "ltv",
+              "supplyCapUsd",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-euler-v2-vaults": {
+      "apiPath": "/api/v1/evm/lending/euler/v2/vaults",
+      "method": "GET",
+      "params": {
+        "vault_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Euler Lend vault address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending vault"
+        },
+        "borrowable": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only lending vaults with borrowing enabled will be returned"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-curator-vaults": {
+      "apiPath": "/api/v1/evm/lending/morpho/curator/vaults",
+      "method": "GET",
+      "params": {
+        "curator_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Morpho curator address.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: morpho-v1, morpho-v2"
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "poolAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-curators": {
+      "apiPath": "/api/v1/evm/lending/morpho/curators",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "totalTvlUsd",
+              "vaultCount",
+              "verified",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "curatorAddress",
+              "curatorName",
+              "totalTvlUsd",
+              "vaultCount",
+              "verified",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-markets": {
+      "apiPath": "/api/v1/evm/lending/morpho/markets",
+      "method": "GET",
+      "params": {
+        "loan_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Loan token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "collateral_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Collateral token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending pool/vault"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyUsd",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyUsd",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-v1-vault-markets": {
+      "apiPath": "/api/v1/evm/lending/morpho/v1/vault/markets",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "vault_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Morpho V1 vault address.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "allocationUsd",
+              "allocationShare",
+              "supplyCapUsd",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "allocationUsd",
+              "allocationShare",
+              "supplyCapUsd",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-v1-vaults": {
+      "apiPath": "/api/v1/evm/lending/morpho/v1/vaults",
+      "method": "GET",
+      "params": {
+        "vault_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Morpho V1 vault address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending vault"
+        },
+        "borrowable": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only lending vaults with borrowing enabled will be returned"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-v2-vault-markets": {
+      "apiPath": "/api/v1/evm/lending/morpho/v2/vault/markets",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "vault_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "description": "Morpho V2 vault address.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "allocationUsd",
+              "allocationShare",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "marketId",
+              "loanAddress",
+              "loanSymbol",
+              "collateralAddress",
+              "collateralSymbol",
+              "supplyApy",
+              "borrowApy",
+              "utilizationRate",
+              "lltv",
+              "allocationUsd",
+              "allocationShare",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-morpho-v2-vaults": {
+      "apiPath": "/api/v1/evm/lending/morpho/v2/vaults",
+      "method": "GET",
+      "params": {
+        "vault_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Morpho V2 vault address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL Usd of the lending vault"
+        },
+        "borrowable": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only lending vaults with borrowing enabled will be returned"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "vaultAddress",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-overview": {
+      "apiPath": "/api/v1/evm/lending/overview",
+      "method": "GET",
+      "params": {
+        "address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Address of the lending pool / vault",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "underlying_address": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Underlying token address. See tokens for valid addresses.",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "protocol_id": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
+        },
+        "min_tvl_usd": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "Minimum TVL USD of the lending pool/vault"
+        },
+        "borrowable": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "If true, only lending pools/vaults with borrowing enabled will be returned"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "address",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "address",
+              "symbol",
+              "vaultName",
+              "underlyingAddress",
+              "underlyingSymbol",
+              "supply",
+              "supplyUsd",
+              "borrow",
+              "borrowUsd",
+              "tvlUsd",
+              "availableLiquidityUsd",
+              "supplyCap",
+              "supplyCapUsd",
+              "borrowCap",
+              "borrowCapUsd",
+              "remainingCapacityUsd",
+              "supplyApy",
+              "borrowApy",
+              "netSupplyApy",
+              "performanceFee",
+              "managementFee",
+              "utilizationRate",
+              "ltv",
+              "borrowable",
+              "depositEnabled",
+              "updatedAt"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
+    },
+    "lending-protocols": {
+      "apiPath": "/api/v1/evm/lending/protocols",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        },
+        "order_asc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "protocolName",
+              "poolCount"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        },
+        "order_desc": {
+          "required": false,
+          "type": "array",
+          "strict": true,
+          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chainId",
+              "protocolId",
+              "protocolName",
+              "poolCount"
+            ]
+          },
+          "style": "form",
+          "explode": false
+        }
+      }
     },
     "pancake-v3-pool": {
       "apiPath": "/api/v1/evm/pancake/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1593,6 +3371,15 @@
       "apiPath": "/api/v1/evm/pancake/v3/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
@@ -1676,11 +3463,21 @@
       "apiPath": "/api/v1/evm/price-current",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
           "strict": true,
           "description": "Address of the token prefixed with 0x. See white listed tokens",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
           "default": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
         }
       }
@@ -1689,6 +3486,15 @@
       "apiPath": "/api/v1/evm/price-hour",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": true,
           "type": "string",
@@ -1696,13 +3502,23 @@
           "description": "Token address. See tokens for valid address for a chain.",
           "pattern": "^0x[a-fA-F0-9]{40}$"
         },
-        "hours": {
-          "required": true,
+        "limit": {
+          "required": false,
           "type": "integer",
           "strict": true,
           "min": 1,
           "max": 1000,
-          "description": "Maximum number of hours to return"
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
         }
       }
     },
@@ -1710,6 +3526,15 @@
       "apiPath": "/api/v1/evm/sushi/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1723,6 +3548,15 @@
       "apiPath": "/api/v1/evm/sushi/v3/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
@@ -1805,24 +3639,86 @@
     "tokens": {
       "apiPath": "/api/v1/evm/tokens",
       "method": "GET",
-      "params": {}
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "filter": {
+          "required": false,
+          "type": "string",
+          "strict": true,
+          "description": "Search symbol or name of the token"
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        }
+      }
     },
     "tvl-status": {
       "apiPath": "/api/v1/evm/tvl/status",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "wallet_address": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Address that hold tokens prefixed with 0x"
+          "description": "Address that hold tokens prefixed with 0x",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
         },
-        "whitelisted": {
+        "hasprice": {
           "required": false,
           "type": "boolean",
           "strict": true,
-          "description": "If true, only whitelisted tokens will be returned",
+          "description": "If true, only tokens with a USD price will be returned",
           "default": false
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 1000,
+          "description": "Limit the number of results.",
+          "default": 1000
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
         }
       }
     },
@@ -1830,11 +3726,21 @@
       "apiPath": "/api/v1/evm/tvl/top-owners",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "token address"
+          "description": "token address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
         },
         "limit": {
           "required": false,
@@ -1860,6 +3766,15 @@
       "apiPath": "/api/v1/evm/uniswap/v3/pool",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "pool_address": {
           "required": true,
           "type": "string",
@@ -1873,6 +3788,15 @@
       "apiPath": "/api/v1/evm/uniswap/v3/pools",
       "method": "GET",
       "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 8453,
+          "max": 8453,
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
         "token_address": {
           "required": false,
           "type": "string",
@@ -2153,49 +4077,34 @@
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Solana token address",
-          "default": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+          "description": "Solana token address"
         },
         "entry_price": {
           "required": true,
           "type": "number",
           "strict": true,
-          "min": 0,
-          "description": "Entry price in USD",
-          "default": 2800
+          "description": "Entry price in USD"
         },
         "leverage": {
           "required": true,
           "type": "number",
           "strict": true,
-          "min": 0,
           "max": 1000,
-          "description": "Leverage multiplier",
-          "default": 10
+          "description": "Leverage multiplier"
         },
         "direction": {
           "required": true,
           "type": "string",
           "strict": true,
-          "enum": [
-            "long",
-            "short"
-          ],
           "description": "Position direction",
-          "default": "long"
+          "pattern": "^(long|short)$"
         },
         "risk_horizon": {
           "required": true,
           "type": "string",
           "strict": true,
-          "enum": [
-            "1h",
-            "1d",
-            "1w",
-            "1mo"
-          ],
           "description": "Risk time horizon",
-          "default": "1d"
+          "pattern": "^(1h|1d|1w|1mo)$"
         }
       }
     }

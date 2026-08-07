@@ -56,6 +56,45 @@ describe('CLI exit codes', () => {
     });
     expect(code).toBe(2);
   });
+
+  it('rejects the retired --discover option without requiring authentication', async () => {
+    const { code, stdout, stderr } = await run(
+      ['solana', '--discover', '--offline'],
+      { env: { CAMBRIAN_SCHEMA_MODE: 'bundled' } },
+    );
+
+    expect(code).toBe(2);
+    expect(stdout).toBe('');
+    expect(stderr).toContain('Unknown option for solana: --discover');
+    expect(stderr).not.toContain('API key required');
+  });
+
+  it.each([
+    [['solana', 'latest-block', 'extra'], 'Too many arguments for solana latest-block'],
+    [['docs', 'solana', 'latest-block', 'extra'], 'Too many arguments for docs'],
+    [['config', 'get-key', 'extra'], 'Too many arguments for config get-key'],
+    [['skill', 'targets', '--adapter', 'openai'], 'Unknown option for skill targets: --adapter'],
+    [['mcp', 'config', '--api-key', 'ignored'], 'Unknown option for mcp config: --api-key'],
+    [['mcp', 'test', '--client', 'cursor'], 'Unknown option for mcp test: --client'],
+    [['config', '--api-key', 'ignored'], 'Unknown option for config: --api-key'],
+    [['completion', '--api-key', 'ignored'], 'Unknown option for completion: --api-key'],
+    [['schema', '--api-key', 'ignored'], 'Unknown option for schema: --api-key'],
+    [['describe', '--api-key', 'ignored'], 'Unknown option for describe: --api-key'],
+    [['pay', '--yes'], 'Unknown option for pay: --yes'],
+    [['--version', 'extra'], 'Too many arguments for cambrian --version'],
+    [['--version', '--api-key', 'ignored'], 'Unknown option for cambrian --version: --api-key'],
+  ])('rejects ignored arguments and subcommand options: %j', async (argv, message) => {
+    const { code, stderr } = await run(argv as string[]);
+    expect(code).toBe(2);
+    expect(stderr).toContain(message);
+  });
+
+  it('rejects an unknown root option instead of silently printing help', async () => {
+    const { code, stdout, stderr } = await run(['--not-real']);
+    expect(code).toBe(2);
+    expect(stdout).toBe('');
+    expect(stderr).toContain('Unknown option for cambrian: --not-real');
+  });
 });
 
 describe('CLI --json error output', () => {
@@ -230,6 +269,25 @@ describe('CLI value-bearing global options', () => {
     expect(code).toBe(2);
     expect(stderr).toContain('--base-url requires a value');
   });
+
+  it.each(['not-a-url', 'file:///tmp/api', 'ftp://api.example']) (
+    'rejects invalid --base-url %s before issuing a request',
+    async (baseUrl) => {
+      let requests = 0;
+      const { code, stderr } = await run(
+        ['solana', 'latest-block', '--base-url', baseUrl],
+        {
+          fetch: (async () => {
+            requests += 1;
+            return new Response('{}');
+          }) as typeof globalThis.fetch,
+        },
+      );
+      expect(code).toBe(2);
+      expect(stderr).toContain('--base-url must be a valid HTTP(S) URL');
+      expect(requests).toBe(0);
+    },
+  );
 });
 
 describe('CLI --json success output', () => {

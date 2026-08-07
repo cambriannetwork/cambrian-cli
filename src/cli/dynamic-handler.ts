@@ -227,14 +227,14 @@ export function buildResourceHelp(
     `  $ ${exampleCmd}`,
     '',
     'Global options:',
-    '  --json            Machine-readable JSON output (errors as structured JSON on stderr).',
+    '  --json            Emit structured JSON errors on stderr.',
     '  --output <fmt>    Output format: json (default), table, or tsv.',
     '  --fields a,b,c    Project to only these columns/fields (comma-separated).',
     '  --all             Auto-paginate and merge all pages (paginated resources only).',
     '  --max-items <n>   Cap total rows when paginating (default 10000).',
     '  --timeout <ms>    Per-request timeout in milliseconds (default 90000).',
     '  --retries <n>     Retry transient failures (408/429/5xx) with backoff (default 0).',
-    '  --offline         Use bundled/cached endpoint metadata without schema refresh.',
+    '  --offline         Do not refresh endpoint metadata; data requests still require network.',
     '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY).',
     '',
     `▶ Full docs, field descriptions & examples:  cambrian docs ${groupCommand} ${resource}`,
@@ -259,6 +259,7 @@ export async function handleDynamicQuery(
   helpFn: () => string,
 ): Promise<number> {
   if (!resource) {
+    assertNoUnknownOptions(parsed, globalOptions, groupCommand);
     runtime.stdout(helpFn());
     return 0;
   }
@@ -270,6 +271,12 @@ export async function handleDynamicQuery(
       `Unknown ${groupCommand} resource: ${resource}.${suggestion} Run "cambrian ${groupCommand} --help" for a list.`,
     );
   }
+
+  assertNoUnknownOptions(
+    parsed,
+    [...globalOptions, ...(allowedOptions[resource] ?? [])],
+    `${groupCommand} ${resource}`,
+  );
 
   if (hasOption(parsed, 'help')) {
     runtime.stdout(
@@ -284,12 +291,6 @@ export async function handleDynamicQuery(
     );
     return 0;
   }
-
-  assertNoUnknownOptions(
-    parsed,
-    [...globalOptions, ...(allowedOptions[resource] ?? [])],
-    `${groupCommand} ${resource}`,
-  );
 
   // ── Phase 2 opt-in data-path flags (--output / --fields / --all / --max-items)
   const output = parseOutputFormat(parsed);
@@ -354,13 +355,7 @@ export async function handleDynamicQuery(
   let result: unknown;
   if (wantAll) {
     const limitSpec = entry.params.limit;
-    const userLimit = getOption(parsed, 'limit');
-    const pageSize =
-      userLimit !== undefined && userLimit !== 'true' && typeof queryParams.limit === 'number'
-        ? queryParams.limit
-        : typeof limitSpec?.max === 'number'
-          ? limitSpec.max
-          : DEFAULT_PAGE_SIZE;
+    const pageSize = typeof limitSpec?.max === 'number' ? limitSpec.max : DEFAULT_PAGE_SIZE;
     const maxItems = hasMaxItems
       ? parsePositiveInt(getOption(parsed, 'max-items') ?? '', 'max-items')
       : DEFAULT_MAX_ITEMS;
@@ -447,7 +442,7 @@ export function buildCategorizedHelp(
     '',
     'Global options:',
     '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).',
-    '  --offline          Use bundled/cached endpoint metadata without refresh.',
+    '  --offline          Do not refresh endpoint metadata; data requests still require network.',
     '  --help             Show this help.',
   );
 

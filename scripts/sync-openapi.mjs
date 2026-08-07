@@ -25,12 +25,24 @@ const ROOT = resolve(__dirname, '..');
 const OUTPUT = resolve(ROOT, 'src', 'generated', 'openapi-params.json');
 const LLMS_URL = 'https://docs.cambrian.org/llms.txt';
 const OPENAPI_URLS = {
-  opabinia: 'https://api.cambrian.org/openapi.json',
+  solana: 'https://api.cambrian.org/solana/openapi.json',
+  base: 'https://api.cambrian.org/evm/openapi.json',
+  fallback: 'https://opabinia.cambrian.org/openapi.json',
   deep42: 'https://api.cambrian.org/deep42/openapi.json',
   risk: 'https://api.cambrian.org/risk/openapi.json',
 };
 
+const jsonFetches = new Map();
+
 async function fetchJson(url) {
+  const existing = jsonFetches.get(url);
+  if (existing) return existing;
+  const request = fetchJsonUncached(url);
+  jsonFetches.set(url, request);
+  return request;
+}
+
+async function fetchJsonUncached(url) {
   const response = await fetch(url, {
     headers: { accept: 'application/json', 'user-agent': 'cambrian-openapi-sync' },
   });
@@ -81,28 +93,45 @@ async function loadRuntimeInterpreter() {
 
 async function main() {
   console.log('Fetching authoritative OpenAPI and llms.txt documents ...');
-  const [interpreter, opabinia, deep42, risk, llmsText] = await Promise.all([
-    loadRuntimeInterpreter(),
-    fetchJson(OPENAPI_URLS.opabinia),
-    fetchJson(OPENAPI_URLS.deep42),
-    fetchJson(OPENAPI_URLS.risk),
+  const interpreter = await loadRuntimeInterpreter();
+  const { normalizeOpenApiGroup, parseLlmsEndpointKeys, applyVisibilityPolicy } = interpreter;
+  const resolveGroup = async (group, primaryUrl, fallbackUrl) => {
+    let primaryError;
+    try {
+      const document = await fetchJson(primaryUrl);
+      const normalized = normalizeOpenApiGroup(group, document);
+      if (Object.keys(normalized.spec).length > 0) return { normalized, source: primaryUrl };
+      primaryError = `No compatible ${group} operations from ${primaryUrl}`;
+    } catch (error) {
+      primaryError = error instanceof Error ? error.message : String(error);
+    }
+    if (!fallbackUrl) throw new Error(primaryError);
+    console.warn(`  ${group}: ${primaryError}; using fallback ${fallbackUrl}`);
+    const document = await fetchJson(fallbackUrl);
+    const normalized = normalizeOpenApiGroup(group, document);
+    if (Object.keys(normalized.spec).length === 0) {
+      throw new Error(`No compatible ${group} operations from ${fallbackUrl}`);
+    }
+    return { normalized, source: fallbackUrl };
+  };
+  const [solana, base, deep42, risk, llmsText] = await Promise.all([
+    resolveGroup('solana', OPENAPI_URLS.solana, OPENAPI_URLS.fallback),
+    resolveGroup('base', OPENAPI_URLS.base, OPENAPI_URLS.fallback),
+    resolveGroup('deep42', OPENAPI_URLS.deep42),
+    resolveGroup('risk', OPENAPI_URLS.risk),
     fetchText(LLMS_URL),
   ]);
-  const { normalizeOpenApiGroup, parseLlmsEndpointKeys, applyVisibilityPolicy } = interpreter;
   const llmsEndpointKeys = parseLlmsEndpointKeys(llmsText);
   const inputs = [
-    ['solana', 'solana', opabinia],
-    ['base', 'evm', opabinia],
+    ['solana', 'solana', solana],
+    ['base', 'evm', base],
     ['deep42', 'deep42', deep42],
     ['risk', 'risk', risk],
   ];
   const result = {};
 
-  for (const [group, outputGroup, document] of inputs) {
-    const normalized = normalizeOpenApiGroup(group, document);
-    if (Object.keys(normalized.spec).length === 0) {
-      throw new Error(`No compatible ${group} operations; refusing to replace bundled registry`);
-    }
+  for (const [group, outputGroup, resolved] of inputs) {
+    const { normalized, source } = resolved;
     const visible = applyVisibilityPolicy(normalized.spec, llmsEndpointKeys);
     if (Object.keys(visible.spec).length === 0) {
       throw new Error(`No visible ${group} operations; refusing to replace bundled registry`);
@@ -111,7 +140,7 @@ async function main() {
     console.log(
       `  ${group}: ${Object.keys(normalized.spec).length} compatible, ` +
       `${Object.keys(visible.spec).length} visible (${visible.mode}, ` +
-      `${visible.usableLlmsCount} llms.txt matches)`,
+      `${visible.usableLlmsCount} llms.txt matches) from ${source}`,
     );
     for (const rejection of normalized.rejected) {
       const detail = rejection.detail ? ` (${rejection.detail})` : '';

@@ -155,7 +155,7 @@ describe('runtime endpoint discovery through the CLI', () => {
     const documented = Object.keys(paths).map((path) => `- GET ${path}`).join('\n');
     const fetch = (async (input) => {
       const url = String(input);
-      if (url === 'https://api.cambrian.org/openapi.json') {
+      if (url === 'https://api.cambrian.org/evm/openapi.json') {
         return new Response(JSON.stringify(schema), { status: 200 });
       }
       if (url === 'https://docs.cambrian.org/llms.txt') {

@@ -196,19 +196,27 @@ export interface SolanaTokenHoldersParams extends PaginationParams {
   program_id: string;
 }
 
-export interface SolanaTokenHoldersOverTimeParams extends PaginationParams {
+export interface SolanaTokenHoldersOverTimeRequestParams {
   token_address: string;
   start_block: number;
   end_block: number;
   interval: number;
 }
 
-export interface SolanaTokenHolderDistributionOverTimeParams extends PaginationParams {
+/** @deprecated Pagination is ignored; use SolanaTokenHoldersOverTimeRequestParams. */
+export interface SolanaTokenHoldersOverTimeParams
+  extends SolanaTokenHoldersOverTimeRequestParams, PaginationParams {}
+
+export interface SolanaTokenHolderDistributionOverTimeRequestParams {
   token_address: string;
   start_block: number;
   end_block: number;
   interval: number;
 }
+
+/** @deprecated Pagination is ignored; use SolanaTokenHolderDistributionOverTimeRequestParams. */
+export interface SolanaTokenHolderDistributionOverTimeParams
+  extends SolanaTokenHolderDistributionOverTimeRequestParams, PaginationParams {}
 
 export interface SolanaMeteoraPoolParams {
   pool_address: string;
@@ -230,6 +238,7 @@ export interface SolanaRaydiumPoolMultiParams {
 
 export interface SolanaRaydiumPoolsParams extends PaginationParams {}
 
+/** @deprecated This endpoint takes no options; call getSolanaOrcaPools() without arguments. */
 export interface SolanaOrcaPoolsParams extends PaginationParams {}
 
 export interface SolanaOrcaPoolParams {
@@ -245,8 +254,13 @@ export interface SolanaOrcaFeeMetricsParams {
   days: number;
 }
 
+/** @deprecated Incomplete legacy type; use SolanaOrcaFeeRangesRequestParams. */
 export interface SolanaOrcaFeeRangesParams {
   pool_address: string;
+}
+
+export interface SolanaOrcaFeeRangesRequestParams extends SolanaOrcaFeeRangesParams {
+  days: number;
 }
 
 export interface SolanaOrcaHistoricalDataParams {

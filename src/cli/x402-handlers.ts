@@ -18,6 +18,7 @@ import {
   requireOptionValue,
   optionalOptionValue,
   assertNoUnknownOptions,
+  assertNoExtraPositionals,
   parseCsvValues,
   CliUsageError,
 } from './core.js';
@@ -307,7 +308,8 @@ export function payHelp(): string {
     'Usage:',
     '  cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]',
     '',
-    'Pay-per-call via x402 (Base USDC, $0.05/call) instead of an API key. Spends real funds.',
+    'Pay-per-call via x402 (Base USDC) instead of an API key. Spends real funds.',
+    'The gateway returns the current price, which the CLI previews before payment.',
     '',
     'Groups:  solana | base (evm) | deep42 | risk',
     '',
@@ -317,6 +319,8 @@ export function payHelp(): string {
     `  --timeout <ms>    Gateway timeout in milliseconds (default ${DEFAULT_X402_TIMEOUT_MS}).`,
     '  --output <fmt>     json (default), table, or tsv.',
     '  --fields a,b,c     Project to only these fields.',
+    '  --json             Emit structured JSON errors on stderr.',
+    '  --offline          Do not refresh endpoint metadata; payment requests still require network.',
     '',
     'Wallet:',
     '  Set CAMBRIAN_X402_PRIVATE_KEY=0x<key> (Base mainnet, funded with USDC).',
@@ -341,10 +345,12 @@ export async function handlePay(
   runtime: Runtime,
   metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
 ): Promise<number> {
+  assertNoExtraPositionals(parsed, 3, 'pay');
   const payGroups = buildPayGroups(metadataGroups);
   const groupArg = parsed.positionals[1];
   const resourceArg = parsed.positionals[2];
   if (!groupArg || hasOption(parsed, 'help')) {
+    assertNoUnknownOptions(parsed, ['help'], 'pay');
     runtime.stdout(payHelp());
     return 0;
   }

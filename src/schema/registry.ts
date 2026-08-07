@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 3;
+export const REGISTRY_CACHE_VERSION = 4;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -39,12 +39,44 @@ const REJECTION_REASONS = new Set<RegistryRejectionReason>([
   'deprecated_operation',
 ]);
 
-const OPENAPI_URLS: Record<CambrianGroup, string> = {
-  solana: 'https://api.cambrian.org/openapi.json',
-  base: 'https://api.cambrian.org/openapi.json',
-  deep42: 'https://api.cambrian.org/deep42/openapi.json',
-  risk: 'https://api.cambrian.org/risk/openapi.json',
+interface OpenApiSource {
+  name: string;
+  url: string;
+  groups: CambrianGroup[];
+}
+
+const OPENAPI_PRIMARY_SOURCES: Record<CambrianGroup, OpenApiSource> = {
+  solana: {
+    name: 'solana-primary',
+    url: 'https://api.cambrian.org/solana/openapi.json',
+    groups: ['solana'],
+  },
+  base: {
+    name: 'base-primary',
+    url: 'https://api.cambrian.org/evm/openapi.json',
+    groups: ['base'],
+  },
+  deep42: {
+    name: 'deep42-primary',
+    url: 'https://api.cambrian.org/deep42/openapi.json',
+    groups: ['deep42'],
+  },
+  risk: {
+    name: 'risk-primary',
+    url: 'https://api.cambrian.org/risk/openapi.json',
+    groups: ['risk'],
+  },
 };
+
+const OPABINIA_FALLBACK_SOURCE: OpenApiSource = {
+  name: 'opabinia-fallback',
+  url: 'https://opabinia.cambrian.org/openapi.json',
+  groups: ['solana', 'base'],
+};
+
+function fallbackOpenApiSource(group: CambrianGroup): OpenApiSource | undefined {
+  return group === 'solana' || group === 'base' ? OPABINIA_FALLBACK_SOURCE : undefined;
+}
 
 export type RegistryRejectionReason =
   | 'unsupported_method'
@@ -99,6 +131,7 @@ interface RegistryCacheEntry {
   usableLlmsCount: number;
   missingLiveAdditions: string[];
   driftedLiveAdditions: string[];
+  openapiUrl: string;
   openapi: SourceValidators;
   llms: SourceValidators;
   lastAttemptAt?: number;
@@ -126,7 +159,11 @@ export interface RuntimeRegistryStatus {
   lastAttemptAt: number | null;
   stale: boolean;
   cachePath: string;
-  openapi: SourceValidators & { url: string };
+  openapi: SourceValidators & {
+    url: string;
+    primaryUrl: string;
+    fallbackUrls: string[];
+  };
   llms: SourceValidators & { url: string };
   lastError?: string;
   warning?: string;
@@ -590,32 +627,44 @@ function cacheBaseDir(runtime: Runtime): string {
 }
 
 const sourceAttempts = new Map<string, SourceAttempt>();
-const inFlightRefreshes = new Map<string, Promise<void>>();
-
-function openApiSourceName(group: CambrianGroup): string {
-  return group === 'solana' || group === 'base' ? 'opabinia' : group;
+interface SourceRefreshOutcome {
+  entries: Map<CambrianGroup, RegistryCacheEntry>;
+  fetched: boolean;
+  error?: string;
+  inProgress?: boolean;
 }
 
-function openApiSourceGroups(group: CambrianGroup): CambrianGroup[] {
-  return group === 'solana' || group === 'base' ? ['solana', 'base'] : [group];
-}
+const inFlightRefreshes = new Map<string, Promise<SourceRefreshOutcome>>();
 
-function sourceAttemptPath(runtime: Runtime, group: CambrianGroup): string {
+function sourceAttemptPath(runtime: Runtime, source: OpenApiSource): string {
   return join(
     cacheBaseDir(runtime),
     `schema-v${REGISTRY_CACHE_VERSION}`,
-    `${openApiSourceName(group)}.attempt.json`,
+    `${source.name}.attempt.json`,
   );
 }
 
-function readSourceAttempt(runtime: Runtime, group: CambrianGroup): SourceAttempt | null {
-  const path = sourceAttemptPath(runtime, group);
+function sourceRegistryCachePath(
+  runtime: Runtime,
+  source: OpenApiSource,
+  group: CambrianGroup,
+): string {
+  return join(
+    cacheBaseDir(runtime),
+    `schema-v${REGISTRY_CACHE_VERSION}`,
+    'sources',
+    `${source.name}.${group}.json`,
+  );
+}
+
+function readSourceAttempt(runtime: Runtime, source: OpenApiSource): SourceAttempt | null {
+  const path = sourceAttemptPath(runtime, source);
   const inMemory = sourceAttempts.get(path);
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
     if (!isObject(parsed) ||
       parsed.version !== REGISTRY_CACHE_VERSION ||
-      parsed.url !== OPENAPI_URLS[group] ||
+      parsed.url !== source.url ||
       !Number.isFinite(parsed.lastAttemptAt) ||
       (parsed.lastAttemptAt as number) < 0 ||
       (parsed.lastError !== undefined && typeof parsed.lastError !== 'string')) {
@@ -628,8 +677,8 @@ function readSourceAttempt(runtime: Runtime, group: CambrianGroup): SourceAttemp
   }
 }
 
-function writeSourceAttempt(runtime: Runtime, group: CambrianGroup, attempt: SourceAttempt): void {
-  const path = sourceAttemptPath(runtime, group);
+function writeSourceAttempt(runtime: Runtime, source: OpenApiSource, attempt: SourceAttempt): void {
+  const path = sourceAttemptPath(runtime, source);
   sourceAttempts.set(path, attempt);
   try {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -647,8 +696,8 @@ function writeSourceAttempt(runtime: Runtime, group: CambrianGroup, attempt: Sou
   }
 }
 
-function claimSourceAttempt(runtime: Runtime, group: CambrianGroup, now: number): boolean {
-  const path = sourceAttemptPath(runtime, group);
+function claimSourceAttempt(runtime: Runtime, source: OpenApiSource, now: number): boolean {
+  const path = sourceAttemptPath(runtime, source);
   const lockPath = `${path}.lock`;
   try {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -665,11 +714,11 @@ function claimSourceAttempt(runtime: Runtime, group: CambrianGroup, now: number)
     }
 
     try {
-      const latest = readSourceAttempt(runtime, group);
+      const latest = readSourceAttempt(runtime, source);
       if (latest && now < latest.lastAttemptAt + REGISTRY_TTL_MS) return false;
-      writeSourceAttempt(runtime, group, {
+      writeSourceAttempt(runtime, source, {
         version: REGISTRY_CACHE_VERSION,
-        url: OPENAPI_URLS[group],
+        url: source.url,
         lastAttemptAt: now,
       });
       return true;
@@ -677,11 +726,11 @@ function claimSourceAttempt(runtime: Runtime, group: CambrianGroup, now: number)
       rmSync(lockPath, { force: true });
     }
   } catch {
-    const latest = readSourceAttempt(runtime, group);
+    const latest = readSourceAttempt(runtime, source);
     if (latest && now < latest.lastAttemptAt + REGISTRY_TTL_MS) return false;
-    writeSourceAttempt(runtime, group, {
+    writeSourceAttempt(runtime, source, {
       version: REGISTRY_CACHE_VERSION,
-      url: OPENAPI_URLS[group],
+      url: source.url,
       lastAttemptAt: now,
     });
     return true;
@@ -786,11 +835,17 @@ function isCachedGroupSpec(group: CambrianGroup, value: unknown): value is Group
   return true;
 }
 
-function readRegistryCache(runtime: Runtime, group: CambrianGroup): RegistryCacheEntry | null {
+function readRegistryCacheFile(
+  path: string,
+  group: CambrianGroup,
+  expectedOpenApiUrl?: string,
+): RegistryCacheEntry | null {
   try {
-    const parsed: unknown = JSON.parse(readFileSync(registryCachePath(runtime, group), 'utf8'));
+    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
     if (!isObject(parsed)) return null;
     if (parsed.version !== REGISTRY_CACHE_VERSION || parsed.group !== group) return null;
+    if (typeof parsed.openapiUrl !== 'string') return null;
+    if (expectedOpenApiUrl && parsed.openapiUrl !== expectedOpenApiUrl) return null;
     if (!Number.isFinite(parsed.fetchedAt) || !Number.isFinite(parsed.expiresAt)) return null;
     if ((parsed.fetchedAt as number) < 0 || (parsed.expiresAt as number) < (parsed.fetchedAt as number)) return null;
     if (!isCachedGroupSpec(group, parsed.compatibleSpec)) return null;
@@ -818,8 +873,23 @@ function readRegistryCache(runtime: Runtime, group: CambrianGroup): RegistryCach
   }
 }
 
-function writeRegistryCache(runtime: Runtime, entry: RegistryCacheEntry): void {
-  const path = registryCachePath(runtime, entry.group);
+function readRegistryCache(runtime: Runtime, group: CambrianGroup): RegistryCacheEntry | null {
+  return readRegistryCacheFile(registryCachePath(runtime, group), group);
+}
+
+function readSourceRegistryCache(
+  runtime: Runtime,
+  source: OpenApiSource,
+  group: CambrianGroup,
+): RegistryCacheEntry | null {
+  return readRegistryCacheFile(
+    sourceRegistryCachePath(runtime, source, group),
+    group,
+    source.url,
+  );
+}
+
+function writeRegistryCacheFile(path: string, entry: RegistryCacheEntry): void {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   try {
@@ -835,14 +905,33 @@ function writeRegistryCache(runtime: Runtime, entry: RegistryCacheEntry): void {
   }
 }
 
+function writeRegistryCache(runtime: Runtime, entry: RegistryCacheEntry): void {
+  writeRegistryCacheFile(registryCachePath(runtime, entry.group), entry);
+}
+
+function writeSourceRegistryCache(
+  runtime: Runtime,
+  source: OpenApiSource,
+  entry: RegistryCacheEntry,
+): void {
+  writeRegistryCacheFile(sourceRegistryCachePath(runtime, source, entry.group), entry);
+}
+
 export function clearRegistryCache(runtime: Runtime, group?: CambrianGroup): number {
   const groups: CambrianGroup[] = group ? [group] : ['solana', 'base', 'deep42', 'risk'];
   let removed = 0;
   for (const current of groups) {
     const path = registryCachePath(runtime, current);
-    if (!existsSync(path)) continue;
+    let found = existsSync(path);
     rmSync(path, { force: true });
-    removed += 1;
+    const sources = [OPENAPI_PRIMARY_SOURCES[current], fallbackOpenApiSource(current)]
+      .filter((source): source is OpenApiSource => source !== undefined);
+    for (const source of sources) {
+      const sourcePath = sourceRegistryCachePath(runtime, source, current);
+      found ||= existsSync(sourcePath);
+      rmSync(sourcePath, { force: true });
+    }
+    if (found) removed += 1;
   }
   return removed;
 }
@@ -996,6 +1085,8 @@ function statusFor(
   lastError?: string,
 ): RuntimeMetadataResolution {
   const bundled = CAMBRIAN_METADATA_GROUPS[group];
+  const primary = OPENAPI_PRIMARY_SOURCES[group];
+  const fallback = fallbackOpenApiSource(group);
   const activeSpec = cache?.visibleSpec ?? bundled.spec;
   const metadata = cache ? metadataFromSpec(group, activeSpec) : bundled;
   return {
@@ -1020,7 +1111,12 @@ function statusFor(
       lastAttemptAt: cache?.lastAttemptAt ?? null,
       stale: cache ? now >= cache.expiresAt : true,
       cachePath: '',
-      openapi: { url: OPENAPI_URLS[group], ...(cache?.openapi ?? {}) },
+      openapi: {
+        url: cache?.openapiUrl ?? primary.url,
+        primaryUrl: primary.url,
+        fallbackUrls: fallback ? [fallback.url] : [],
+        ...(cache?.openapi ?? {}),
+      },
       llms: { url: LLMS_URL, ...(cache?.llms ?? {}) },
       ...(lastError ? { lastError } : {}),
       ...(!lastError && cache?.lastError ? { lastError: cache.lastError } : {}),
@@ -1037,30 +1133,32 @@ function withActualCachePath(
   return resolution;
 }
 
-async function refreshGroup(
-  group: CambrianGroup,
+function sourceCacheEntries(
   runtime: Runtime,
-  cache: RegistryCacheEntry | null,
+  source: OpenApiSource,
+): Map<CambrianGroup, RegistryCacheEntry> {
+  return new Map(source.groups.flatMap((group) => {
+    const entry = readSourceRegistryCache(runtime, source, group);
+    return entry ? [[group, entry] as const] : [];
+  }));
+}
+
+async function refreshOpenApiSource(
+  group: CambrianGroup,
+  source: OpenApiSource,
+  runtime: Runtime,
   now: number,
   timeoutMs: number,
-): Promise<RegistryCacheEntry> {
-  const sourceGroups = openApiSourceGroups(group);
-  const caches = new Map(sourceGroups.map((current) => [
-    current,
-    current === group ? cache : readRegistryCache(runtime, current),
-  ]));
-  const validatorCache = cache ?? [...caches.values()].find((entry) => entry !== null) ?? null;
-  const [openapiResponse, llmsOutcome] = await Promise.all([
-    fetchText(runtime, OPENAPI_URLS[group], cache?.openapi, timeoutMs),
-    fetchText(runtime, LLMS_URL, validatorCache?.llms, timeoutMs)
-      .then((response) => ({ response }))
-      .catch((error: unknown) => ({ error })),
-  ]);
+): Promise<Map<CambrianGroup, RegistryCacheEntry>> {
+  const caches = sourceCacheEntries(runtime, source);
+  const requestedCache = caches.get(group) ?? null;
+  const validatorCache = requestedCache ?? [...caches.values()][0] ?? null;
+  const openapiResponse = await fetchText(runtime, source.url, requestedCache?.openapi, timeoutMs);
 
   const normalizedGroups = new Map<CambrianGroup, NormalizedOpenApiGroup>();
   if (openapiResponse.notModified) {
-    if (!cache) throw new Error('OpenAPI returned 304 without a cached registry');
-    for (const current of sourceGroups) {
+    if (!requestedCache) throw new Error(`${source.url} returned 304 without a cached registry`);
+    for (const current of source.groups) {
       const currentCache = caches.get(current);
       if (currentCache) {
         normalizedGroups.set(current, {
@@ -1074,18 +1172,25 @@ async function refreshGroup(
     try {
       parsed = JSON.parse(openapiResponse.text ?? '');
     } catch {
-      throw new Error(`${OPENAPI_URLS[group]} returned invalid JSON`);
+      throw new Error(`${source.url} returned invalid JSON`);
     }
     if (!isObject(parsed) || typeof parsed.openapi !== 'string' || !parsed.openapi.startsWith('3.') ||
       !isObject(parsed.info) || typeof parsed.info.title !== 'string' ||
       typeof parsed.info.version !== 'string' || !isObject(parsed.paths)) {
-      throw new Error(`${OPENAPI_URLS[group]} did not return an OpenAPI 3 document`);
+      throw new Error(`${source.url} did not return an OpenAPI 3 document`);
     }
-    for (const current of sourceGroups) {
+    for (const current of source.groups) {
       const normalized = normalizeOpenApiGroup(current, parsed);
       if (Object.keys(normalized.spec).length > 0) normalizedGroups.set(current, normalized);
     }
   }
+  if (normalizedGroups.size === 0) {
+    throw new Error(`No compatible ${group} operations from ${source.url}`);
+  }
+
+  const llmsOutcome = await fetchText(runtime, LLMS_URL, validatorCache?.llms, timeoutMs)
+    .then((response) => ({ response }))
+    .catch((error: unknown) => ({ error }));
 
   let llmsEndpointKeys: Set<string>;
   let llmsValidators: SourceValidators;
@@ -1093,7 +1198,7 @@ async function refreshGroup(
   if ('error' in llmsOutcome) {
     llmsEndpointKeys = validatorCache
       ? new Set(validatorCache.llmsEndpointKeys)
-      : new Set(sourceGroups.flatMap((current) => [...bundledEndpointKeys(current)]));
+      : new Set(source.groups.flatMap((current) => [...bundledEndpointKeys(current)]));
     llmsValidators = validatorCache?.llms ?? {};
     warning = `llms.txt refresh failed: ${errorMessage(llmsOutcome.error)}; ` +
       (validatorCache ? 'using cached endpoint inventory' : 'using bundled public endpoint inventory');
@@ -1102,7 +1207,7 @@ async function refreshGroup(
       llmsEndpointKeys = new Set(validatorCache.llmsEndpointKeys);
       llmsValidators = validatorCache.llms;
     } else {
-      llmsEndpointKeys = new Set(sourceGroups.flatMap((current) => [...bundledEndpointKeys(current)]));
+      llmsEndpointKeys = new Set(source.groups.flatMap((current) => [...bundledEndpointKeys(current)]));
       llmsValidators = {};
       warning = 'llms.txt returned 304 without a cache; using bundled public endpoint inventory';
     }
@@ -1136,27 +1241,172 @@ async function refreshGroup(
         .filter((resource) => previousAdditions.has(resource)),
       driftedLiveAdditions: changedResources(previousVisibleSpec, visibleSpec)
         .filter((resource) => previousAdditions.has(resource)),
+      openapiUrl: source.url,
       openapi: openapiResponse.validators,
       llms: llmsValidators,
       lastAttemptAt: now,
       ...(warning ? { warning } : {}),
     };
     try {
-      writeRegistryCache(runtime, entry);
+      writeSourceRegistryCache(runtime, source, entry);
     } catch (error) {
       const cacheWarning = `could not persist registry cache: ${errorMessage(error)}`;
       entry.warning = warning ? `${warning}; ${cacheWarning}` : cacheWarning;
     }
     entries.set(current, entry);
   }
-  const entry = entries.get(group);
-  if (!entry) throw new Error(`No compatible ${group} operations from ${OPENAPI_URLS[group]}`);
-  return entry;
+  return entries;
 }
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function appendWarning(current: string | undefined, warning: string): string {
+  return current ? `${current}; ${warning}` : warning;
+}
+
+async function attemptOpenApiSource(
+  group: CambrianGroup,
+  source: OpenApiSource,
+  runtime: Runtime,
+  now: number,
+  timeoutMs: number,
+): Promise<SourceRefreshOutcome> {
+  const refreshKey = sourceAttemptPath(runtime, source);
+  const inFlight = inFlightRefreshes.get(refreshKey);
+  if (inFlight) return inFlight;
+
+  const cachedEntries = sourceCacheEntries(runtime, source);
+  const attempt = readSourceAttempt(runtime, source);
+  if (attempt && now < attempt.lastAttemptAt + REGISTRY_TTL_MS) {
+    return {
+      entries: cachedEntries,
+      fetched: false,
+      ...(attempt.lastError ? { error: attempt.lastError } : {}),
+      ...(!attempt.lastError && cachedEntries.size === 0 ? { inProgress: true } : {}),
+    };
+  }
+
+  if (!claimSourceAttempt(runtime, source, now)) {
+    const claimedInFlight = inFlightRefreshes.get(refreshKey);
+    if (claimedInFlight) return claimedInFlight;
+    const claimedAttempt = readSourceAttempt(runtime, source);
+    const entries = sourceCacheEntries(runtime, source);
+    return {
+      entries,
+      fetched: false,
+      ...(claimedAttempt?.lastError ? { error: claimedAttempt.lastError } : {}),
+      ...(!claimedAttempt?.lastError && entries.size === 0 ? { inProgress: true } : {}),
+    };
+  }
+
+  const refresh = (async (): Promise<SourceRefreshOutcome> => {
+    try {
+      const entries = await refreshOpenApiSource(group, source, runtime, now, timeoutMs);
+      writeSourceAttempt(runtime, source, {
+        version: REGISTRY_CACHE_VERSION,
+        url: source.url,
+        lastAttemptAt: now,
+      });
+      return { entries, fetched: true };
+    } catch (error) {
+      const message = errorMessage(error);
+      writeSourceAttempt(runtime, source, {
+        version: REGISTRY_CACHE_VERSION,
+        url: source.url,
+        lastAttemptAt: now,
+        lastError: message,
+      });
+      return {
+        entries: sourceCacheEntries(runtime, source),
+        fetched: false,
+        error: message,
+      };
+    }
+  })();
+  inFlightRefreshes.set(refreshKey, refresh);
+  try {
+    return await refresh;
+  } finally {
+    if (inFlightRefreshes.get(refreshKey) === refresh) inFlightRefreshes.delete(refreshKey);
+  }
+}
+
+function cacheWithoutLastError(entry: RegistryCacheEntry): RegistryCacheEntry {
+  const { lastError: _lastError, ...cache } = entry;
+  return cache;
+}
+
+function withFallbackWarning(
+  entry: RegistryCacheEntry,
+  primaryError: string,
+  fallbackUrl: string,
+): RegistryCacheEntry {
+  const cache = cacheWithoutLastError(entry);
+  return {
+    ...cache,
+    warning: appendWarning(cache.warning, `${primaryError}; using fallback ${fallbackUrl}`),
+  };
+}
+
+function activateResolution(
+  runtime: Runtime,
+  group: CambrianGroup,
+  entry: RegistryCacheEntry,
+  source: RuntimeRegistryStatus['source'],
+  now: number,
+): RuntimeMetadataResolution {
+  let active = cacheWithoutLastError(entry);
+  try {
+    writeRegistryCache(runtime, active);
+  } catch (error) {
+    active = {
+      ...active,
+      warning: appendWarning(
+        active.warning,
+        `could not persist registry cache: ${errorMessage(error)}`,
+      ),
+    };
+  }
+  return withActualCachePath(runtime, statusFor(group, source, now, active));
+}
+
+function failedResolution(
+  runtime: Runtime,
+  group: CambrianGroup,
+  cache: RegistryCacheEntry | null | undefined,
+  now: number,
+  message: string,
+): RuntimeMetadataResolution {
+  let failedCache = cache ? { ...cache, lastAttemptAt: now, lastError: message } : null;
+  if (failedCache) {
+    try {
+      writeRegistryCache(runtime, failedCache);
+    } catch (error) {
+      failedCache = {
+        ...failedCache,
+        warning: appendWarning(
+          failedCache.warning,
+          `could not persist registry cache: ${errorMessage(error)}`,
+        ),
+      };
+    }
+  }
+  return withActualCachePath(
+    runtime,
+    statusFor(group, failedCache ? 'cache' : 'bundle', now, failedCache, message),
+  );
+}
+
+function newestCache(
+  ...entries: Array<RegistryCacheEntry | null | undefined>
+): RegistryCacheEntry | null {
+  return entries.reduce<RegistryCacheEntry | null>(
+    (best, entry) => entry && (!best || entry.fetchedAt > best.fetchedAt) ? entry : best,
+    null,
+  );
 }
 
 /**
@@ -1174,98 +1424,85 @@ export async function loadRuntimeMetadataGroup(
     return withActualCachePath(runtime, statusFor(group, 'bundle', now, null));
   }
 
-  const refreshKey = sourceAttemptPath(runtime, group);
-  const inFlight = inFlightRefreshes.get(refreshKey);
-  if (inFlight) {
-    await inFlight;
-    const refreshedCache = readRegistryCache(runtime, group);
-    const refreshedAttempt = readSourceAttempt(runtime, group);
-    return withActualCachePath(
+  const primary = OPENAPI_PRIMARY_SOURCES[group];
+  const fallback = fallbackOpenApiSource(group);
+  const activeCache = readRegistryCache(runtime, group);
+  const primaryCache = readSourceRegistryCache(runtime, primary, group);
+  const fallbackCache = fallback ? readSourceRegistryCache(runtime, fallback, group) : null;
+  const cached = activeCache ?? primaryCache ?? fallbackCache;
+  if (options.offline) {
+    return withActualCachePath(runtime, statusFor(group, cached ? 'cache' : 'bundle', now, cached));
+  }
+
+  const primaryAttempt = readSourceAttempt(runtime, primary);
+  const primaryCoolingDown = primaryAttempt !== null &&
+    now < primaryAttempt.lastAttemptAt + REGISTRY_TTL_MS;
+  if (activeCache && now < activeCache.expiresAt && (
+    activeCache.openapiUrl === primary.url || primaryCoolingDown
+  )) {
+    return withActualCachePath(runtime, statusFor(group, 'cache', now, activeCache));
+  }
+  if (primaryCache && now < primaryCache.expiresAt) {
+    return activateResolution(runtime, group, primaryCache, 'cache', now);
+  }
+
+  const timeoutMs = options.timeoutMs ?? REGISTRY_FETCH_TIMEOUT_MS;
+  const primaryOutcome = await attemptOpenApiSource(group, primary, runtime, now, timeoutMs);
+  const refreshedPrimary = primaryOutcome.entries.get(group);
+  if (refreshedPrimary && !primaryOutcome.error) {
+    return activateResolution(
       runtime,
-      statusFor(
-        group,
-        refreshedCache ? 'live' : 'bundle',
-        now,
-        refreshedCache,
-        refreshedAttempt?.lastError,
-      ),
+      group,
+      refreshedPrimary,
+      primaryOutcome.fetched ? 'live' : 'cache',
+      now,
     );
   }
-
-  const cache = readRegistryCache(runtime, group);
-  const sourceAttempt = readSourceAttempt(runtime, group);
-  const cachedResolution = withActualCachePath(
-    runtime,
-    statusFor(group, cache ? 'cache' : 'bundle', now, cache, sourceAttempt?.lastError),
-  );
-  const lastAttemptAt = Math.max(cache?.lastAttemptAt ?? 0, sourceAttempt?.lastAttemptAt ?? 0);
-  const coolingDown = lastAttemptAt > 0 && now < lastAttemptAt + REGISTRY_TTL_MS;
-  if (options.offline || (cache && (now < cache.expiresAt || coolingDown))) {
-    return cachedResolution;
+  if (primaryOutcome.inProgress) {
+    return withActualCachePath(runtime, statusFor(group, cached ? 'cache' : 'bundle', now, cached));
   }
-  if (coolingDown) return cachedResolution;
+  const primaryError = primaryOutcome.error ??
+    `No compatible ${group} operations from ${primary.url}`;
 
-  if (!claimSourceAttempt(runtime, group, now)) {
-    const claimedCache = readRegistryCache(runtime, group);
-    const claimedAttempt = readSourceAttempt(runtime, group);
-    return withActualCachePath(
-      runtime,
-      statusFor(
-        group,
-        claimedCache ? 'cache' : 'bundle',
-        now,
-        claimedCache,
-        claimedAttempt?.lastError,
-      ),
-    );
-  }
-
-  const refresh = (async (): Promise<RuntimeMetadataResolution> => {
-    try {
-      const refreshed = await refreshGroup(
-        group,
+  if (fallback) {
+    const currentFallback = primaryOutcome.fetched
+      ? readSourceRegistryCache(runtime, fallback, group) ?? fallbackCache
+      : fallbackCache;
+    if (currentFallback && now < currentFallback.expiresAt) {
+      return activateResolution(
         runtime,
-        cache,
+        group,
+        withFallbackWarning(currentFallback, primaryError, fallback.url),
+        'cache',
         now,
-        options.timeoutMs ?? REGISTRY_FETCH_TIMEOUT_MS,
-      );
-      writeSourceAttempt(runtime, group, {
-        version: REGISTRY_CACHE_VERSION,
-        url: OPENAPI_URLS[group],
-        lastAttemptAt: now,
-      });
-      return withActualCachePath(runtime, statusFor(group, 'live', now, refreshed));
-    } catch (error) {
-      const message = errorMessage(error);
-      writeSourceAttempt(runtime, group, {
-        version: REGISTRY_CACHE_VERSION,
-        url: OPENAPI_URLS[group],
-        lastAttemptAt: now,
-        lastError: message,
-      });
-      let fallbackCache = cache;
-      if (cache) {
-        fallbackCache = { ...cache, lastAttemptAt: now, lastError: message };
-        try {
-          writeRegistryCache(runtime, fallbackCache);
-        } catch {
-          // The in-memory last-known-good cache remains usable even when its
-          // status metadata cannot be persisted.
-        }
-      }
-      return withActualCachePath(
-        runtime,
-        statusFor(group, fallbackCache ? 'cache' : 'bundle', now, fallbackCache, message),
       );
     }
-  })();
-  const inFlightSignal = refresh.then(() => undefined);
-  inFlightRefreshes.set(refreshKey, inFlightSignal);
-  try {
-    return await refresh;
-  } finally {
-    if (inFlightRefreshes.get(refreshKey) === inFlightSignal) inFlightRefreshes.delete(refreshKey);
+
+    const fallbackOutcome = await attemptOpenApiSource(group, fallback, runtime, now, timeoutMs);
+    const refreshedFallback = fallbackOutcome.entries.get(group);
+    if (refreshedFallback && !fallbackOutcome.error) {
+      return activateResolution(
+        runtime,
+        group,
+        withFallbackWarning(refreshedFallback, primaryError, fallback.url),
+        fallbackOutcome.fetched ? 'live' : 'cache',
+        now,
+      );
+    }
+    const fallbackError = fallbackOutcome.error ??
+      `No compatible ${group} operations from ${fallback.url}`;
+    const message = `${primaryError}; fallback failed: ${fallbackError}`;
+    const lastKnownGood = newestCache(
+      refreshedPrimary,
+      primaryCache,
+      activeCache,
+      refreshedFallback,
+      fallbackCache,
+    );
+    return failedResolution(runtime, group, lastKnownGood, now, message);
   }
+
+  return failedResolution(runtime, group, refreshedPrimary ?? primaryCache ?? activeCache, now, primaryError);
 }
 
 /** Synchronous cache-only resolver for shell completion. */
@@ -1277,6 +1514,10 @@ export function loadCachedMetadataGroup(
   if (runtime.env.CAMBRIAN_SCHEMA_MODE?.trim().toLowerCase() === 'bundled') {
     return withActualCachePath(runtime, statusFor(group, 'bundle', now, null));
   }
-  const cache = readRegistryCache(runtime, group);
+  const primary = OPENAPI_PRIMARY_SOURCES[group];
+  const fallback = fallbackOpenApiSource(group);
+  const cache = readRegistryCache(runtime, group) ??
+    readSourceRegistryCache(runtime, primary, group) ??
+    (fallback ? readSourceRegistryCache(runtime, fallback, group) : null);
   return withActualCachePath(runtime, statusFor(group, cache ? 'cache' : 'bundle', now, cache));
 }

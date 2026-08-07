@@ -34,6 +34,86 @@ const OPENCLI_OPTIONS = [
   { name: 'version', description: 'Print the package version.' },
 ];
 
+const DATA_OPTIONS = [
+  {
+    name: 'api-key',
+    recursive: true,
+    arguments: [{ name: 'api-key', required: true }],
+    description: 'API key. Defaults to CAMBRIAN_API_KEY or stored config.',
+  },
+  { name: 'json', recursive: true, description: 'Emit machine-readable JSON errors.' },
+  {
+    name: 'output',
+    recursive: true,
+    arguments: [{ name: 'format', required: true, acceptedValues: ['json', 'table', 'tsv'] }],
+    description: 'Select the output format.',
+  },
+  {
+    name: 'fields',
+    recursive: true,
+    arguments: [{ name: 'fields', required: true }],
+    description: 'Project comma-separated response fields.',
+  },
+  { name: 'all', recursive: true, description: 'Fetch every page for paginated resources.' },
+  {
+    name: 'max-items',
+    recursive: true,
+    arguments: [{ name: 'count', required: true }],
+    description: 'Cap rows returned by --all.',
+  },
+  {
+    name: 'timeout',
+    recursive: true,
+    arguments: [{ name: 'milliseconds', required: true }],
+    description: 'Set the per-request timeout.',
+  },
+  {
+    name: 'retries',
+    recursive: true,
+    arguments: [{ name: 'count', required: true }],
+    description: 'Retry transient HTTP failures.',
+  },
+  {
+    name: 'offline',
+    recursive: true,
+    description: 'Do not refresh endpoint metadata; data requests still require network.',
+  },
+];
+
+const PAY_OPTIONS = [
+  { name: 'yes', recursive: true, description: 'Authorize spending after the price preview.' },
+  { name: 'json', recursive: true, description: 'Emit machine-readable JSON errors.' },
+  {
+    name: 'max-amount',
+    recursive: true,
+    arguments: [{ name: 'usd', required: true }],
+    description: 'Set the maximum authorized USDC amount.',
+  },
+  {
+    name: 'timeout',
+    recursive: true,
+    arguments: [{ name: 'milliseconds', required: true }],
+    description: 'Set the gateway timeout.',
+  },
+  {
+    name: 'output',
+    recursive: true,
+    arguments: [{ name: 'format', required: true, acceptedValues: ['json', 'table', 'tsv'] }],
+    description: 'Select the output format.',
+  },
+  {
+    name: 'fields',
+    recursive: true,
+    arguments: [{ name: 'fields', required: true }],
+    description: 'Project comma-separated response fields.',
+  },
+  {
+    name: 'offline',
+    recursive: true,
+    description: 'Do not refresh endpoint metadata; payment requests still require network.',
+  },
+];
+
 const OPENCLI_EXIT_CODES = [
   { code: 0, description: 'Command completed successfully.' },
   { code: 1, description: 'Command failed during execution.' },
@@ -60,6 +140,13 @@ function buildSubcommands(
       }),
     };
   });
+}
+
+function option(name: string, argument?: string) {
+  return {
+    name,
+    ...(argument && { arguments: [{ name: argument, required: true }] }),
+  };
 }
 
 export function buildOpenCliDocument(
@@ -97,105 +184,100 @@ export function buildOpenCliDocument(
       {
         name: 'solana',
         description: `Query Solana DeFi endpoints (${solana.resources.length} resources).`,
-        options: [
-          {
-            name: 'api-key',
-            recursive: true,
-            arguments: [
-              {
-                name: 'api-key',
-                required: true,
-                description: 'API key. Defaults to CAMBRIAN_API_KEY.',
-              },
-            ],
-            description: 'API key used for authenticated requests.',
-          },
-        ],
+        options: DATA_OPTIONS,
         commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions),
       },
       {
         name: 'base',
         aliases: ['evm'],
         description: `Query Base chain DeFi endpoints (${base.resources.length} resources).`,
-        options: [
-          {
-            name: 'api-key',
-            recursive: true,
-            arguments: [
-              {
-                name: 'api-key',
-                required: true,
-                description: 'API key. Defaults to CAMBRIAN_API_KEY.',
-              },
-            ],
-            description: 'API key used for authenticated requests.',
-          },
-        ],
+        options: DATA_OPTIONS,
         commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions),
       },
       {
         name: 'deep42',
         description: `Query Deep42 social intelligence endpoints (${deep42.resources.length} resources).`,
-        options: [
-          {
-            name: 'api-key',
-            recursive: true,
-            arguments: [
-              {
-                name: 'api-key',
-                required: true,
-                description: 'API key. Defaults to CAMBRIAN_API_KEY.',
-              },
-            ],
-            description: 'API key used for authenticated requests.',
-          },
-        ],
+        options: DATA_OPTIONS,
         commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions),
       },
       {
         name: 'risk',
         description: 'Query perpetual risk engine.',
-        options: [
-          {
-            name: 'api-key',
-            recursive: true,
-            arguments: [
-              {
-                name: 'api-key',
-                required: true,
-                description: 'API key. Defaults to CAMBRIAN_API_KEY.',
-              },
-            ],
-            description: 'API key used for authenticated requests.',
-          },
-        ],
+        options: DATA_OPTIONS,
         commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions),
+      },
+      {
+        name: 'pay',
+        description: 'Make an x402 pay-per-call request using Base USDC.',
+        options: PAY_OPTIONS,
+        commands: [
+          { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions) },
+          { name: 'base', aliases: ['evm'], commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions) },
+          { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions) },
+          { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions) },
+        ],
       },
       {
         name: 'docs',
         description: 'Read live Cambrian API documentation and dynamically indexed guides.',
+        options: [{
+          name: 'offline',
+          recursive: true,
+          description: 'Use schema-derived docs without fetching documentation.',
+        }],
         commands: [
           {
             name: 'guides',
             description: 'List live guides or fetch one by its indexed URL slug.',
           },
+          { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana') },
+          { name: 'base', aliases: ['evm'], commands: buildSubcommands(base.resources, 'Base') },
+          { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42') },
+          { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk') },
         ],
+      },
+      {
+        name: 'config',
+        description: 'Manage the persisted API key.',
+        commands: [
+          { name: 'status', description: 'Check API-key configuration without exposing the secret.' },
+          { name: 'set-key', description: 'Persist an API key; command arguments may remain in shell history.', arguments: [{ name: 'key', required: true }] },
+          { name: 'get-key', description: 'Compatibility command that prints the full stored secret.' },
+          { name: 'clear' },
+        ],
+      },
+      {
+        name: 'completion',
+        description: 'Print a shell completion script.',
+        commands: ['bash', 'zsh', 'fish'].map((name) => ({ name })),
       },
       {
         name: 'schema',
         description: 'Inspect and refresh the authoritative runtime endpoint registry.',
         commands: [
-          { name: 'status', description: 'Show bundled, cached, and live registry status.' },
+          {
+            name: 'status',
+            description: 'Show bundled, cached, and live registry status.',
+            options: [option('offline')],
+          },
           { name: 'refresh', description: 'Refresh validated runtime schema when its 15-minute source cooldown is due.' },
-          { name: 'clear-cache', description: 'Remove cached runtime endpoint metadata.' },
+          { name: 'clear-cache', description: 'Remove cached runtime metadata without clearing source request cooldowns.' },
         ],
       },
       {
         name: 'skill',
         description: 'Manage skill bundles for AI agent tools.',
         commands: [
-          { name: 'install', description: 'Install skill bundle to detected tool directories.' },
-          { name: 'print', description: 'Print the skill markdown or adapter content.' },
+          {
+            name: 'install',
+            description: 'Install skill bundle to detected tool directories.',
+            options: [option('tool', 'tool'), option('path', 'directory')],
+          },
+          {
+            name: 'print',
+            description: 'Print the skill markdown or adapter content.',
+            options: [option('adapter', 'adapter')],
+          },
           { name: 'targets', description: 'List known skill install targets.' },
         ],
       },
@@ -203,16 +285,35 @@ export function buildOpenCliDocument(
         name: 'mcp',
         description: 'Configure, install, and test Cambrian MCP integrations.',
         commands: [
-          { name: 'config', description: 'Print MCP client configuration.' },
-          { name: 'install', description: 'Install Cambrian MCP into supported clients.' },
-          { name: 'test', description: 'Run an MCP connectivity smoke test.' },
+          {
+            name: 'config',
+            description: 'Print MCP client configuration.',
+            options: [option('client', 'client'), option('mode', 'mode'), option('url', 'url')],
+          },
+          {
+            name: 'install',
+            description: 'Install Cambrian MCP into supported clients.',
+            options: [
+              option('client', 'client'), option('mode', 'mode'), option('url', 'url'),
+              option('api-key', 'api-key'), option('dry-run'),
+            ],
+          },
+          {
+            name: 'test',
+            description: 'Run a real initialize and tool-list connectivity smoke test.',
+            options: [option('mode', 'mode'), option('url', 'url'), option('api-key', 'api-key')],
+          },
         ],
       },
       {
         name: 'describe',
         description: 'Machine-readable self-description.',
         commands: [
-          { name: 'opencli', description: 'Emit the OpenCLI JSON document.' },
+          {
+            name: 'opencli',
+            description: 'Emit the OpenCLI JSON document.',
+            options: [option('offline')],
+          },
         ],
       },
     ],

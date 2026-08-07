@@ -75,6 +75,12 @@ export function complete(
     return [];
   }
 
+  if (args[0] === 'config') {
+    return args.length === 2
+      ? startsWithFilter(['status', 'set-key', 'get-key', 'clear'], args[1] ?? '')
+      : [];
+  }
+
   // `pay <group> <resource> [flags]` — one token deeper than the data commands.
   if (args[0] === 'pay') {
     if (args.length === 2) return startsWithFilter(PAY_GROUPS, args[1] ?? '');
@@ -127,7 +133,7 @@ export function assertCompletionShell(value: string | undefined): CompletionShel
 }
 
 const BASH_STUB = `# cambrian bash completion
-# Install:  cambrian completion bash >> ~/.bashrc   (then restart your shell)
+# Install (Run once): cambrian completion bash >> ~/.bashrc   (then restart your shell)
 _cambrian() {
   local words
   words=("\${COMP_WORDS[@]:1:COMP_CWORD}")
@@ -137,7 +143,7 @@ _cambrian() {
 complete -F _cambrian cambrian`;
 
 const ZSH_STUB = `# cambrian zsh completion
-# Install:  cambrian completion zsh >> ~/.zshrc   (then restart your shell)
+# Install (Run once): cambrian completion zsh >> ~/.zshrc   (then restart your shell)
 autoload -U +X bashcompinit && bashcompinit
 _cambrian() {
   local words

@@ -5,8 +5,10 @@ import {
   getOptions,
   hasOption,
   optionalOptionValue,
+  validateHttpUrl,
   requireOptionValue,
   assertNoUnknownOptions,
+  assertNoExtraPositionals,
   readPackageVersion,
   firstConfiguredApiKey,
   logCliError,
@@ -162,7 +164,8 @@ function createClient(parsed: ParsedArgs, runtime: Runtime): CambrianData {
 
   const timeoutMs = parseTimeoutOption(parsed);
   const maxRetries = parseRetriesOption(parsed);
-  const baseUrl = optionalOptionValue(parsed, 'base-url');
+  const baseUrlValue = optionalOptionValue(parsed, 'base-url');
+  const baseUrl = baseUrlValue ? validateHttpUrl(baseUrlValue, 'base-url') : undefined;
   return new CambrianData({
     apiKey,
     opabiniaBaseUrl: baseUrl,
@@ -177,6 +180,7 @@ function createClient(parsed: ParsedArgs, runtime: Runtime): CambrianData {
 // ── Docs command (fetches live from docs.cambrian.org/llms.txt) ───
 
 async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
+  assertNoExtraPositionals(parsed, 3, 'docs');
   const group = parsed.positionals[1] ?? undefined;
   const resource = parsed.positionals[2] ?? undefined;
   assertNoUnknownOptions(parsed, ['help', 'offline'], 'docs');
@@ -233,12 +237,19 @@ function assertAcceptedSkillValue(value: string, optionName: string, accepted: r
 
 async function handleSkill(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const resource = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, 2, resource ? `skill ${resource}` : 'skill');
   if (!resource || hasOption(parsed, 'help')) {
+    assertNoUnknownOptions(parsed, ['help'], 'skill');
     runtime.stdout(skillHelp());
     return 0;
   }
 
-  assertNoUnknownOptions(parsed, ['help', 'tool', 'path', 'adapter'], `skill ${resource}`);
+  const allowedOptions: Record<string, string[]> = {
+    install: ['help', 'tool', 'path'],
+    print: ['help', 'adapter'],
+    targets: ['help'],
+  };
+  assertNoUnknownOptions(parsed, allowedOptions[resource] ?? ['help'], `skill ${resource}`);
 
   switch (resource) {
     case 'install': {
@@ -291,11 +302,12 @@ async function handleSkill(parsed: ParsedArgs, runtime: Runtime): Promise<number
 
 async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const sub = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, sub === 'set-key' ? 3 : 2, sub ? `config ${sub}` : 'config');
+  assertNoUnknownOptions(parsed, ['help'], sub ? `config ${sub}` : 'config');
   if (!sub || hasOption(parsed, 'help')) {
     runtime.stdout(configHelp());
     return 0;
   }
-  assertNoUnknownOptions(parsed, ['help'], `config ${sub}`);
 
   switch (sub) {
     case 'set-key': {
@@ -307,12 +319,25 @@ async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
       runtime.stdout(`API key saved to ${configPath(runtime)}`);
       return 0;
     }
+    case 'status': {
+      const storedKey = Boolean(readConfig(runtime).apiKey);
+      const environmentKey = Boolean(firstConfiguredApiKey(runtime.env.CAMBRIAN_API_KEY));
+      printJson(runtime, {
+        configured: environmentKey || storedKey,
+        source: environmentKey ? 'CAMBRIAN_API_KEY' : storedKey ? 'stored config' : 'none',
+        storedKey,
+      });
+      return 0;
+    }
     case 'get-key': {
       const stored = readConfig(runtime).apiKey;
       if (!stored) {
         runtime.stderr('No API key stored. Set one with: cambrian config set-key <key>');
         return 1;
       }
+      runtime.stderr(
+        'Warning: this prints the full stored API key. Prefer "cambrian config status" for safe inspection.',
+      );
       runtime.stdout(stored);
       return 0;
     }
@@ -324,7 +349,7 @@ async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
       return 0;
     }
     default:
-      throw new CliUsageError(`Unknown config subcommand: ${sub}. Use set-key, get-key, or clear.`);
+      throw new CliUsageError(`Unknown config subcommand: ${sub}. Use status, set-key, get-key, or clear.`);
   }
 }
 
@@ -332,11 +357,12 @@ async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
 
 async function handleCompletion(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const shell = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, 2, 'completion');
+  assertNoUnknownOptions(parsed, ['help'], 'completion');
   if (!shell || hasOption(parsed, 'help')) {
     runtime.stdout(completionHelp());
     return 0;
   }
-  assertNoUnknownOptions(parsed, ['help'], 'completion');
   runtime.stdout(completionScript(assertCompletionShell(shell)));
   return 0;
 }
@@ -356,19 +382,17 @@ function selectedSchemaGroups(token: string | undefined): CambrianGroup[] {
 
 async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const subcommand = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, 3, subcommand ? `schema ${subcommand}` : 'schema');
+  assertNoUnknownOptions(
+    parsed,
+    subcommand === 'status' ? ['help', 'offline'] : ['help'],
+    subcommand ? `schema ${subcommand}` : 'schema',
+  );
   if (!subcommand || hasOption(parsed, 'help')) {
     runtime.stdout(schemaHelp());
     return 0;
   }
-  assertNoUnknownOptions(
-    parsed,
-    subcommand === 'status' ? ['help', 'offline'] : ['help'],
-    `schema ${subcommand}`,
-  );
   const groupToken = parsed.positionals[2];
-  if (parsed.positionals.length > 3) {
-    throw new CliUsageError(`Too many arguments for schema ${subcommand}.`);
-  }
   const groups = selectedSchemaGroups(groupToken);
 
   if (subcommand === 'clear-cache') {
@@ -407,11 +431,16 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
 
 async function handleDescribe(parsed: ParsedArgs, runtime: Runtime): Promise<number> {
   const resource = parsed.positionals[1];
+  assertNoExtraPositionals(parsed, 2, resource ? `describe ${resource}` : 'describe');
+  assertNoUnknownOptions(
+    parsed,
+    resource === 'opencli' ? ['help', 'offline'] : ['help'],
+    resource ? `describe ${resource}` : 'describe',
+  );
   if (!resource || hasOption(parsed, 'help')) {
     runtime.stdout(describeHelp());
     return 0;
   }
-  assertNoUnknownOptions(parsed, ['help', 'offline'], `describe ${resource}`);
   if (resource !== 'opencli') {
     throw new CliUsageError(`Unknown describe subcommand: ${resource}`);
   }
@@ -435,6 +464,8 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
     const parsed = parseArgs(argv);
 
     if (hasOption(parsed, 'version')) {
+      assertNoExtraPositionals(parsed, 0, 'cambrian --version');
+      assertNoUnknownOptions(parsed, ['version'], 'cambrian --version');
       runtime.stdout(readPackageVersion());
       return 0;
     }
@@ -443,6 +474,7 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
 
     // No args → human landing screen (banner only for interactive terminals)
     if (!command) {
+      assertNoUnknownOptions(parsed, ['help'], 'cambrian');
       if (runtime.isTTY) {
         runtime.stdout(banner(runtime.env.NO_COLOR ? 'none' : 'gradient'));
         runtime.stdout('');
@@ -458,9 +490,12 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
     }
 
     const resource = parsed.positionals[1] ?? '';
+    if (DATA_COMMANDS.includes(command)) {
+      assertNoExtraPositionals(parsed, 2, resource ? `${command} ${resource}` : command);
+    }
     const wantsHelp = hasOption(parsed, 'help');
     const noResource = !resource;
-    const skipAuth = (noResource || wantsHelp) && !hasOption(parsed, 'discover');
+    const skipAuth = noResource || wantsHelp;
 
     // Gentle "update available" nudge on real queries — stderr only, throttled,
     // suppressed for non-TTY/CI so piped output and agents are never affected.

@@ -29,6 +29,8 @@ const forbiddenTerms = [
   text('Cloud', ' Run'),
   text('deep42', '-x402-', 'api-', 'prod'),
   text('cambrian-', 'protocol'),
+  text('opabinia.cambrian', '.network'),
+  text('https://api.cambrian.org', '/openapi.json'),
 ];
 
 const skipDirs = new Set(['.git', 'node_modules']);

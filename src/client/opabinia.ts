@@ -37,7 +37,7 @@ import type {
   SolanaOrcaPoolParams,
   SolanaOrcaPoolMultiParams,
   SolanaOrcaFeeMetricsParams,
-  SolanaOrcaFeeRangesParams,
+  SolanaOrcaFeeRangesRequestParams,
   SolanaOrcaHistoricalDataParams,
   SolanaOrcaLiquidityMapParams,
   EvmPriceCurrentParams,
@@ -109,11 +109,17 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getSolanaTokenHoldersOverTime(opts: SolanaTokenHoldersOverTimeParams): Promise<TableResponse> {
-    return this.request(`/solana/tokens/holders-over-time?${this.buildParams(opts)}`);
+    const { token_address, start_block, end_block, interval } = opts;
+    return this.request(
+      `/solana/tokens/holders-over-time?${this.buildParams({ token_address, start_block, end_block, interval })}`,
+    );
   }
 
   async getSolanaTokenHolderDistributionOverTime(opts: SolanaTokenHolderDistributionOverTimeParams): Promise<TableResponse> {
-    return this.request(`/solana/tokens/holder-distribution-over-time?${this.buildParams(opts)}`);
+    const { token_address, start_block, end_block, interval } = opts;
+    return this.request(
+      `/solana/tokens/holder-distribution-over-time?${this.buildParams({ token_address, start_block, end_block, interval })}`,
+    );
   }
 
   // ── Pricing ─────────────────────────────────────────────────────
@@ -251,7 +257,7 @@ export class OpabiniaClient extends BaseClient {
     return this.request(`/solana/orca/pools/fee-metrics?${this.buildParams(opts)}`);
   }
 
-  async getSolanaOrcaFeeRanges(opts: SolanaOrcaFeeRangesParams & { days: number }): Promise<TableResponse> {
+  async getSolanaOrcaFeeRanges(opts: SolanaOrcaFeeRangesRequestParams): Promise<TableResponse> {
     return this.request(`/solana/orca/pools/fee-ranges?${this.buildParams(opts)}`);
   }
 

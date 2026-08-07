@@ -52,4 +52,38 @@ describe('OpabiniaClient optional query parameters', () => {
       'https://api.cambrian.org/solana/trending-tokens?order_by=volume_usd_24h',
     );
   });
+
+  it('does not send phantom pagination to token holder history', async () => {
+    const { client, urls } = recordingClient();
+
+    await client.getSolanaTokenHoldersOverTime({
+      token_address: 'So11111111111111111111111111111111111111112',
+      start_block: 100,
+      end_block: 200,
+      interval: 10,
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(urls[0]).toBe(
+      'https://api.cambrian.org/solana/tokens/holders-over-time?token_address=So11111111111111111111111111111111111111112&start_block=100&end_block=200&interval=10',
+    );
+  });
+
+  it('does not send phantom pagination to token holder distribution history', async () => {
+    const { client, urls } = recordingClient();
+
+    await client.getSolanaTokenHolderDistributionOverTime({
+      token_address: 'So11111111111111111111111111111111111111112',
+      start_block: 100,
+      end_block: 200,
+      interval: 10,
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(urls[0]).toBe(
+      'https://api.cambrian.org/solana/tokens/holder-distribution-over-time?token_address=So11111111111111111111111111111111111111112&start_block=100&end_block=200&interval=10',
+    );
+  });
 });

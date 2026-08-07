@@ -62,6 +62,8 @@ describe('config command', () => {
     const get = await run(['config', 'get-key'], { homedir });
     expect(get.code).toBe(0);
     expect(get.stdout.trim()).toBe('abc123');
+    expect(get.stderr).toContain('Warning: this prints the full stored API key');
+    expect(get.stderr).toContain('cambrian config status');
 
     const clear = await run(['config', 'clear'], { homedir });
     expect(clear.code).toBe(0);
@@ -69,6 +71,39 @@ describe('config command', () => {
     const getAfter = await run(['config', 'get-key'], { homedir });
     expect(getAfter.code).toBe(1);
     expect(getAfter.stderr).toContain('No API key stored');
+  });
+
+  it('reports API-key status without exposing either environment or stored secrets', async () => {
+    const home = tempHome();
+    const homedir = () => home;
+
+    const empty = await run(['config', 'status'], { homedir });
+    expect(JSON.parse(empty.stdout)).toEqual({
+      configured: false,
+      source: 'none',
+      storedKey: false,
+    });
+
+    await run(['config', 'set-key', 'stored-secret'], { homedir });
+    const stored = await run(['config', 'status'], { homedir });
+    expect(JSON.parse(stored.stdout)).toEqual({
+      configured: true,
+      source: 'stored config',
+      storedKey: true,
+    });
+    expect(stored.stdout).not.toContain('stored-secret');
+
+    const environment = await run(['config', 'status'], {
+      homedir,
+      env: { CAMBRIAN_API_KEY: 'environment-secret' },
+    });
+    expect(JSON.parse(environment.stdout)).toEqual({
+      configured: true,
+      source: 'CAMBRIAN_API_KEY',
+      storedKey: true,
+    });
+    expect(environment.stdout).not.toContain('environment-secret');
+    expect(environment.stdout).not.toContain('stored-secret');
   });
 
   it('set-key without a key is a usage error (exit 2)', async () => {
