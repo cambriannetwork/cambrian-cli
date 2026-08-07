@@ -10,7 +10,7 @@ function fakeCommand(name: string, output: string): string {
   const directory = mkdtempSync(join(tmpdir(), 'cambrian-mcp-bin-'));
   temporaryDirectories.push(directory);
   const executable = join(directory, name);
-  writeFileSync(executable, `#!/bin/sh\nprintf '%s' '${output}'\n`);
+  writeFileSync(executable, `#!/bin/sh\nwhile IFS= read -r _; do :; done\nprintf '%s' '${output}'\n`);
   chmodSync(executable, 0o755);
   return directory;
 }
