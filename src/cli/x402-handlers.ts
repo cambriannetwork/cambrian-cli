@@ -33,6 +33,7 @@ import {
   type CambrianMetadataGroup,
   type GroupSpec,
 } from '../metadata.js';
+import { BASE_CHAIN_ID, projectEvmMetadata } from './evm-chains.js';
 import {
   X402_BASE_URL,
   DEFAULT_MAX_AMOUNT_MICRO,
@@ -68,7 +69,9 @@ function buildPayGroups(
 ): Record<string, PayGroup> {
   const out: Record<string, PayGroup> = {};
   const build = (key: 'solana' | 'base' | 'deep42' | 'risk', aliases: Record<string, string>) => {
-    const metadata = metadataGroups[key];
+    const metadata = key === 'base'
+      ? projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID)
+      : metadataGroups[key];
     const spec = metadata.spec;
     return {
       spec,
@@ -311,7 +314,7 @@ export function payHelp(): string {
     'Pay-per-call via x402 (Base USDC) instead of an API key. Spends real funds.',
     'The gateway returns the current price, which the CLI previews before payment.',
     '',
-    'Groups:  solana | base (evm) | deep42 | risk',
+    'Groups:  solana | base | deep42 | risk',
     '',
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',

@@ -133,6 +133,42 @@ describe('normalizeOpenApiGroup', () => {
     });
   });
 
+  it('retains exact multi-value numeric enums and validates their defaults', () => {
+    const result = normalizeOpenApiGroup('base', openApi({
+      '/evm/tokens': {
+        get: {
+          parameters: [{
+            name: 'chain_id',
+            in: 'query',
+            schema: { type: 'integer', enum: [1, 8453], default: 8453 },
+          }],
+        },
+      },
+    }));
+
+    expect(result.rejected).toEqual([]);
+    expect(result.spec.tokens.params.chain_id).toEqual({
+      required: false,
+      type: 'integer',
+      numericEnum: [1, 8453],
+      default: 8453,
+      strict: true,
+    });
+
+    const invalid = normalizeOpenApiGroup('base', openApi({
+      '/evm/tokens': {
+        get: {
+          parameters: [{
+            name: 'chain_id',
+            in: 'query',
+            schema: { type: 'integer', enum: [1, 8453], default: 10 },
+          }],
+        },
+      },
+    }));
+    expect(invalid.spec).toEqual({});
+  });
+
   it('rejects unsupported, catch-all, cross-group, and ambiguous operations', () => {
     const result = normalizeOpenApiGroup('base', openApi({
       '/api/v1/evm/new-post': { post: { parameters: [] } },
@@ -253,6 +289,19 @@ describe('runtime parameter validation and serialization', () => {
       required: true,
       type: 'integer',
     }, 'limit')).toBe(12);
+  });
+
+  it('coerces exact numeric enum values and rejects unsupported values', () => {
+    const spec = {
+      required: false,
+      type: 'integer',
+      numericEnum: [1, 8453],
+      strict: true,
+    };
+    expect(coerceValue('1', spec, 'chain-id')).toBe(1);
+    expect(coerceValue('8453', spec, 'chain-id')).toBe(8453);
+    expect(() => coerceValue('10', spec, 'chain-id'))
+      .toThrow('--chain-id must be one of: 1, 8453.');
   });
 
   it('validates patterns and array item enums from discovered schemas', () => {

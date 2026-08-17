@@ -114,7 +114,8 @@ Use this for prompts like:
 - "What are the best Aerodrome pools on Base?"
 - "Show me top TVL pools."
 
-> **Note:** `cambrian base` is an alias for the former `cambrian evm` command group.
+Use `cambrian base`. The deprecated `cambrian evm` compatibility command still
+selects Base chain 8453 and prints a warning.
 
 Order:
 

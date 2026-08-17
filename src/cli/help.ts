@@ -1,10 +1,13 @@
-export function rootHelp(): string {
+export function rootHelp(ethereumAvailable = false): string {
   return [
     'cambrian - DeFi data, social intelligence, and risk analysis CLI',
     '',
     'Usage:',
     '  cambrian solana <resource> [options]     Solana DeFi data (pools, tokens, prices, transactions)',
     '  cambrian base <resource> [options]       Base chain DeFi data (pools, TVL, prices across 6+ DEXes)',
+    ...(ethereumAvailable
+      ? ['  cambrian ethereum <resource> [options]   Ethereum mainnet DeFi data']
+      : []),
     '  cambrian deep42 <resource> [options]     Social intelligence (alpha tweets, influencer credibility)',
     '  cambrian risk <resource> [options]       Perpetual risk simulations',
     '  cambrian pay <group> <resource> [options] Pay-per-call via x402 (Base USDC; no API key)',
@@ -15,9 +18,6 @@ export function rootHelp(): string {
     '  cambrian mcp <config|install|test>       MCP setup helpers (hosted by default)',
     '  cambrian describe opencli                Machine-readable CLI schema',
     '  cambrian --version                       Print version',
-    '',
-    'Aliases:',
-    '  cambrian evm ...                         Same as cambrian base',
     '',
     'Quick start:',
     '  export CAMBRIAN_API_KEY=<your-key>',
@@ -96,9 +96,9 @@ export function completionHelp(): string {
 export function schemaHelp(): string {
   return [
     'Usage:',
-    '  cambrian schema status [solana|base|deep42|risk]',
-    '  cambrian schema refresh [solana|base|deep42|risk]',
-    '  cambrian schema clear-cache [solana|base|deep42|risk]',
+    '  cambrian schema status [solana|base|ethereum|deep42|risk]',
+    '  cambrian schema refresh [solana|base|ethereum|deep42|risk]',
+    '  cambrian schema clear-cache [solana|base|ethereum|deep42|risk]',
     '',
     'Validated runtime OpenAPI is authoritative for supported GET/query',
     'commands. Refresh requests only run after a source\'s 15-minute cooldown',
@@ -119,11 +119,11 @@ export function describeHelp(): string {
   ].join('\n');
 }
 
-export function docsHelp(): string {
+export function docsHelp(ethereumAvailable = false): string {
   return [
     'Usage:',
     '  cambrian docs                    Full API documentation',
-    '  cambrian docs <group>            Group docs (solana, base, deep42, risk)',
+    `  cambrian docs <group>            Group docs (solana, base${ethereumAvailable ? ', ethereum' : ''}, deep42, risk)`,
     '  cambrian docs <group> <resource> Endpoint-specific docs',
     '  cambrian docs guides             List available guides',
     '  cambrian docs guides <name>      Fetch a guide',

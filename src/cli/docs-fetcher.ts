@@ -35,7 +35,7 @@ interface ResolvedEndpoint {
 }
 
 function metadataGroupKey(group: string): CambrianGroup | undefined {
-  if (group === 'evm' || group === 'base') return 'base';
+  if (group === 'evm' || group === 'base' || group === 'ethereum') return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
@@ -136,6 +136,9 @@ export async function fetchDocs(
   offline = false,
 ): Promise<string | null> {
   if (offline) return buildSchemaFallbackDocs(group, resource, metadataGroups);
+  if (group === 'ethereum' && !resource) {
+    return buildSchemaFallbackDocs(group, resource, metadataGroups);
+  }
   try {
     if (group === 'guides') {
       try {
@@ -219,6 +222,7 @@ const GROUP_TO_METADATA_KEY: Record<string, CambrianGroup> = {
   solana: 'solana',
   evm: 'base',
   base: 'base',
+  ethereum: 'base',
   deep42: 'deep42',
   risk: 'risk',
 };
@@ -228,6 +232,7 @@ function describeParam(name: string, ps: ParamSpec, cliDefault?: string): string
   const bits: string[] = [ps.type];
   if (ps.required && cliDefault === undefined) bits.push('required'); else bits.push('optional');
   if (ps.enum) bits.push(`one of: ${ps.enum.join(', ')}`);
+  if (ps.numericEnum) bits.push(`one of: ${ps.numericEnum.join(', ')}`);
   if (ps.default !== undefined) bits.push(`default: ${ps.default}`);
   else if (cliDefault !== undefined) bits.push(`CLI compatibility default: ${cliDefault}`);
   if (ps.min !== undefined && ps.max !== undefined) bits.push(`range ${ps.min}-${ps.max}`);

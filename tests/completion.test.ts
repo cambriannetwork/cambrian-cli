@@ -19,6 +19,7 @@ describe('complete', () => {
     expect(top).toContain('solana');
     expect(top).toContain('config');
     expect(top).toContain('completion');
+    expect(top).not.toContain('evm');
     expect(top).not.toContain('__complete'); // hidden
   });
 
@@ -48,7 +49,8 @@ describe('complete', () => {
   it('completes `pay <group> <resource> <flags>` one token deeper', () => {
     expect(complete([''])).toContain('pay'); // pay is a top-level command
     const groups = complete(['pay', '']);
-    expect(groups).toEqual(expect.arrayContaining(['solana', 'base', 'evm', 'deep42', 'risk']));
+    expect(groups).toEqual(expect.arrayContaining(['solana', 'base', 'deep42', 'risk']));
+    expect(groups).not.toContain('evm');
     expect(complete(['pay', 'deep42', 'social'])).toContain('social-data/alpha-tweet-detection');
     const flags = complete(['pay', 'deep42', 'social-data/alpha-tweet-detection', '--']);
     expect(flags).toContain('--yes');

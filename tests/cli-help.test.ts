@@ -7,20 +7,21 @@ import { describe, it, expect } from 'vitest';
 import { runCli } from '../src/cli/index.js';
 import { parseLocalMcpSmokeOutput } from '../src/cli/mcp.js';
 
-function captureStdout(argv: string[]): Promise<{ code: number; stdout: string }> {
+function captureStdout(argv: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   let stdout = '';
+  let stderr = '';
   return runCli(argv, {
     stdout: (msg: string) => { stdout += msg + '\n'; },
-    stderr: () => {},
+    stderr: (msg: string) => { stderr += msg + '\n'; },
     env: { CAMBRIAN_SCHEMA_MODE: 'bundled' },
-  }).then((code) => ({ code, stdout }));
+  }).then((code) => ({ code, stdout, stderr }));
 }
 
 describe('CLI help output', () => {
-  it('cambrian --help shows base alias', async () => {
+  it('cambrian --help advertises Base without the deprecated evm alias', async () => {
     const { stdout } = await captureStdout(['--help']);
     expect(stdout).toContain('cambrian base');
-    expect(stdout).toContain('Aliases');
+    expect(stdout).not.toContain('cambrian evm');
     expect(stdout).toContain('Advanced:');
     expect(stdout).toContain('cambrian schema');
   });
@@ -59,7 +60,25 @@ describe('CLI help output', () => {
     const { stdout } = await captureStdout(['base', '--help']);
     expect(stdout).toContain('Aerodrome V2');
     expect(stdout).toContain('TVL');
-    expect(stdout).toContain('Aliases');
+    expect(stdout).not.toContain('cambrian evm');
+  });
+
+  it('keeps evm compatibility but warns users to select Base explicitly', async () => {
+    const base = await captureStdout(['base', '--help']);
+    const evm = await captureStdout(['evm', '--help']);
+    expect(evm.code).toBe(0);
+    expect(evm.stdout).toBe(base.stdout);
+    expect(evm.stderr).toContain('"evm" is deprecated');
+    expect(evm.stderr).toContain('Use "base" for Base chain 8453');
+
+    for (const argv of [
+      ['docs', 'evm', 'aero-v2-pools', '--offline'],
+      ['schema', 'status', 'evm'],
+    ]) {
+      const result = await captureStdout(argv);
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain('"evm" is deprecated');
+    }
   });
 
   it('cambrian docs --help shows usage not docs content', async () => {
@@ -98,6 +117,9 @@ describe('CLI help output', () => {
       ]),
     );
 
+    const base = document.commands.find((command: { name: string }) => command.name === 'base');
+    expect(base.aliases).toBeUndefined();
+
     const mcp = document.commands.find((command: { name: string }) => command.name === 'mcp');
     const mcpTest = mcp.commands.find((command: { name: string }) => command.name === 'test');
     expect(mcpTest.options.map((option: { name: string }) => option.name)).toEqual([
@@ -113,6 +135,10 @@ describe('CLI help output', () => {
       .toContainEqual(expect.objectContaining({ name: 'offline' }));
     const pay = document.commands.find((command: { name: string }) => command.name === 'pay');
     expect(pay.options.map((option: { name: string }) => option.name)).toContain('offline');
+    expect(pay.commands.find((command: { name: string }) => command.name === 'base').aliases)
+      .toBeUndefined();
+    expect(docs.commands.find((command: { name: string }) => command.name === 'base').aliases)
+      .toBeUndefined();
     const describe = document.commands.find((command: { name: string }) => command.name === 'describe');
     expect(describe.commands.find((command: { name: string }) => command.name === 'opencli').options)
       .toContainEqual(expect.objectContaining({ name: 'offline' }));

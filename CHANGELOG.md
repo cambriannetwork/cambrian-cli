@@ -5,6 +5,26 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-17
+
+### Added
+
+- Added the conditional `cambrian ethereum` command group. It appears when the
+  active EVM OpenAPI schema advertises `chain_id=1` on a visible operation.
+- Added exact support for OpenAPI numeric enums that contain more than one
+  value. The runtime cache now preserves and validates all supported values.
+
+### Changed
+
+- Base commands remain fixed to `chain_id=8453`. Ethereum commands use
+  `chain_id=1` and include only operations that explicitly support Ethereum.
+- Deprecated the `evm` command. Help, completion, docs lists, suggestions, and
+  OpenCLI no longer advertise it. Existing calls still use Base and print a
+  warning.
+- Kept `pay base` fixed to Base. This release does not add `pay ethereum`.
+- Updated the packaged agent skill and public documentation for Base and
+  Ethereum command selection.
+
 ## [1.2.0] - 2026-08-07
 
 ### Added

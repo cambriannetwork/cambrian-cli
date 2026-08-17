@@ -11,7 +11,8 @@ Treat `describe opencli` as setup metadata only. For normal reads, do not start 
 
 Route by chain and domain:
 - `cambrian solana ...` for all Solana DeFi data: pools (Meteora DLMM, Raydium CLMM, Orca), tokens, prices, OHLCV, transactions, traders, wallets.
-- `cambrian base ...` (alias: `cambrian evm`) for all Base chain DeFi data: pools (Uniswap v3, Aerodrome v2/v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3), TVL, LP provider summaries, DEX discovery, prices and tokens.
+- `cambrian base ...` for all Base chain DeFi data: pools (Uniswap v3, Aerodrome v2/v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3), TVL, LP provider summaries, DEX discovery, prices and tokens.
+- `cambrian ethereum ...` for Ethereum mainnet only when current CLI metadata advertises it. Do not use the deprecated `evm` command in new requests.
 - `cambrian deep42 ...` for social intelligence: alpha tweet detection, influencer credibility, sentiment shifts.
 - `cambrian risk ...` for perpetual futures risk simulations.
 

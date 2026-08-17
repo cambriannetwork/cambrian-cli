@@ -65,6 +65,9 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       if (paramSpec.max !== undefined && n > paramSpec.max) {
         throw new CliUsageError(`--${cliFlag} must be at most ${paramSpec.max}.`);
       }
+      if (paramSpec.numericEnum && !paramSpec.numericEnum.includes(n)) {
+        throw new CliUsageError(`--${cliFlag} must be one of: ${paramSpec.numericEnum.join(', ')}.`);
+      }
       return n;
     }
     case 'number': {
@@ -77,6 +80,9 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       }
       if (paramSpec.max !== undefined && n > paramSpec.max) {
         throw new CliUsageError(`--${cliFlag} must be at most ${paramSpec.max}.`);
+      }
+      if (paramSpec.numericEnum && !paramSpec.numericEnum.includes(n)) {
+        throw new CliUsageError(`--${cliFlag} must be one of: ${paramSpec.numericEnum.join(', ')}.`);
       }
       return n;
     }
@@ -152,6 +158,7 @@ export function formatSchemaHints(ps: ParamSpec, cliDefault?: string): string {
   const parts: string[] = [];
   if (ps.default !== undefined) parts.push(`default: ${ps.default}`);
   else if (cliDefault !== undefined) parts.push(`CLI default: ${cliDefault}`);
+  if (ps.numericEnum) parts.push(`one of: ${ps.numericEnum.join('|')}`);
   if (ps.min !== undefined && ps.max !== undefined) {
     parts.push(`${ps.min}-${ps.max}`);
   } else if (ps.min !== undefined) {
@@ -167,6 +174,7 @@ export function formatSchemaHints(ps: ParamSpec, cliDefault?: string): string {
 /** Picks a representative value for a required flag in the example line. */
 function exampleValueFor(apiParam: string, ps: ParamSpec | undefined): string {
   if (ps?.enum && ps.enum.length > 0) return ps.enum[0];
+  if (ps?.numericEnum && ps.numericEnum.length > 0) return String(ps.numericEnum[0]);
   if (ps?.default !== undefined) return String(ps.default);
   return `<${apiParam}>`;
 }
@@ -196,6 +204,7 @@ export function buildResourceHelp(
           let line = `  --${f}`;
           if (requiredSet.has(f)) line += ' (required)';
           if (ps?.enum) line += ` [${ps.enum.join('|')}]`;
+          if (ps?.numericEnum) line += ` [${ps.numericEnum.join('|')}]`;
           if (ps) line += formatSchemaHints(ps, defaults[apiParam]);
           if (ps?.description) line += `\n      ${ps.description}`;
           return line;

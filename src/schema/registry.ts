@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 4;
+export const REGISTRY_CACHE_VERSION = 5;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -263,15 +263,14 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
   if (parameter.explode !== undefined && typeof parameter.explode !== 'boolean') return null;
   const enumValues = type === 'string' ? stringEnum(schema.enum) : undefined;
   if (enumValues === null) return null;
-  const numericEnum = type === 'integer' || type === 'number'
-    ? schema.enum
-    : undefined;
+  const numericEnum = type === 'integer' || type === 'number' ? schema.enum : undefined;
   if (numericEnum !== undefined && (
     !Array.isArray(numericEnum) ||
-    numericEnum.length !== 1 ||
-    typeof numericEnum[0] !== 'number' ||
-    !Number.isFinite(numericEnum[0]) ||
-    (type === 'integer' && !Number.isSafeInteger(numericEnum[0]))
+    numericEnum.length === 0 ||
+    !numericEnum.every((entry) =>
+      typeof entry === 'number' &&
+      Number.isFinite(entry) &&
+      (type !== 'integer' || Number.isSafeInteger(entry)))
   )) return null;
   if (schema.enum !== undefined && enumValues === undefined && numericEnum === undefined) return null;
   if (schema.minimum !== undefined &&
@@ -292,8 +291,14 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
   };
   if (enumValues !== undefined) result.enum = enumValues;
   if (numericEnum !== undefined) {
-    result.min = numericEnum[0];
-    result.max = numericEnum[0];
+    if (numericEnum.length === 1) {
+      result.min = numericEnum[0];
+      result.max = numericEnum[0];
+    } else {
+      result.numericEnum = [...numericEnum];
+      if (typeof schema.minimum === 'number') result.min = schema.minimum;
+      if (typeof schema.maximum === 'number') result.max = schema.maximum;
+    }
   } else {
     if (typeof schema.minimum === 'number') result.min = schema.minimum;
     if (typeof schema.maximum === 'number') result.max = schema.maximum;
@@ -382,6 +387,7 @@ function isValidPrimitive(value: unknown, spec: ParamSpec): boolean {
     return false;
   }
   const numeric = value as number;
+  if (spec.numericEnum && !spec.numericEnum.includes(numeric)) return false;
   return (spec.min === undefined || numeric >= spec.min) &&
     (spec.max === undefined || numeric <= spec.max);
 }
@@ -753,6 +759,15 @@ function isCachedParam(value: unknown): value is ParamSpec {
   if (!SUPPORTED_PARAM_TYPES.has(value.type)) return false;
   if (value.enum !== undefined && stringEnum(value.enum) === null) return false;
   if (value.enum !== undefined && value.type !== 'string') return false;
+  if (value.numericEnum !== undefined && (
+    (value.type !== 'integer' && value.type !== 'number') ||
+    !Array.isArray(value.numericEnum) ||
+    value.numericEnum.length < 2 ||
+    !value.numericEnum.every((entry) =>
+      typeof entry === 'number' &&
+      Number.isFinite(entry) &&
+      (value.type !== 'integer' || Number.isSafeInteger(entry)))
+  )) return false;
   if (value.min !== undefined && (typeof value.min !== 'number' || !Number.isFinite(value.min))) return false;
   if (value.max !== undefined && (typeof value.max !== 'number' || !Number.isFinite(value.max))) return false;
   if ((value.min !== undefined || value.max !== undefined) &&

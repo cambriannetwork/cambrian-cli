@@ -5,6 +5,12 @@ import {
   type CambrianMetadataGroup,
 } from '../metadata.js';
 import { deriveCliMetadata } from './dynamic-handler.js';
+import {
+  BASE_CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  hasEthereumSupport,
+  projectEvmMetadata,
+} from './evm-chains.js';
 
 const OPENCLI_SCHEMA_VERSION = '0.1.0';
 
@@ -157,9 +163,15 @@ export function buildOpenCliDocument(
     metadataGroups.solana.spec,
     metadataGroups.solana.cliDefaults,
   );
+  const baseMetadata = projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID);
+  const ethereumMetadata = projectEvmMetadata(metadataGroups.base, ETHEREUM_CHAIN_ID);
   const base = deriveCliMetadata(
-    metadataGroups.base.spec,
-    metadataGroups.base.cliDefaults,
+    baseMetadata.spec,
+    baseMetadata.cliDefaults,
+  );
+  const ethereum = deriveCliMetadata(
+    ethereumMetadata.spec,
+    ethereumMetadata.cliDefaults,
   );
   const deep42 = deriveCliMetadata(
     metadataGroups.deep42.spec,
@@ -189,11 +201,21 @@ export function buildOpenCliDocument(
       },
       {
         name: 'base',
-        aliases: ['evm'],
         description: `Query Base chain DeFi endpoints (${base.resources.length} resources).`,
         options: DATA_OPTIONS,
         commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions),
       },
+      ...(hasEthereumSupport(metadataGroups.base) ? [{
+        name: 'ethereum',
+        description: `Query Ethereum mainnet DeFi endpoints (${ethereum.resources.length} resources).`,
+        options: DATA_OPTIONS,
+        commands: buildSubcommands(
+          ethereum.resources,
+          'Ethereum',
+          ethereum.allowedOptions,
+          ethereum.requiredOptions,
+        ),
+      }] : []),
       {
         name: 'deep42',
         description: `Query Deep42 social intelligence endpoints (${deep42.resources.length} resources).`,
@@ -212,7 +234,7 @@ export function buildOpenCliDocument(
         options: PAY_OPTIONS,
         commands: [
           { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions) },
-          { name: 'base', aliases: ['evm'], commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions) },
+          { name: 'base', commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions) },
           { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions) },
           { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions) },
         ],
@@ -231,7 +253,10 @@ export function buildOpenCliDocument(
             description: 'List live guides or fetch one by its indexed URL slug.',
           },
           { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana') },
-          { name: 'base', aliases: ['evm'], commands: buildSubcommands(base.resources, 'Base') },
+          { name: 'base', commands: buildSubcommands(base.resources, 'Base') },
+          ...(hasEthereumSupport(metadataGroups.base)
+            ? [{ name: 'ethereum', commands: buildSubcommands(ethereum.resources, 'Ethereum') }]
+            : []),
           { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42') },
           { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk') },
         ],

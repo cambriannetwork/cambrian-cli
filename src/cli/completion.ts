@@ -8,13 +8,19 @@
 import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
 import type { CambrianGroup, CambrianMetadataGroup } from '../metadata.js';
 import { CliUsageError } from './core.js';
+import {
+  BASE_CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  hasEthereumSupport,
+  projectEvmMetadata,
+} from './evm-chains.js';
 
 export const COMPLETION_SHELLS = ['bash', 'zsh', 'fish'] as const;
 export type CompletionShell = (typeof COMPLETION_SHELLS)[number];
 
 /** Top-level commands offered for completion (hidden `__complete` excluded). */
 const TOP_LEVEL = [
-  'solana', 'base', 'evm', 'deep42', 'risk', 'pay',
+  'solana', 'base', 'deep42', 'risk', 'pay',
   'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe',
 ];
 
@@ -24,7 +30,7 @@ const GLOBAL_FLAGS = [
 ];
 
 /** Data groups payable via `cambrian pay <group> <resource>`. */
-const PAY_GROUPS = ['solana', 'base', 'evm', 'deep42', 'risk'];
+const PAY_GROUPS = ['solana', 'base', 'deep42', 'risk'];
 const PAY_FLAGS = ['--yes', '--max-amount', '--timeout', '--output', '--fields', '--offline', '--help'];
 
 function startsWithFilter(candidates: string[], prefix: string): string[] {
@@ -34,7 +40,7 @@ function startsWithFilter(candidates: string[], prefix: string): string[] {
 
 /** Maps a CLI group token to its metadata group key ('evm' → 'base'). */
 function metadataGroupKey(group: string): CambrianGroup | undefined {
-  if (group === 'evm' || group === 'base') return 'base';
+  if (group === 'evm' || group === 'base' || group === 'ethereum') return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
@@ -53,24 +59,36 @@ export function complete(
   metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
 ): string[] {
   const args = words.length === 0 ? [''] : words;
+  const ethereumAvailable = hasEthereumSupport(metadataGroups.base);
+  const topLevel = ethereumAvailable ? [...TOP_LEVEL, 'ethereum'] : TOP_LEVEL;
 
   // Completing the group/command token.
   if (args.length <= 1) {
-    return startsWithFilter(TOP_LEVEL, args[0] ?? '');
+    return startsWithFilter(topLevel, args[0] ?? '');
   }
 
   if (args[0] === 'schema') {
     const subcommands = ['status', 'refresh', 'clear-cache'];
     if (args.length === 2) return startsWithFilter(subcommands, args[1] ?? '');
     if (args.length === 3 && subcommands.includes(args[1])) {
-      return startsWithFilter(['solana', 'base', 'deep42', 'risk'], args[2] ?? '');
+      return startsWithFilter(['solana', 'base', 'ethereum', 'deep42', 'risk'], args[2] ?? '');
     }
     return [];
   }
 
   if (args[0] === 'docs') {
     if (args.length === 2) {
-      return startsWithFilter(['solana', 'base', 'deep42', 'risk', 'guides'], args[1] ?? '');
+      const groups = ['solana', 'base', ...(ethereumAvailable ? ['ethereum'] : []), 'deep42', 'risk', 'guides'];
+      return startsWithFilter(groups, args[1] ?? '');
+    }
+    const docsGroupKey = metadataGroupKey(args[1]);
+    if (args.length === 3 && docsGroupKey) {
+      const docsMeta = args[1] === 'ethereum'
+        ? projectEvmMetadata(metadataGroups.base, ETHEREUM_CHAIN_ID)
+        : docsGroupKey === 'base'
+          ? projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID)
+          : metadataGroups[docsGroupKey];
+      return startsWithFilter(docsMeta.resources, args[2] ?? '');
     }
     return [];
   }
@@ -86,7 +104,9 @@ export function complete(
     if (args.length === 2) return startsWithFilter(PAY_GROUPS, args[1] ?? '');
     const payGroupKey = metadataGroupKey(args[1]);
     if (!payGroupKey) return [];
-    const payMeta = metadataGroups[payGroupKey];
+    const payMeta = payGroupKey === 'base'
+      ? projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID)
+      : metadataGroups[payGroupKey];
     if (args.length === 3) return startsWithFilter(payMeta.resources, args[2] ?? '');
     const payEntry = payMeta.spec[args[2]];
     const payResourceFlags = payEntry
@@ -97,7 +117,11 @@ export function complete(
 
   const groupKey = metadataGroupKey(args[0]);
   if (!groupKey) return [];
-  const meta = metadataGroups[groupKey];
+  const meta = args[0] === 'ethereum'
+    ? projectEvmMetadata(metadataGroups.base, ETHEREUM_CHAIN_ID)
+    : groupKey === 'base'
+      ? projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID)
+      : metadataGroups[groupKey];
 
   // Completing the resource token.
   if (args.length === 2) {

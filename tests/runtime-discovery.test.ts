@@ -104,6 +104,62 @@ function routedFetch(
   }) as typeof globalThis.fetch;
 }
 
+function evmSchema(chainIds: number[]): unknown {
+  const chain = {
+    name: 'chain_id',
+    in: 'query',
+    schema: {
+      type: 'integer',
+      enum: chainIds,
+      default: chainIds.includes(8453) ? 8453 : chainIds[0],
+    },
+  };
+  const endpoint = (extra: unknown[] = []) => ({ get: { parameters: [chain, ...extra] } });
+  return {
+    openapi: '3.1.0',
+    info: { title: 'EVM', version: '1' },
+    paths: {
+      '/evm/chains': { get: { parameters: [] } },
+      '/evm/tokens': endpoint([{
+        name: 'limit', in: 'query', schema: { type: 'integer', default: 100, minimum: 1 },
+      }]),
+      '/evm/dexes': endpoint(),
+      '/evm/price-current': endpoint(),
+      '/evm/tvl': endpoint(),
+      '/evm/aero-v2-pools': {
+        get: { parameters: [{ ...chain, schema: { type: 'integer', enum: [8453], default: 8453 } }] },
+      },
+      '/evm/alien-v3-pools': {
+        get: { parameters: [{ ...chain, schema: { type: 'integer', enum: [8453], default: 8453 } }] },
+      },
+    },
+  };
+}
+
+function routedEvmFetch(chainIds: number[], requests: string[]): typeof globalThis.fetch {
+  const schema = evmSchema(chainIds);
+  const documented = Object.keys((schema as { paths: Record<string, unknown> }).paths)
+    .map((path) => `- GET ${path}`)
+    .join('\n');
+  return (async (input) => {
+    const url = String(input);
+    requests.push(url);
+    if (url === 'https://api.cambrian.org/evm/openapi.json') {
+      return new Response(JSON.stringify(schema), { status: 200 });
+    }
+    if (url === 'https://docs.cambrian.org/llms.txt') {
+      return new Response(documented, { status: 200 });
+    }
+    if (url.startsWith('https://api.cambrian.org/evm/')) {
+      return new Response(JSON.stringify({ ok: true, url }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  }) as typeof globalThis.fetch;
+}
+
 async function run(
   argv: string[],
   fetch: typeof globalThis.fetch,
@@ -493,5 +549,101 @@ describe('runtime endpoint discovery through the CLI', () => {
       '--off',
     ], noNetwork, root);
     expect(flags.stdout.trim()).toBe('--offline');
+  });
+
+  it('keeps production-like EVM discovery on Base and leaves Ethereum unavailable', async () => {
+    const root = cacheRoot();
+    const requests: string[] = [];
+    const fetch = routedEvmFetch([8453], requests);
+
+    const help = await run(['--help'], fetch, root);
+    expect(help.code).toBe(0);
+    expect(help.stdout).not.toContain('cambrian ethereum');
+
+    const completion = await run(['__complete', 'eth'], fetch, root);
+    expect(completion.stdout).toBe('');
+
+    const unavailable = await run(['ethereum', 'tokens'], fetch, root);
+    expect(unavailable.code).toBe(2);
+    expect(unavailable.stderr).toContain('Ethereum commands are not available');
+    expect(requests.some((url) => url.includes('/evm/tokens?'))).toBe(false);
+
+    const typo = await run(['etherum'], fetch, root);
+    expect(typo.stderr).not.toContain('Did you mean "ethereum"');
+  });
+
+  it('projects beta-like EVM discovery across commands while preserving Base and evm', async () => {
+    const root = cacheRoot();
+    const requests: string[] = [];
+    const fetch = routedEvmFetch([1, 8453], requests);
+
+    const help = await run(['--help'], fetch, root);
+    expect(help.stdout).toContain('cambrian ethereum');
+
+    const ethereumHelp = await run(['ethereum', '--help'], fetch, root);
+    expect(ethereumHelp.stdout).toContain('tokens');
+    expect(ethereumHelp.stdout).not.toContain('aero-v2-pools');
+    expect(ethereumHelp.stdout).not.toContain('alien-v3-pools');
+
+    const completion = await run(['__complete', 'eth'], fetch, root);
+    expect(completion.stdout.trim()).toBe('ethereum');
+    const ethereumResources = await run(['__complete', 'ethereum', ''], fetch, root);
+    expect(ethereumResources.stdout).toContain('tokens');
+    expect(ethereumResources.stdout).not.toContain('aero-v2-pools');
+
+    const opencli = await run(['describe', 'opencli', '--offline'], fetch, root);
+    const document = JSON.parse(opencli.stdout);
+    const ethereum = document.commands.find((command: { name: string }) => command.name === 'ethereum');
+    const base = document.commands.find((command: { name: string }) => command.name === 'base');
+    expect(ethereum.commands.map((command: { name: string }) => command.name)).toContain('tokens');
+    expect(ethereum.commands.map((command: { name: string }) => command.name)).not.toContain('aero-v2-pools');
+    expect(base.commands.map((command: { name: string }) => command.name)).toContain('aero-v2-pools');
+    expect(document.commands.find((command: { name: string }) => command.name === 'pay').commands
+      .map((command: { name: string }) => command.name)).not.toContain('ethereum');
+
+    const docs = await run(['docs', 'ethereum', '--offline'], fetch, root);
+    expect(docs.stdout).toContain('tokens');
+    expect(docs.stdout).not.toContain('aero-v2-pools');
+    const endpointDocs = await run(['docs', 'ethereum', 'tokens', '--offline'], fetch, root);
+    expect(endpointDocs.stdout).toContain('# cambrian ethereum tokens');
+    expect(endpointDocs.stdout).toContain('default: 1');
+    expect(endpointDocs.stdout).toContain('range 1-1');
+    const unsupportedDocs = await run(
+      ['docs', 'ethereum', 'aero-v2-pools', '--offline'],
+      fetch,
+      root,
+    );
+    expect(unsupportedDocs.code).toBe(2);
+    expect(unsupportedDocs.stderr).toContain('Unknown ethereum resource');
+    const schema = await run(['schema', 'status', 'ethereum'], fetch, root);
+    expect(JSON.parse(schema.stdout).group).toBe('base');
+
+    const typo = await run(['etherum'], fetch, root);
+    expect(typo.stderr).toContain('Did you mean "ethereum"');
+
+    for (const [command, chainId] of [['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
+      const result = await run([command, 'tokens', '--limit', '1', '--json'], fetch, root);
+      expect(result.code).toBe(0);
+      expect(requests.at(-1)).toContain(`chain_id=${chainId}`);
+      if (command === 'evm') expect(result.stderr).toContain('"evm" is deprecated');
+    }
+
+    const beforeConflict = requests.filter((url) => url.includes('/evm/tokens?')).length;
+    const conflict = await run(
+      ['ethereum', 'tokens', '--chain-id', '8453', '--limit', '1'],
+      fetch,
+      root,
+    );
+    expect(conflict.code).toBe(2);
+    expect(conflict.stderr).toContain('--chain-id must be at most 1');
+    expect(requests.filter((url) => url.includes('/evm/tokens?'))).toHaveLength(beforeConflict);
+
+    const payConflict = await run(
+      ['pay', 'base', 'tokens', '--chain-id', '1'],
+      fetch,
+      root,
+    );
+    expect(payConflict.code).toBe(2);
+    expect(payConflict.stderr).toContain('--chain-id must be at least 8453');
   });
 });

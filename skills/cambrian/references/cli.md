@@ -67,7 +67,7 @@ Endpoint discovery:
 - for Solana token transactions, start with `solana token-transactions`
 - for Solana trader rankings, start with `solana traders-leaderboard`
 - for Solana wallet analysis, start with `solana wallet-balance-history` or `solana holder-token-balances`
-- for Base pool metrics on a specific DEX, start with `base <dex>-v3-pool` (alias: `evm`)
+- for Base pool metrics on a specific DEX, start with `base <dex>-v3-pool`
 - for Base LP provider analysis (Aerodrome v2), start with `base aero-v2-provider-summary`
 - for supported Base DEXes, start with `base dexes`
 - for Base token price, start with `base price-current`
@@ -345,7 +345,9 @@ Meaning:
 
 ## Base Commands
 
-Note: `cambrian base` is the primary command group; `cambrian evm` is accepted as an alias.
+`cambrian base` is pinned to `chain_id=8453`, even when the EVM schema also
+supports Ethereum. The deprecated `cambrian evm` compatibility command still
+selects Base and prints a warning. Do not use it in new scripts.
 
 ### Pools
 
@@ -405,7 +407,7 @@ Meaning:
 - `pool` returns detailed metrics for one pool
 - `pools` returns a list/search across pools on that DEX
 - Aerodrome v2 additionally has `pool-volume` and `fee-metrics`
-- all endpoints target the Base chain; there is no `--chain-id` flag
+- Base commands target `chain_id=8453`; do not use `--chain-id` to switch chains
 - do not conflate Aerodrome v2 (classic AMM) with v3 (concentrated liquidity)
 
 ### LP Providers (Aerodrome v2)
@@ -452,6 +454,21 @@ Meaning:
 - `tokens` returns the token list
 - `price-current` returns the latest price for a Base token
 - `price-hour` returns the last hourly candle; `--hours` is required
+
+## Ethereum Mainnet Commands
+
+`cambrian ethereum` appears automatically only when the active EVM schema has
+at least one visible operation that explicitly supports `chain_id=1`. Its help,
+docs, completion, and OpenCLI metadata list only those operations. For example,
+the beta schema was verified with:
+
+```bash
+cambrian ethereum tokens --limit 1
+```
+
+The CLI supplies `chain_id=1` and rejects a conflicting chain flag before the
+request. If `ethereum` is absent, production has not advertised chain-1 support
+yet; use `base`, not `evm`, for Base requests.
 
 ## Deep42 Commands
 
@@ -539,7 +556,7 @@ Default env vars:
 - `CAMBRIAN_API_KEY`
 
 Base URLs:
-- Solana + Base: `https://api.cambrian.org`
+- Solana + EVM: `https://api.cambrian.org`
 - Deep42: `https://api.cambrian.org/deep42`
 - Risk: `https://api.cambrian.org/risk`
 

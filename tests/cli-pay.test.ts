@@ -87,7 +87,8 @@ describe('cambrian pay', () => {
     const { code, stdout } = await run(['pay']);
     expect(code).toBe(0);
     expect(stdout).toContain('Pay-per-call via x402');
-    expect(stdout).toContain('solana | base (evm) | deep42 | risk');
+    expect(stdout).toContain('solana | base | deep42 | risk');
+    expect(stdout).not.toContain('base (evm)');
     expect(stdout).toContain('--timeout <ms>');
     expect(stdout).toContain('--json');
     expect(stdout).toContain('--offline');
@@ -179,6 +180,12 @@ describe('cambrian pay', () => {
     await run(['pay', 'base', 'price-current', '--token-address', `0x${'a'.repeat(40)}`], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
+    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/api/v1/evm/price-current');
+
+    const evm = await run(['pay', 'evm', 'price-current', '--token-address', `0x${'a'.repeat(40)}`], {
+      env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
+    });
+    expect(evm.stderr).toContain('"evm" is deprecated');
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/api/v1/evm/price-current');
 
     await run(['pay', 'risk', 'perp-risk-engine'], {

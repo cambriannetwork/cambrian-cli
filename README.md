@@ -5,7 +5,8 @@ DeFi data, social intelligence, and perpetual risk analysis for agents across So
 `cambrian` is the published agent-facing surface for the Cambrian API:
 
 - `cambrian solana <resource> [--flags]` -- Solana DeFi endpoints
-- `cambrian base <resource> [--flags]` -- Base DeFi endpoints (alias: evm)
+- `cambrian base <resource> [--flags]` -- Base DeFi endpoints
+- `cambrian ethereum <resource> [--flags]` -- Ethereum mainnet endpoints, shown only when supported by the active schema
 - `cambrian deep42 <resource> [--flags]` -- social intelligence endpoints
 - `cambrian risk <resource> [--flags]` -- perp risk endpoint
 - `cambrian pay <group> <resource> [--flags]` -- pay-per-call via x402 (Base USDC, no API key)
@@ -87,6 +88,13 @@ appear without reinstalling `cambrian` or publishing another npm version.
 - EVM and Solana each load their chain-specific production OpenAPI document.
   Either group uses the legacy combined document only when its primary is
   unavailable; primary and fallback schemas are never merged.
+- The EVM registry is projected by chain: `base` is pinned to
+  `chain_id=8453`; `ethereum` appears only when at least one
+  visible operation explicitly supports `chain_id=1`. Chain-neutral operations
+  remain under Base and do not make Ethereum appear.
+- The `evm` command is deprecated and hidden from help, completion, docs lists,
+  and OpenCLI metadata. Existing `evm` calls still select Base
+  (`chain_id=8453`) and print a warning.
 - Validated results are cached for 15 minutes. Successful, failed, explicit,
   unknown-resource, and concurrent attempts all share the same per-physical-URL
   request floor. EVM and Solana share a fallback attempt only when both need the
@@ -118,9 +126,9 @@ invocation still uses the validated live metadata and reports a warning; failed
 atomic writes also clean up their temporary files on a best-effort basis.
 
 ```bash
-cambrian schema status [solana|base|deep42|risk]
-cambrian schema refresh [solana|base|deep42|risk]
-cambrian schema clear-cache [solana|base|deep42|risk]
+cambrian schema status [solana|base|ethereum|deep42|risk]
+cambrian schema refresh [solana|base|ethereum|deep42|risk]
+cambrian schema clear-cache [solana|base|ethereum|deep42|risk]
 
 # Never refresh metadata for this invocation:
 cambrian solana latest-block --offline
@@ -154,8 +162,8 @@ cambrian docs guides x402
 As an alternative to an API key, `cambrian pay <group> <resource>` pays for a
 single call with USDC on Base via the [x402](https://x402.org) protocol. The
 gateway supplies the current price and the CLI previews it before payment;
-settlement is facilitator-backed, so you pay no gas. Works for every data group
-(`solana`, `base`/`evm`, `deep42`, `risk`).
+settlement is facilitator-backed, so you pay no gas. Works for every advertised
+data group (`solana`, `base`, `deep42`, `risk`).
 
 This path is opt-in and keeps the core install dependency-free, so the signing
 libraries are **not bundled** — install them once alongside the CLI:
@@ -252,6 +260,7 @@ Execution best practice after setup:
 | Base LP provider analysis | `base aero-v2-provider-summary` | the appropriate pool resource |
 | Base DEX discovery | `base dexes` | the appropriate pool resource |
 | Base token price | `base price-current` | `base price-hour` |
+| Ethereum mainnet data | `ethereum tokens` when `ethereum` is advertised | another listed `ethereum` resource |
 | social sentiment or trending | `deep42 social-data/sentiment-shifts` | `deep42 social-data/alpha-tweet-detection` |
 | influencer credibility | `deep42 social-data/influencer-credibility` | `deep42 social-data/alpha-tweet-detection` |
 | alpha tweet detection | `deep42 social-data/alpha-tweet-detection` | `deep42 social-data/influencer-credibility` |
@@ -260,6 +269,7 @@ Execution best practice after setup:
 Routing rules that matter:
 
 - do not route Solana questions to `base` or vice versa
+- use `base` for Base and `ethereum` for Ethereum mainnet; do not use the deprecated `evm` command in new scripts
 - do not pass Base addresses to Solana endpoints or Solana mint addresses to Base endpoints
 - do not guess pool or token addresses; ask the user if missing
 - do not conflate Aerodrome v2 (classic AMM) with v3 (concentrated liquidity)
@@ -286,7 +296,7 @@ cambrian solana trade-statistics --token-addresses <mint> --timeframe <tf>
 cambrian solana traders-leaderboard --token-address <mint> --interval "24 HOUR"
 cambrian solana wallet-balance-history --wallet-address <wallet> --token-address <mint> --after-time <unix> --before-time <unix>
 
-# Base (alias: evm)
+# Base
 cambrian base dexes
 cambrian base uniswap-v3-pool --pool-address <pool>
 cambrian base uniswap-v3-pools
@@ -297,6 +307,9 @@ cambrian base aero-v2-provider-summary --wallet-address <address>
 cambrian base tvl-status --wallet-address <wallet>
 cambrian base tvl-top-owners --token-address <token>
 cambrian base price-current --token-address <token>
+
+# Ethereum mainnet (only when advertised by current help/OpenCLI metadata)
+cambrian ethereum tokens
 
 # Deep42
 cambrian deep42 social-data/alpha-tweet-detection --limit 10
@@ -324,7 +337,8 @@ cambrian describe opencli
 
 ## Global Flags
 
-These apply to every data command (`solana` / `base` / `deep42` / `risk`). The
+These apply to every data command (`solana` / `base` / conditional `ethereum` /
+`deep42` / `risk`). The
 default output is unchanged (pretty JSON), so all flags are opt-in.
 
 | Flag | Effect |
@@ -352,7 +366,8 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | Command | Description |
 | --- | --- |
 | `cambrian solana <resource> [--flags]` | Solana DeFi data (40 endpoints) |
-| `cambrian base <resource> [--flags]` | Base DeFi data (38 documented OpenAPI endpoints; alias: evm) |
+| `cambrian base <resource> [--flags]` | Base DeFi data (38 documented OpenAPI endpoints) |
+| `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data; present only when the active EVM schema supports chain 1 |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |

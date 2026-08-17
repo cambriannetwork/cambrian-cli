@@ -50,9 +50,8 @@ const EVM_CATEGORY_ORDER = [
   'Prices',
 ];
 
-function evmHelp(currentResources: string[]): string {
-  return buildCategorizedHelp(currentResources, getEvmCategory, 'base', {
-    extraLines: ['Aliases: cambrian evm'],
+function evmHelp(currentResources: string[], command: string): string {
+  return buildCategorizedHelp(currentResources, getEvmCategory, command, {
     categoryOrder: EVM_CATEGORY_ORDER,
   });
 }
@@ -65,6 +64,7 @@ export async function handleEvmQuery(
   runtime: Runtime,
   client: CambrianData,
   metadata: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.base,
+  command = 'base',
 ): Promise<number> {
   const currentSpec = metadata.spec;
   const currentDefaults = metadata.cliDefaults;
@@ -75,11 +75,11 @@ export async function handleEvmQuery(
     runtime,
     (path, params) => client.opabinia.query(path, params),
     currentSpec,
-    'base',
+    command,
     EVM_GLOBAL_OPTIONS,
     currentDefaults,
     current.allowedOptions,
     current.requiredOptions,
-    () => evmHelp(current.resources),
+    () => evmHelp(current.resources, command),
   );
 }

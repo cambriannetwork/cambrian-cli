@@ -7,6 +7,7 @@ export interface ParamSpec {
   required: boolean;
   type: string;
   enum?: string[];
+  numericEnum?: number[];
   default?: unknown;
   min?: number;
   max?: number;

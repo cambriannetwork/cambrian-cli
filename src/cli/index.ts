@@ -53,13 +53,19 @@ import {
   type CambrianGroup,
   type CambrianMetadataGroup,
 } from '../metadata.js';
+import {
+  BASE_CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  hasEthereumSupport,
+  projectEvmMetadata,
+} from './evm-chains.js';
 
 // ── Known top-level commands (for dispatch + typo suggestions) ──────
 
-const KNOWN_COMMANDS = ['solana', 'evm', 'base', 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe'];
+const KNOWN_COMMANDS = ['solana', 'evm', 'base', 'ethereum', 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe'];
 
 /** Command groups that perform real authenticated queries (drive the update notice). */
-const DATA_COMMANDS = ['solana', 'evm', 'base', 'deep42', 'risk'];
+const DATA_COMMANDS = ['solana', 'evm', 'base', 'ethereum', 'deep42', 'risk'];
 
 const REGISTRY_GROUPS: CambrianGroup[] = ['solana', 'base', 'deep42', 'risk'];
 
@@ -69,14 +75,36 @@ function cachedMetadataGroups(runtime: Runtime): Record<CambrianGroup, CambrianM
   ) as Record<CambrianGroup, CambrianMetadataGroup>;
 }
 
+function suggestionCommands(runtime: Runtime): string[] {
+  const commands = KNOWN_COMMANDS.filter((command) => command !== 'evm');
+  return hasEthereumSupport(loadCachedMetadataGroup('base', runtime).metadata)
+    ? commands
+    : commands.filter((command) => command !== 'ethereum');
+}
+
 function canonicalRegistryResource(group: CambrianGroup, resource: string): string {
   return group === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
 }
 
 function registryGroupForToken(group: string | undefined): CambrianGroup | undefined {
-  if (group === 'evm' || group === 'base') return 'base';
+  if (group === 'evm' || group === 'base' || group === 'ethereum') return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
+}
+
+function projectEvmCommand(
+  metadata: CambrianMetadataGroup,
+  command: 'base' | 'evm' | 'ethereum',
+): CambrianMetadataGroup {
+  return projectEvmMetadata(
+    metadata,
+    command === 'ethereum' ? ETHEREUM_CHAIN_ID : BASE_CHAIN_ID,
+  );
+}
+
+async function runtimeRootHelp(parsed: ParsedArgs, runtime: Runtime): Promise<string> {
+  const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
+  return rootHelp(hasEthereumSupport(metadata));
 }
 
 async function runtimeMetadataFor(
@@ -194,12 +222,24 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
   const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
   const registryGroup = registryGroupForToken(group);
   if (registryGroup) {
-    metadataGroups[registryGroup] = await runtimeMetadataFor(
+    const metadata = await runtimeMetadataFor(
       registryGroup,
       resource ?? '',
       parsed,
       runtime,
     );
+    metadataGroups[registryGroup] = registryGroup === 'base' && group
+      ? projectEvmCommand(metadata, group === 'ethereum' ? 'ethereum' : group === 'evm' ? 'evm' : 'base')
+      : metadata;
+    if (group === 'ethereum') {
+      if (metadataGroups.base.resources.length === 0) {
+        throw new CliUsageError('Ethereum commands are not available in the active EVM schema yet.');
+      }
+      if (resource && !metadataGroups.base.spec[resource]) {
+        const suggestion = didYouMean(resource, metadataGroups.base.resources);
+        throw new CliUsageError(`Unknown ethereum resource: ${resource}.${suggestion}`);
+      }
+    }
   }
 
   const docs = await fetchDocs(
@@ -471,6 +511,13 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
     }
 
     const command = parsed.positionals[0];
+    if (
+      command === 'evm' ||
+      ((command === 'pay' || command === 'docs') && parsed.positionals[1] === 'evm') ||
+      (command === 'schema' && parsed.positionals[2] === 'evm')
+    ) {
+      runtime.stderr('Warning: "evm" is deprecated. Use "base" for Base chain 8453.');
+    }
 
     // No args → human landing screen (banner only for interactive terminals)
     if (!command) {
@@ -479,13 +526,13 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
         runtime.stdout(banner(runtime.env.NO_COLOR ? 'none' : 'gradient'));
         runtime.stdout('');
       }
-      runtime.stdout(rootHelp());
+      runtime.stdout(await runtimeRootHelp(parsed, runtime));
       return 0;
     }
 
     // --help with no recognized command → root help
     if (hasOption(parsed, 'help') && !KNOWN_COMMANDS.includes(command)) {
-      runtime.stdout(rootHelp());
+      runtime.stdout(await runtimeRootHelp(parsed, runtime));
       return 0;
     }
 
@@ -516,13 +563,37 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       }
       case 'evm':
       case 'base': {
+        const currentCommand = command as 'base' | 'evm';
         if (skipAuth) {
-          const metadata = await runtimeMetadataFor('base', resource, parsed, runtime);
+          const metadata = projectEvmCommand(
+            await runtimeMetadataFor('base', resource, parsed, runtime),
+            currentCommand,
+          );
           return await handleEvmQuery(resource, parsed, runtime, null!, metadata);
         }
         const client = createClient(parsed, runtime);
-        const metadata = await runtimeMetadataFor('base', resource, parsed, runtime);
+        const metadata = projectEvmCommand(
+          await runtimeMetadataFor('base', resource, parsed, runtime),
+          currentCommand,
+        );
         return await handleEvmQuery(resource, parsed, runtime, client, metadata);
+      }
+      case 'ethereum': {
+        const metadata = projectEvmCommand(
+          await runtimeMetadataFor('base', resource, parsed, runtime),
+          'ethereum',
+        );
+        if (metadata.resources.length === 0) {
+          throw new CliUsageError(
+            'Ethereum commands are not available in the active EVM schema yet. ' +
+            'Use "cambrian base --help" for currently supported EVM commands.',
+          );
+        }
+        if (skipAuth) {
+          return await handleEvmQuery(resource, parsed, runtime, null!, metadata, 'ethereum');
+        }
+        const client = createClient(parsed, runtime);
+        return await handleEvmQuery(resource, parsed, runtime, client, metadata, 'ethereum');
       }
       case 'deep42': {
         if (skipAuth) {
@@ -563,7 +634,8 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       // ── Docs: live API documentation from llms.txt ───────────
       case 'docs':
         if (hasOption(parsed, 'help')) {
-          runtime.stdout(docsHelp());
+          const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
+          runtime.stdout(docsHelp(hasEthereumSupport(metadata)));
           return 0;
         }
         return await handleDocs(parsed, runtime);
@@ -588,7 +660,7 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'describe':
         return await handleDescribe(parsed, runtime);
       default: {
-        const suggestion = didYouMean(command, KNOWN_COMMANDS);
+        const suggestion = didYouMean(command, suggestionCommands(runtime));
         throw new CliUsageError(
           `Unknown command: ${command}.${suggestion} Run "cambrian --help" for a list.`,
         );
