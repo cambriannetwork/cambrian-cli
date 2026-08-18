@@ -1,8 +1,7 @@
 /**
  * `cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]` —
  * pay-per-call against the x402 gateway (x402.cambrian.org) instead of an
- * API key. Covers all data groups (solana / base|evm / deep42 / risk): the
- * gateway fronts `/api/v1/<group>/<resource>` paths. Reuses the bundled
+ * API key. Covers all data groups (solana / base|evm / deep42 / risk). Reuses the bundled
  * metadata for resource/param validation, then pays via the @x402 SDK.
  *
  * Spends real USDC on Base; guarded by a spend cap, a cost preview, and --yes.
@@ -336,9 +335,11 @@ export function payHelp(): string {
   ].join('\n');
 }
 
-/** Joins the gateway base URL with an apiPath (which may lack a leading slash). */
-function buildUrl(apiPath: string, query: URLSearchParams): string {
-  const path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+/** Joins the gateway base URL with a public API path. */
+function buildUrl(group: string, apiPath: string, query: URLSearchParams): string {
+  let path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+  path = path.replace(/^\/api\/v1/, '');
+  if (group === 'risk' && !path.startsWith('/risk/')) path = `/risk${path}`;
   const qs = query.toString();
   return `${X402_BASE_URL}${path}${qs ? `?${qs}` : ''}`;
 }
@@ -429,7 +430,7 @@ export async function handlePay(
       query.set(apiParam, String(value));
     }
   }
-  const url = buildUrl(entry.apiPath, query);
+  const url = buildUrl(groupArg, entry.apiPath, query);
 
   const privateKey = runtime.env.CAMBRIAN_X402_PRIVATE_KEY;
   if (!privateKey) {

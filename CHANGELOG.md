@@ -5,6 +5,15 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-18
+
+### Changed
+
+- x402 payments now use the current public API paths.
+- Updated the packaged skill and public documentation for Ethereum routing.
+- Removed obsolete public guidance about internal API paths and compatibility
+  details.
+
 ## [1.3.0] - 2026-08-17
 
 ### Added

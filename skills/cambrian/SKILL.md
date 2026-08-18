@@ -28,7 +28,7 @@ The published package is intentionally narrow.
 
 It is for:
 
-- `cambrian solana|base|deep42|risk <resource> ...`, plus conditional `cambrian ethereum ...`
+- `cambrian solana|base|ethereum|deep42|risk <resource> ...`
 - `cambrian skill ...`
 - `cambrian mcp ...`
 - `cambrian docs guides [name]`
@@ -99,23 +99,21 @@ Execution rule after setup:
 
 Runtime endpoint rule:
 
-- The CLI refreshes a private OpenAPI-backed endpoint cache automatically;
+- The CLI refreshes endpoint metadata automatically;
   compatible GET/query additions, updates, and removals can appear without
   reinstalling the npm package.
 - If a newly deployed endpoint is expected but not visible, run
   `cambrian schema refresh <solana|base|ethereum|deep42|risk>` once, then retry it. All
   attempts share a 15-minute per-source floor, including failures and typos.
 - Use `--offline` when a command must use only installed/cached metadata.
-- Treat validated runtime OpenAPI as the executable source of truth. Failed or
-  invalid refreshes fall back to the last-known-good cache, then the bundle.
-- `base` always selects Base (`chain_id=8453`). Use `ethereum` only when current
-  help or OpenCLI metadata advertises it; that
-  group contains only operations explicitly supporting Ethereum mainnet
-  (`chain_id=1`). The deprecated `evm` compatibility command still selects Base
-  and prints a warning. Do not use it in new commands.
-- Guide discovery is separate and comes from the live `## Available Guides`
-  section. Use `cambrian docs guides` to list it and `cambrian docs guides
-  <slug>` to fetch any indexed guide; do not assume a compiled guide list.
+- Treat validated endpoint metadata as the executable source of truth. Failed
+  or invalid refreshes use cached or installed metadata.
+- `base` always selects Base (`chain_id=8453`). `ethereum` always selects
+  Ethereum mainnet (`chain_id=1`). Each group exposes only its supported
+  operations. Use `base` or `ethereum` in new commands. Do not use `evm` as a
+  CLI group.
+- Use `cambrian docs guides` to list live guides. Use `cambrian docs guides
+  <slug>` to fetch an indexed guide.
 
 ## Agent Workflow
 
@@ -133,7 +131,7 @@ Suggested agent workflow:
 
 1. Use `cambrian mcp config` when setting up an MCP-capable runtime.
 2. Use `cambrian describe opencli` if the runtime wants command metadata.
-3. Determine which service group the question belongs to (solana, base, conditional ethereum, deep42, risk).
+3. Determine which service group the question belongs to (solana, base, ethereum, deep42, risk).
 4. Use the narrowest resource and flags for the question.
 5. Use HTTP only when the CLI and MCP are unavailable.
 6. Leave this surface only when the dataset does not cover the question or the user explicitly wants outside sources.
@@ -151,12 +149,11 @@ Covered reads include:
 
 - Use `cambrian solana ...` for all Solana-chain DeFi data.
 - Use `cambrian base ...` for all Base chain DeFi data.
-- Use `cambrian ethereum ...` for Ethereum mainnet only when that command is
-  advertised by the active CLI metadata.
+- Use `cambrian ethereum ...` for Ethereum mainnet data.
 - Use `cambrian deep42 ...` for social intelligence.
 - Use `cambrian risk ...` for perpetual futures risk simulations.
 - If the user asks about a Solana token or pool, always route to `solana`, never `base` or `ethereum`.
-- Route Base requests to `base` and Ethereum mainnet requests to `ethereum`. Do not use the deprecated `evm` command in new requests.
+- Route Base requests to `base` and Ethereum mainnet requests to `ethereum`. Do not use `evm` as a CLI group.
 - If the user asks about social sentiment, Twitter, influencer credibility, or project research, route to `deep42`.
 - If the user asks about perp risk, position sizing, or liquidation, route to `risk`.
 - Do not guess which group a resource belongs to.
@@ -178,12 +175,12 @@ Covered reads include:
 | Solana trader leaderboard | `solana traders-leaderboard --token-address <mint> --interval "24 HOUR"` | `solana trade-statistics` |
 | Solana wallet history | `solana wallet-balance-history` | `solana holder-token-balances` |
 | Find pools for a Solana token | `solana token-pool-search --token-address <mint>` | the specific pool endpoint |
-| EVM pool metrics (Uniswap) | `base uniswap-v3-pool --pool-address <pool>` | `base uniswap-v3-pools` |
-| EVM pool metrics (Aerodrome) | `base aero-v2-pool --pool-address <pool>` or `base aero-v3-pool --pool-address <pool>` | `base aero-v2-pools` |
-| EVM TVL rankings | `base tvl-top-owners --token-address <token>` | `base tvl-status` |
-| EVM DEX discovery | `base dexes` | the appropriate pool resource |
-| EVM token price | `base price-current --token-address <token>` | `base price-hour` |
-| Ethereum mainnet data | `ethereum tokens` when advertised | another listed `ethereum` resource |
+| Base pool metrics (Uniswap) | `base uniswap-v3-pool --pool-address <pool>` | `base uniswap-v3-pools` |
+| Base pool metrics (Aerodrome) | `base aero-v2-pool --pool-address <pool>` or `base aero-v3-pool --pool-address <pool>` | `base aero-v2-pools` |
+| Base TVL rankings | `base tvl-top-owners --token-address <token>` | `base tvl-status` |
+| Base DEX discovery | `base dexes` | the appropriate pool resource |
+| Base token price | `base price-current --token-address <token>` | `base price-hour` |
+| Ethereum mainnet data | `ethereum tokens` | another listed `ethereum` resource |
 | social sentiment shifts | `deep42 sentiment-shifts --limit 10` | `deep42 alpha-tweets` |
 | influencer credibility | `deep42 influencer-credibility --limit 10` | `deep42 alpha-tweets` |
 | alpha tweet detection | `deep42 alpha-tweets --limit 10` | `deep42 influencer-credibility` |
@@ -315,8 +312,6 @@ Base URLs:
 - Solana & EVM: `https://api.cambrian.org`
 - Deep42: `https://api.cambrian.org/deep42`
 - Risk: `https://api.cambrian.org/risk`
-
-Public API-key requests omit the upstream `/api/v1` prefix.
 
 Header: `X-API-KEY: <your-key>`
 

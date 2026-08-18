@@ -346,8 +346,7 @@ Meaning:
 ## Base Commands
 
 `cambrian base` is pinned to `chain_id=8453`, even when the EVM schema also
-supports Ethereum. The deprecated `cambrian evm` compatibility command still
-selects Base and prints a warning. Do not use it in new scripts.
+supports Ethereum. Do not use `cambrian evm` as a CLI group.
 
 ### Pools
 
@@ -457,18 +456,16 @@ Meaning:
 
 ## Ethereum Mainnet Commands
 
-`cambrian ethereum` appears automatically only when the active EVM schema has
-at least one visible operation that explicitly supports `chain_id=1`. Its help,
-docs, completion, and OpenCLI metadata list only those operations. For example,
-the beta schema was verified with:
+`cambrian ethereum` selects Ethereum mainnet with `chain_id=1`. Its help, docs,
+completion, and OpenCLI metadata list the supported Ethereum operations.
+For example:
 
 ```bash
 cambrian ethereum tokens --limit 1
 ```
 
 The CLI supplies `chain_id=1` and rejects a conflicting chain flag before the
-request. If `ethereum` is absent, production has not advertised chain-1 support
-yet; use `base`, not `evm`, for Base requests.
+request. Use `base`, not `evm`, for Base requests.
 
 ## Deep42 Commands
 
