@@ -69,6 +69,28 @@ describe('CLI exit codes', () => {
     expect(stderr).not.toContain('API key required');
   });
 
+  it('suggests the closest known flag for a single unknown option typo', async () => {
+    const { code, stderr } = await run(
+      ['solana', 'price-current', '--token-adress', 'SOL', '--offline', '--api-key', 'dummy-key'],
+      { env: { CAMBRIAN_SCHEMA_MODE: 'bundled' } },
+    );
+
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown option for solana price-current: --token-adress.');
+    expect(stderr).toContain('Did you mean "--token-address"?');
+  });
+
+  it('omits a suggestion when multiple unknown options are given at once', async () => {
+    const { code, stderr } = await run(
+      ['solana', 'price-current', '--foo-bar', '1', '--baz-qux', '2', '--offline', '--api-key', 'dummy-key'],
+      { env: { CAMBRIAN_SCHEMA_MODE: 'bundled' } },
+    );
+
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown options for solana price-current: --foo-bar, --baz-qux.');
+    expect(stderr).not.toContain('Did you mean');
+  });
+
   it.each([
     [['solana', 'latest-block', 'extra'], 'Too many arguments for solana latest-block'],
     [['docs', 'solana', 'latest-block', 'extra'], 'Too many arguments for docs'],
