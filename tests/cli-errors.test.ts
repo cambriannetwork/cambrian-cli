@@ -95,6 +95,41 @@ describe('CLI exit codes', () => {
     expect(stdout).toBe('');
     expect(stderr).toContain('Unknown option for cambrian: --not-real');
   });
+
+  it('suggests the closest skill subcommand on typo', async () => {
+    const { code, stderr } = await run(['skill', 'isntall']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown skill subcommand: isntall.');
+    expect(stderr).toContain('Did you mean "install"?');
+  });
+
+  it('suggests the closest config subcommand on typo', async () => {
+    const { code, stderr } = await run(['config', 'staus']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown config subcommand: staus.');
+    expect(stderr).toContain('Did you mean "status"?');
+  });
+
+  it('suggests the closest schema group on typo', async () => {
+    const { code, stderr } = await run(['schema', 'status', 'solna']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown schema group: solna.');
+    expect(stderr).toContain('Did you mean "solana"?');
+  });
+
+  it('suggests the closest schema subcommand on typo', async () => {
+    const { code, stderr } = await run(['schema', 'refres']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown schema subcommand: refres.');
+    expect(stderr).toContain('Did you mean "refresh"?');
+  });
+
+  it('suggests the closest mcp subcommand on typo', async () => {
+    const { code, stderr } = await run(['mcp', 'confg']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown mcp subcommand: confg.');
+    expect(stderr).toContain('Did you mean "config"?');
+  });
 });
 
 describe('CLI --json error output', () => {
