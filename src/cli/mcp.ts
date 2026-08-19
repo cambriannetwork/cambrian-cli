@@ -1,5 +1,6 @@
 import { spawnSync } from 'child_process';
 import type { ParsedArgs, Runtime } from './core.js';
+import { didYouMean } from './suggest.js';
 import {
   assertNoUnknownOptions,
   assertNoExtraPositionals,
@@ -336,6 +337,8 @@ export async function handleMcp(parsed: ParsedArgs, runtime: Runtime): Promise<n
     case 'test':
       return mode === 'hosted' ? await testHosted(parsed, runtime) : testLocal(parsed, runtime);
     default:
-      throw new CliUsageError(`Unknown mcp subcommand: ${subcommand}`);
+      throw new CliUsageError(
+        `Unknown mcp subcommand: ${subcommand}.${didYouMean(subcommand, ['config', 'install', 'test'])}`,
+      );
   }
 }
