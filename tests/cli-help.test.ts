@@ -26,6 +26,16 @@ describe('CLI help output', () => {
     expect(stdout).toContain('cambrian schema');
   });
 
+  it('documents that --timeout 0 disables the per-request timeout', async () => {
+    const priceHelp = await captureStdout(['solana', 'price-current', '--help']);
+    expect(priceHelp.stdout).toContain('--timeout <ms>');
+    expect(priceHelp.stdout).toContain('0 disables it');
+
+    const payHelp = await captureStdout(['pay', '--help']);
+    expect(payHelp.stdout).toContain('--timeout <ms>');
+    expect(payHelp.stdout).toContain('0 disables it');
+  });
+
   it('documents safe config inspection and advanced schema controls precisely', async () => {
     const config = await captureStdout(['config', '--help']);
     expect(config.stdout).toContain('cambrian config status');

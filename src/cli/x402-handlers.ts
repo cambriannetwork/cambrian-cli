@@ -318,7 +318,7 @@ export function payHelp(): string {
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',
     '  --max-amount <usd> Spend cap per call (default 0.10).',
-    `  --timeout <ms>    Gateway timeout in milliseconds (default ${DEFAULT_X402_TIMEOUT_MS}).`,
+    `  --timeout <ms>    Gateway timeout in milliseconds (default ${DEFAULT_X402_TIMEOUT_MS}; 0 disables it).`,
     '  --output <fmt>     json (default), table, or tsv.',
     '  --fields a,b,c     Project to only these fields.',
     '  --json             Emit structured JSON errors on stderr.',
