@@ -5,6 +5,16 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-08-28
+
+### Fixed
+
+- `cambrian mcp config --client codex` now prints valid Codex TOML. Hosted
+  configuration uses `bearer_token_env_var`. Local configuration forwards
+  `CAMBRIAN_API_KEY` with `env_vars`.
+- Updated public examples to use the current Solana `price-current`
+  `--token-addresses` flag.
+
 ## [1.3.2] - 2026-08-28
 
 ### Fixed

@@ -210,7 +210,7 @@ npm install -g cambrian
 
 export CAMBRIAN_API_KEY=<your-api-key>
 cambrian solana trending-tokens
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 cambrian base dexes
 cambrian deep42 social-data/alpha-tweet-detection --limit 3
 cambrian describe opencli
@@ -276,7 +276,7 @@ Routing rules that matter:
 ```bash
 # Solana
 cambrian solana trending-tokens
-cambrian solana price-current --token-address <mint>
+cambrian solana price-current --token-addresses <mint>
 cambrian solana price-multi --token-addresses <mint1>,<mint2>
 cambrian solana token-details --token-address <mint>
 cambrian solana tokens-holders --program-id <mint>

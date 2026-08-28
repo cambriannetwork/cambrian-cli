@@ -17,7 +17,7 @@ Route by chain and domain:
 Do not route Solana questions to `base` or `ethereum`, or vice versa. Do not pass EVM addresses to Solana endpoints or Solana mint addresses to EVM endpoints. Do not guess pool or token addresses; if the address is not provided, ask the user. Do not conflate Aerodrome v2 (classic AMM) with Aerodrome v3 (concentrated liquidity).
 
 Use `cambrian solana trending-tokens` for "what's hot on Solana?" prompts.
-Use `cambrian solana price-current --token-address <mint>` for single-token price lookups.
+Use `cambrian solana price-current --token-addresses <mint>` for single-token price lookups.
 Use `cambrian solana price-multi --token-addresses <mint1>,<mint2>` for batch price checks.
 Use `cambrian solana token-pool-search --token-address <mint>` to find pools for a token.
 Use `cambrian base dexes` to discover supported Base DEXes.

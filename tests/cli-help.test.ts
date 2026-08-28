@@ -194,6 +194,29 @@ describe('CLI help output', () => {
     expect(config.mcpServers.cambrian.args).toEqual(['-y', 'cambrian-api-mcp']);
   });
 
+  it('cambrian mcp config prints hosted Codex TOML', async () => {
+    const { code, stdout } = await captureStdout(['mcp', 'config', '--client', 'codex']);
+    expect(code).toBe(0);
+    expect(stdout).toBe([
+      '[mcp_servers.cambrian]',
+      'url = "https://mcp.cambrian.org/mcp"',
+      'bearer_token_env_var = "CAMBRIAN_API_KEY"',
+      '',
+    ].join('\n'));
+  });
+
+  it('cambrian mcp config prints local Codex TOML with environment forwarding', async () => {
+    const { code, stdout } = await captureStdout(['mcp', 'config', '--client', 'codex', '--mode', 'local']);
+    expect(code).toBe(0);
+    expect(stdout).toBe([
+      '[mcp_servers.cambrian]',
+      'command = "npx"',
+      'args = ["-y", "cambrian-api-mcp"]',
+      'env_vars = ["CAMBRIAN_API_KEY"]',
+      '',
+    ].join('\n'));
+  });
+
   it('rejects invalid hosted URLs and URLs that local mode would ignore', async () => {
     for (const argv of [
       ['mcp', 'config', '--url', 'file:///tmp/server'],

@@ -26,7 +26,7 @@ Shortest live-path check:
 
 ```bash
 cambrian solana trending-tokens
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 cambrian describe opencli
 ```
 
@@ -133,7 +133,7 @@ Meaning:
 Current price:
 
 ```bash
-cambrian solana price-current --token-address <mint>
+cambrian solana price-current --token-addresses <mint>
 ```
 
 Hourly price:

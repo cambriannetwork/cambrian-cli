@@ -86,7 +86,7 @@ Shortest live-path check:
 
 ```bash
 cambrian base dexes
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 cambrian mcp config --mode hosted
 cambrian describe opencli
 ```
@@ -163,7 +163,7 @@ Covered reads include:
 
 | If the prompt is about... | Start with... | Then usually follow with... |
 | --- | --- | --- |
-| Solana token price | `solana price-current --token-address <mint>` | `solana token-details`, `solana trade-statistics` |
+| Solana token price | `solana price-current --token-addresses <mint>` | `solana token-details`, `solana trade-statistics` |
 | Solana token info | `solana token-details --token-address <mint>` | `solana tokens-holders`, `solana tokens-security` |
 | Solana token holders | `solana tokens-holders --program-id <mint>` | `solana tokens-holders-over-time` |
 | Solana trending tokens | `solana trending-tokens --limit 10` | `solana price-current`, `solana trade-statistics` |
@@ -215,7 +215,7 @@ These are the main commands an agent should reach for first. For full flags and 
 ```bash
 # Solana tokens and prices
 cambrian solana trending-tokens --limit 10
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 cambrian solana price-multi --token-addresses So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 cambrian solana token-details --token-address <mint>
 cambrian solana tokens --limit 20

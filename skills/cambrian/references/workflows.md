@@ -24,7 +24,7 @@ Example:
 
 ```bash
 cambrian solana token-details --token-address <mint>
-cambrian solana price-current --token-address <mint>
+cambrian solana price-current --token-addresses <mint>
 cambrian solana tokens-security --token-address <mint>
 cambrian solana tokens-holders --program-id <mint>
 cambrian solana trade-statistics --token-addresses <mint> --timeframe 24h
@@ -184,7 +184,7 @@ Example:
 cambrian deep42 social-data/sentiment-shifts --comparison-period 7d --limit 10
 cambrian deep42 social-data/alpha-tweet-detection --token-filter SOL --limit 10
 cambrian deep42 social-data/influencer-credibility --token-focus SOL --limit 5
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 ```
 
 What to extract:
@@ -239,7 +239,7 @@ Example:
 
 ```bash
 cambrian risk perp-risk-engine --token-address So11111111111111111111111111111111111111112 --entry-price 150 --leverage 5 --direction long --risk-horizon 1d
-cambrian solana price-current --token-address So11111111111111111111111111111111111111112
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
 cambrian deep42 social-data/sentiment-shifts --token SOL
 ```
 
