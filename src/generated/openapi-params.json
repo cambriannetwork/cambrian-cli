@@ -39,23 +39,12 @@
       "apiPath": "/api/v1/solana/meteora-dlmm/pool",
       "method": "GET",
       "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "Pool identifier"
-        }
-      }
-    },
-    "meteora-dlmm-pool-multi": {
-      "apiPath": "/api/v1/solana/meteora-dlmm/pool-multi",
-      "method": "GET",
-      "params": {
         "pool_addresses": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3",
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         }
       }
     },
@@ -228,23 +217,12 @@
       "apiPath": "/api/v1/solana/orca/pool",
       "method": "GET",
       "params": {
-        "pool_address": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "The program ID (address) of the Solana pool."
-        }
-      }
-    },
-    "orca-pool-multi": {
-      "apiPath": "/api/v1/solana/orca/pool-multi",
-      "method": "GET",
-      "params": {
         "pool_addresses": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3"
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3",
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         }
       }
     },
@@ -442,12 +420,12 @@
       "apiPath": "/api/v1/solana/price-current",
       "method": "GET",
       "params": {
-        "token_address": {
+        "token_addresses": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "The Solana token program address (base58 string).",
-          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+          "description": "Comma-separated list of Solana token program addresses (base58 strings).",
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         }
       }
     },
@@ -500,18 +478,6 @@
         }
       }
     },
-    "price-multi": {
-      "apiPath": "/api/v1/solana/price-multi",
-      "method": "GET",
-      "params": {
-        "token_addresses": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "Comma-separated list of Solana token program addresses (base58 strings)."
-        }
-      }
-    },
     "price-unix": {
       "apiPath": "/api/v1/solana/price-unix",
       "method": "GET",
@@ -520,7 +486,8 @@
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Solana token mint address (base58 format). Example: So11111111111111111111111111111111111111112"
+          "description": "Solana token mint address (base58 format). Example: So11111111111111111111111111111111111111112",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
         },
         "unixtime": {
           "required": true,
@@ -530,8 +497,8 @@
         }
       }
     },
-    "price-volume-multi": {
-      "apiPath": "/api/v1/solana/price-volume/multi",
+    "price-volume": {
+      "apiPath": "/api/v1/solana/price-volume",
       "method": "GET",
       "params": {
         "token_addresses": {
@@ -556,41 +523,16 @@
         }
       }
     },
-    "price-volume-single": {
-      "apiPath": "/api/v1/solana/price-volume/single",
-      "method": "GET",
-      "params": {
-        "token_address": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "SPL token mint address (base58, 44 chars)",
-          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
-        },
-        "timeframe": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "enum": [
-            "1h",
-            "2h",
-            "4h",
-            "8h",
-            "24h"
-          ],
-          "description": "Timeframe: 1h, 2h, 4h, 8h, 24h"
-        }
-      }
-    },
     "raydium-clmm-pool": {
       "apiPath": "/api/v1/solana/raydium-clmm/pool",
       "method": "GET",
       "params": {
-        "pool_address": {
+        "pool_addresses": {
           "required": true,
           "type": "string",
           "strict": true,
-          "description": "Program ID for raydium clmm pool"
+          "description": "Comma-separated pool addresses within the same DEX. Example: addr1,addr2,addr3",
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         }
       }
     },
@@ -622,25 +564,12 @@
       "apiPath": "/api/v1/solana/token-details",
       "method": "GET",
       "params": {
-        "token_address": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "The Solana token program address (base58 string)",
-          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
-        }
-      }
-    },
-    "token-details-multi": {
-      "apiPath": "/api/v1/solana/token-details-multi",
-      "method": "GET",
-      "params": {
         "token_addresses": {
           "required": true,
           "type": "string",
           "strict": true,
           "description": "Comma-separated Solana token mint addresses (max 50, base58). Example: So11111111111111111111111111111111111111112,DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}(,[1-9A-HJ-NP-Za-km-z]{32,44})*$"
+          "pattern": "^(?:[1-9A-HJ-NP-Za-km-z]{32,44})(?:,(?:[1-9A-HJ-NP-Za-km-z]{32,44})){0,10}$"
         }
       }
     },
@@ -795,7 +724,7 @@
           "strict": true,
           "min": 1,
           "max": 30,
-          "description": "Number of days to look back for transactions. Default is 1 day.."
+          "description": "Number of days to look back for transactions. Default is 1 day."
         },
         "tx_type": {
           "required": false,
@@ -1485,8 +1414,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -1507,8 +1438,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -1599,8 +1532,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         }
@@ -1628,8 +1563,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -1776,8 +1713,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -1908,8 +1847,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2010,8 +1951,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2114,8 +2057,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2202,8 +2147,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2350,8 +2297,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2482,8 +2431,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2584,8 +2535,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2688,8 +2641,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2780,8 +2735,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -2914,8 +2871,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3004,8 +2963,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3152,8 +3113,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3286,8 +3249,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3353,8 +3318,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3375,8 +3342,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3467,8 +3436,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3490,8 +3461,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3530,8 +3503,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3552,8 +3527,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3644,8 +3621,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3683,8 +3662,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3730,8 +3711,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3770,8 +3753,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3792,8 +3777,10 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "min": 8453,
-          "max": 8453,
+          "numericEnum": [
+            1,
+            8453
+          ],
           "description": "EVM chain ID.",
           "default": 8453
         },
@@ -3908,7 +3895,7 @@
           "strict": true,
           "min": 1,
           "max": 100,
-          "description": "Minimum number of high-quality tweets required for inclusion (not follower count). Filters out influencers with insufficient track record. Default: 5",
+          "description": "Minimum number of qualifying tweets required in the activity window.",
           "default": 5
         },
         "limit": {
@@ -3917,30 +3904,34 @@
           "strict": true,
           "min": 1,
           "max": 100,
-          "description": "Maximum number of influencers to return. Default: 25",
+          "description": "Maximum number of influencers to return.",
           "default": 25
         },
         "token_focus": {
           "required": false,
           "type": "string",
           "strict": true,
-          "description": "Filter by specific token symbol (e.g., 'BTC', 'ETH', 'SOL'). Returns influencers who have tweeted about this token.",
-          "pattern": "^[A-Z0-9]{1,10}$"
+          "description": "Only include influencers with qualifying recent activity for this token symbol. V3 treats it case-insensitively, normalizes it to uppercase, and uses it only for recent eligibility; the historical track record remains all-token.",
+          "pattern": "^[A-Za-z0-9]{1,10}$"
         },
         "sort_by": {
           "required": false,
           "type": "string",
           "strict": true,
           "enum": [
+            "influence",
             "credibility",
+            "return_vs_bitcoin",
+            "win_rate_vs_bitcoin",
             "tweets",
             "engagement",
             "reach",
             "alpha",
-            "accuracy"
+            "accuracy",
+            "conservative_accuracy"
           ],
-          "description": "Sort results by specified metric. Default: credibility",
-          "default": "credibility"
+          "description": "Sort metric. In v2, credibility is the legacy activity composite and accuracy is raw 30-day accuracy. In v3, return_vs_bitcoin is the default and uses average direction-adjusted 7-day return relative to Bitcoin; with descending order, Track Record Verdict is applied first so weak evidence cannot outrank proven evidence. V3 win_rate_vs_bitcoin is the percentage of graded calls that beat Bitcoin, accuracy is raw 7-day directional accuracy, and conservative_accuracy is the sample-size-adjusted Wilson estimate. V3 does not accept influence or credibility.",
+          "default": "return_vs_bitcoin"
         },
         "order": {
           "required": false,
@@ -3950,15 +3941,61 @@
             "asc",
             "desc"
           ],
-          "description": "Sort direction. Default: desc (highest first)",
+          "description": "Sort direction. In v3, return_vs_bitcoin with desc groups proven, unproven, and insufficientEvidence accounts before sorting each group by the selected return; other combinations sort directly by the selected metric.",
           "default": "desc"
+        },
+        "min_alpha": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 10,
+          "description": "V3 only. Minimum alpha score on the 0-10 scale, applied to recent eligibility tweets and historical directional signals.",
+          "default": 6
+        },
+        "min_outcomes_7d": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "description": "V3 only. Minimum number of graded 7-day calls with both token and Bitcoin prices. The default is 100. Lower values are exploratory; use 0 to include accounts without a graded BTC-relative outcome, whose BTC-relative metrics are null and sort last.",
+          "default": 100
         },
         "time_window": {
           "required": false,
           "type": "string",
           "strict": true,
-          "description": "Filter influencers by recent activity. Returns only influencers who posted within the specified time window (e.g., '24h', '48h', '7d', '30d'). This addresses the issue of inactive influencers appearing in results.",
-          "pattern": "^[0-9]+[hd]$"
+          "description": "Recent activity window. V2 rounds hour values up to whole days. V3 evaluates a positive Nh or Nd value as an exact trailing UTC interval, caps it at 90 days, and uses it only for recent eligibility; the v3 track record remains all-history.",
+          "pattern": "^[1-9][0-9]*[hd]$",
+          "default": "30d"
+        },
+        "track_record_required": {
+          "required": false,
+          "type": "boolean",
+          "strict": true,
+          "description": "V2 only. When true, exclude influencers without a historical track record and apply the other v2 track-record filters."
+        },
+        "min_accuracy_30d": {
+          "required": false,
+          "type": "number",
+          "strict": true,
+          "min": 0,
+          "max": 100,
+          "description": "V2 only. Minimum raw 30-day directional accuracy percentage, applied only when track_record_required=true."
+        },
+        "min_signals": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "description": "V2 only. Minimum total historical directional signals, applied only when track_record_required=true."
+        },
+        "min_unique_tokens": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "description": "V2 only. Minimum distinct tokens in the historical track record, applied only when track_record_required=true."
         }
       }
     },
@@ -4083,6 +4120,7 @@
           "required": true,
           "type": "number",
           "strict": true,
+          "exclusiveMin": 0,
           "description": "Entry price in USD"
         },
         "leverage": {
@@ -4090,6 +4128,7 @@
           "type": "number",
           "strict": true,
           "max": 1000,
+          "exclusiveMin": 0,
           "description": "Leverage multiplier"
         },
         "direction": {

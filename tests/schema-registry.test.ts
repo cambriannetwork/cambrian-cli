@@ -50,6 +50,27 @@ function openApi(paths: Record<string, unknown>): unknown {
 }
 
 describe('normalizeOpenApiGroup', () => {
+  it('preserves exclusive numeric bounds', () => {
+    const result = normalizeOpenApiGroup('risk', openApi({
+      '/api/v1/perp-risk-engine': {
+        get: {
+          parameters: [{
+            name: 'entry_price',
+            in: 'query',
+            required: true,
+            schema: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 1_000_000 },
+          }],
+        },
+      },
+    }));
+
+    expect(result.rejected).toEqual([]);
+    expect(result.spec['perp-risk-engine'].params.entry_price).toMatchObject({
+      exclusiveMin: 0,
+      exclusiveMax: 1_000_000,
+    });
+  });
+
   it('normalizes a compatible new GET/query endpoint', () => {
     const result = normalizeOpenApiGroup('solana', openApi({
       '/api/v1/solana/new-metrics': {
@@ -279,6 +300,21 @@ describe('normalizeOpenApiGroup', () => {
 });
 
 describe('runtime parameter validation and serialization', () => {
+  it('rejects values on exclusive numeric bounds', () => {
+    const spec = {
+      required: true,
+      type: 'number',
+      exclusiveMin: 0,
+      exclusiveMax: 10,
+      strict: true,
+    };
+    expect(coerceValue('0.1', spec, 'entry-price')).toBe(0.1);
+    expect(() => coerceValue('0', spec, 'entry-price'))
+      .toThrow('--entry-price must be greater than 0.');
+    expect(() => coerceValue('10', spec, 'entry-price'))
+      .toThrow('--entry-price must be less than 10.');
+  });
+
   it('uses strict integers for discovered params without changing legacy coercion', () => {
     expect(() => coerceValue('12abc', {
       required: true,

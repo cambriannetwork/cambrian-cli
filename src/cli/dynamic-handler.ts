@@ -65,6 +65,12 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       if (paramSpec.max !== undefined && n > paramSpec.max) {
         throw new CliUsageError(`--${cliFlag} must be at most ${paramSpec.max}.`);
       }
+      if (paramSpec.exclusiveMin !== undefined && n <= paramSpec.exclusiveMin) {
+        throw new CliUsageError(`--${cliFlag} must be greater than ${paramSpec.exclusiveMin}.`);
+      }
+      if (paramSpec.exclusiveMax !== undefined && n >= paramSpec.exclusiveMax) {
+        throw new CliUsageError(`--${cliFlag} must be less than ${paramSpec.exclusiveMax}.`);
+      }
       if (paramSpec.numericEnum && !paramSpec.numericEnum.includes(n)) {
         throw new CliUsageError(`--${cliFlag} must be one of: ${paramSpec.numericEnum.join(', ')}.`);
       }
@@ -80,6 +86,12 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       }
       if (paramSpec.max !== undefined && n > paramSpec.max) {
         throw new CliUsageError(`--${cliFlag} must be at most ${paramSpec.max}.`);
+      }
+      if (paramSpec.exclusiveMin !== undefined && n <= paramSpec.exclusiveMin) {
+        throw new CliUsageError(`--${cliFlag} must be greater than ${paramSpec.exclusiveMin}.`);
+      }
+      if (paramSpec.exclusiveMax !== undefined && n >= paramSpec.exclusiveMax) {
+        throw new CliUsageError(`--${cliFlag} must be less than ${paramSpec.exclusiveMax}.`);
       }
       if (paramSpec.numericEnum && !paramSpec.numericEnum.includes(n)) {
         throw new CliUsageError(`--${cliFlag} must be one of: ${paramSpec.numericEnum.join(', ')}.`);
@@ -114,6 +126,8 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
         ...(paramSpec.items.enum ? { enum: paramSpec.items.enum } : {}),
         ...(paramSpec.items.min !== undefined ? { min: paramSpec.items.min } : {}),
         ...(paramSpec.items.max !== undefined ? { max: paramSpec.items.max } : {}),
+        ...(paramSpec.items.exclusiveMin !== undefined ? { exclusiveMin: paramSpec.items.exclusiveMin } : {}),
+        ...(paramSpec.items.exclusiveMax !== undefined ? { exclusiveMax: paramSpec.items.exclusiveMax } : {}),
         ...(paramSpec.items.pattern ? { pattern: paramSpec.items.pattern } : {}),
         strict: true,
       };
@@ -166,6 +180,8 @@ export function formatSchemaHints(ps: ParamSpec, cliDefault?: string): string {
   } else if (ps.max !== undefined) {
     parts.push(`max: ${ps.max}`);
   }
+  if (ps.exclusiveMin !== undefined) parts.push(`> ${ps.exclusiveMin}`);
+  if (ps.exclusiveMax !== undefined) parts.push(`< ${ps.exclusiveMax}`);
   return parts.length > 0 ? ` (${parts.join(', ')})` : '';
 }
 

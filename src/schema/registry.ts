@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 5;
+export const REGISTRY_CACHE_VERSION = 6;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -250,6 +250,31 @@ function stringEnum(value: unknown): string[] | undefined | null {
   return [...value];
 }
 
+function numericBounds(schema: JsonObject, type: unknown): Pick<
+  ParamSpec,
+  'min' | 'max' | 'exclusiveMin' | 'exclusiveMax'
+> | null {
+  const entries = [
+    ['minimum', 'min'],
+    ['maximum', 'max'],
+    ['exclusiveMinimum', 'exclusiveMin'],
+    ['exclusiveMaximum', 'exclusiveMax'],
+  ] as const;
+  const result: Pick<ParamSpec, 'min' | 'max' | 'exclusiveMin' | 'exclusiveMax'> = {};
+  for (const [source, target] of entries) {
+    const value = schema[source];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    result[target] = value;
+  }
+  if (Object.keys(result).length > 0 && type !== 'integer' && type !== 'number') return null;
+  const lower = Math.max(result.min ?? -Infinity, result.exclusiveMin ?? -Infinity);
+  const upper = Math.min(result.max ?? Infinity, result.exclusiveMax ?? Infinity);
+  if (lower > upper) return null;
+  if (lower === upper && (result.exclusiveMin === lower || result.exclusiveMax === upper)) return null;
+  return result;
+}
+
 function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
   if (!isObject(parameter.schema)) return null;
   const schema = parameter.schema;
@@ -273,14 +298,8 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
       (type !== 'integer' || Number.isSafeInteger(entry)))
   )) return null;
   if (schema.enum !== undefined && enumValues === undefined && numericEnum === undefined) return null;
-  if (schema.minimum !== undefined &&
-    (typeof schema.minimum !== 'number' || !Number.isFinite(schema.minimum))) return null;
-  if (schema.maximum !== undefined &&
-    (typeof schema.maximum !== 'number' || !Number.isFinite(schema.maximum))) return null;
-  if ((schema.minimum !== undefined || schema.maximum !== undefined) &&
-    type !== 'integer' && type !== 'number') return null;
-  if (typeof schema.minimum === 'number' && typeof schema.maximum === 'number' &&
-    schema.minimum > schema.maximum) return null;
+  const bounds = numericBounds(schema, type);
+  if (!bounds) return null;
   if (schema.pattern !== undefined && typeof schema.pattern !== 'string') return null;
   if (schema.pattern !== undefined && type !== 'string') return null;
 
@@ -288,6 +307,7 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
     required: parameter.required === true,
     type,
     strict: true,
+    ...bounds,
   };
   if (enumValues !== undefined) result.enum = enumValues;
   if (numericEnum !== undefined) {
@@ -296,12 +316,7 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
       result.max = numericEnum[0];
     } else {
       result.numericEnum = [...numericEnum];
-      if (typeof schema.minimum === 'number') result.min = schema.minimum;
-      if (typeof schema.maximum === 'number') result.max = schema.maximum;
     }
-  } else {
-    if (typeof schema.minimum === 'number') result.min = schema.minimum;
-    if (typeof schema.maximum === 'number') result.max = schema.maximum;
   }
   if (typeof parameter.description === 'string' && parameter.description.trim()) {
     result.description = parameter.description.trim();
@@ -329,14 +344,8 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
       return null;
     }
     if (itemEnum !== undefined && inferredType !== 'string') return null;
-    if (schema.items.minimum !== undefined &&
-      (typeof schema.items.minimum !== 'number' || !Number.isFinite(schema.items.minimum))) return null;
-    if (schema.items.maximum !== undefined &&
-      (typeof schema.items.maximum !== 'number' || !Number.isFinite(schema.items.maximum))) return null;
-    if ((schema.items.minimum !== undefined || schema.items.maximum !== undefined) &&
-      inferredType !== 'integer' && inferredType !== 'number') return null;
-    if (typeof schema.items.minimum === 'number' && typeof schema.items.maximum === 'number' &&
-      schema.items.minimum > schema.items.maximum) return null;
+    const itemBounds = numericBounds(schema.items, inferredType);
+    if (!itemBounds) return null;
     if (schema.items.pattern !== undefined && typeof schema.items.pattern !== 'string') return null;
     if (schema.items.pattern !== undefined && inferredType !== 'string') return null;
     if (schema.minItems !== undefined &&
@@ -345,10 +354,8 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
       (!Number.isSafeInteger(schema.maxItems) || (schema.maxItems as number) < 0)) return null;
     if (typeof schema.minItems === 'number' && typeof schema.maxItems === 'number' &&
       schema.minItems > schema.maxItems) return null;
-    result.items = { type: inferredType };
+    result.items = { type: inferredType, ...itemBounds };
     if (itemEnum !== undefined) result.items.enum = itemEnum;
-    if (typeof schema.items.minimum === 'number') result.items.min = schema.items.minimum;
-    if (typeof schema.items.maximum === 'number') result.items.max = schema.items.maximum;
     if (typeof schema.items.pattern === 'string') {
       try {
         new RegExp(schema.items.pattern);
@@ -389,7 +396,9 @@ function isValidPrimitive(value: unknown, spec: ParamSpec): boolean {
   const numeric = value as number;
   if (spec.numericEnum && !spec.numericEnum.includes(numeric)) return false;
   return (spec.min === undefined || numeric >= spec.min) &&
-    (spec.max === undefined || numeric <= spec.max);
+    (spec.max === undefined || numeric <= spec.max) &&
+    (spec.exclusiveMin === undefined || numeric > spec.exclusiveMin) &&
+    (spec.exclusiveMax === undefined || numeric < spec.exclusiveMax);
 }
 
 function isValidDefault(value: unknown, spec: ParamSpec): boolean {
@@ -403,6 +412,8 @@ function isValidDefault(value: unknown, spec: ParamSpec): boolean {
     ...(spec.items!.enum ? { enum: spec.items!.enum } : {}),
     ...(spec.items!.min !== undefined ? { min: spec.items!.min } : {}),
     ...(spec.items!.max !== undefined ? { max: spec.items!.max } : {}),
+    ...(spec.items!.exclusiveMin !== undefined ? { exclusiveMin: spec.items!.exclusiveMin } : {}),
+    ...(spec.items!.exclusiveMax !== undefined ? { exclusiveMax: spec.items!.exclusiveMax } : {}),
     ...(spec.items!.pattern ? { pattern: spec.items!.pattern } : {}),
   }));
 }
@@ -770,9 +781,16 @@ function isCachedParam(value: unknown): value is ParamSpec {
   )) return false;
   if (value.min !== undefined && (typeof value.min !== 'number' || !Number.isFinite(value.min))) return false;
   if (value.max !== undefined && (typeof value.max !== 'number' || !Number.isFinite(value.max))) return false;
-  if ((value.min !== undefined || value.max !== undefined) &&
+  if (value.exclusiveMin !== undefined &&
+    (typeof value.exclusiveMin !== 'number' || !Number.isFinite(value.exclusiveMin))) return false;
+  if (value.exclusiveMax !== undefined &&
+    (typeof value.exclusiveMax !== 'number' || !Number.isFinite(value.exclusiveMax))) return false;
+  if ((value.min !== undefined || value.max !== undefined ||
+    value.exclusiveMin !== undefined || value.exclusiveMax !== undefined) &&
     value.type !== 'integer' && value.type !== 'number') return false;
-  if (typeof value.min === 'number' && typeof value.max === 'number' && value.min > value.max) return false;
+  const lower = Math.max(value.min as number ?? -Infinity, value.exclusiveMin as number ?? -Infinity);
+  const upper = Math.min(value.max as number ?? Infinity, value.exclusiveMax as number ?? Infinity);
+  if (lower > upper || (lower === upper && (value.exclusiveMin === lower || value.exclusiveMax === upper))) return false;
   if (value.description !== undefined && typeof value.description !== 'string') return false;
   if (value.pattern !== undefined) {
     if (typeof value.pattern !== 'string' || value.type !== 'string') return false;
@@ -792,10 +810,18 @@ function isCachedParam(value: unknown): value is ParamSpec {
       (typeof value.items.min !== 'number' || !Number.isFinite(value.items.min))) return false;
     if (value.items.max !== undefined &&
       (typeof value.items.max !== 'number' || !Number.isFinite(value.items.max))) return false;
-    if ((value.items.min !== undefined || value.items.max !== undefined) &&
+    if (value.items.exclusiveMin !== undefined &&
+      (typeof value.items.exclusiveMin !== 'number' || !Number.isFinite(value.items.exclusiveMin))) return false;
+    if (value.items.exclusiveMax !== undefined &&
+      (typeof value.items.exclusiveMax !== 'number' || !Number.isFinite(value.items.exclusiveMax))) return false;
+    if ((value.items.min !== undefined || value.items.max !== undefined ||
+      value.items.exclusiveMin !== undefined || value.items.exclusiveMax !== undefined) &&
       value.items.type !== 'integer' && value.items.type !== 'number') return false;
-    if (typeof value.items.min === 'number' && typeof value.items.max === 'number' &&
-      value.items.min > value.items.max) return false;
+    const itemLower = Math.max(value.items.min as number ?? -Infinity, value.items.exclusiveMin as number ?? -Infinity);
+    const itemUpper = Math.min(value.items.max as number ?? Infinity, value.items.exclusiveMax as number ?? Infinity);
+    if (itemLower > itemUpper ||
+      (itemLower === itemUpper &&
+        (value.items.exclusiveMin === itemLower || value.items.exclusiveMax === itemUpper))) return false;
     if (value.items.pattern !== undefined) {
       if (typeof value.items.pattern !== 'string' || value.items.type !== 'string') return false;
       try {
@@ -982,6 +1008,8 @@ function parseCliDefault(raw: string, spec: ParamSpec): { valid: boolean; value?
       ...(spec.items.enum ? { enum: spec.items.enum } : {}),
       ...(spec.items.min !== undefined ? { min: spec.items.min } : {}),
       ...(spec.items.max !== undefined ? { max: spec.items.max } : {}),
+      ...(spec.items.exclusiveMin !== undefined ? { exclusiveMin: spec.items.exclusiveMin } : {}),
+      ...(spec.items.exclusiveMax !== undefined ? { exclusiveMax: spec.items.exclusiveMax } : {}),
       ...(spec.items.pattern ? { pattern: spec.items.pattern } : {}),
     };
     const parts = raw.split(',').map((entry) => entry.trim()).filter(Boolean);

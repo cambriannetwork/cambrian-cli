@@ -5,6 +5,15 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-08-28
+
+### Fixed
+
+- Runtime OpenAPI metadata now preserves and validates exclusive numeric
+  bounds for parameters and array items.
+- Refreshed the bundled offline registry from the current public OpenAPI and
+  documentation indexes, including the Solana current-price request shape.
+
 ## [1.3.1] - 2026-08-18
 
 ### Changed
