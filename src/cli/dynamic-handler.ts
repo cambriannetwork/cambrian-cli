@@ -257,7 +257,7 @@ export function buildResourceHelp(
     '  --fields a,b,c    Project to only these columns/fields (comma-separated).',
     '  --all             Auto-paginate and merge all pages (paginated resources only).',
     '  --max-items <n>   Cap total rows when paginating (default 10000).',
-    '  --timeout <ms>    Per-request timeout in milliseconds (default 90000).',
+    '  --timeout <ms>    Per-request timeout in milliseconds (default 90000; 0 disables it).',
     '  --retries <n>     Retry transient failures (408/429/5xx) with backoff (default 0).',
     '  --offline         Do not refresh endpoint metadata; data requests still require network.',
     '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY).',
