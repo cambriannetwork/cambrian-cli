@@ -334,7 +334,9 @@ async function handleSkill(parsed: ParsedArgs, runtime: Runtime): Promise<number
       });
       return 0;
     default:
-      throw new CliUsageError(`Unknown skill subcommand: ${resource}`);
+      throw new CliUsageError(
+        `Unknown skill subcommand: ${resource}.${didYouMean(resource, ['install', 'print', 'targets'])}`,
+      );
   }
 }
 
@@ -389,7 +391,9 @@ async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
       return 0;
     }
     default:
-      throw new CliUsageError(`Unknown config subcommand: ${sub}. Use status, set-key, get-key, or clear.`);
+      throw new CliUsageError(
+        `Unknown config subcommand: ${sub}.${didYouMean(sub ?? '', ['status', 'set-key', 'get-key', 'clear'])} Use status, set-key, get-key, or clear.`,
+      );
   }
 }
 
@@ -414,7 +418,7 @@ function selectedSchemaGroups(token: string | undefined): CambrianGroup[] {
   const group = registryGroupForToken(token);
   if (!group) {
     throw new CliUsageError(
-      `Unknown schema group: ${token}. Use solana, base, deep42, or risk.`,
+      `Unknown schema group: ${token}.${didYouMean(token, REGISTRY_GROUPS)} Use solana, base, deep42, or risk.`,
     );
   }
   return [group];
@@ -463,7 +467,7 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
   }
 
   throw new CliUsageError(
-    `Unknown schema subcommand: ${subcommand}. Use status, refresh, or clear-cache.`,
+    `Unknown schema subcommand: ${subcommand}.${didYouMean(subcommand, ['status', 'refresh', 'clear-cache'])} Use status, refresh, or clear-cache.`,
   );
 }
 
