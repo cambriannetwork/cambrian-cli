@@ -71,13 +71,13 @@ describe('CLI exit codes', () => {
 
   it('suggests the closest known flag for a single unknown option typo', async () => {
     const { code, stderr } = await run(
-      ['solana', 'price-current', '--token-adress', 'SOL', '--offline', '--api-key', 'dummy-key'],
+      ['solana', 'price-current', '--token-addreses', 'SOL', '--offline', '--api-key', 'dummy-key'],
       { env: { CAMBRIAN_SCHEMA_MODE: 'bundled' } },
     );
 
     expect(code).toBe(2);
-    expect(stderr).toContain('Unknown option for solana price-current: --token-adress.');
-    expect(stderr).toContain('Did you mean "--token-address"?');
+    expect(stderr).toContain('Unknown option for solana price-current: --token-addreses.');
+    expect(stderr).toContain('Did you mean "--token-addresses"?');
   });
 
   it('omits a suggestion when multiple unknown options are given at once', async () => {
