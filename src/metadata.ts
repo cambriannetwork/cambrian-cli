@@ -11,6 +11,8 @@ export interface ParamSpec {
   default?: unknown;
   min?: number;
   max?: number;
+  exclusiveMin?: number;
+  exclusiveMax?: number;
   description?: string;
   pattern?: string;
   items?: Record<string, unknown> & {
@@ -18,6 +20,8 @@ export interface ParamSpec {
     enum?: string[];
     min?: number;
     max?: number;
+    exclusiveMin?: number;
+    exclusiveMax?: number;
     pattern?: string;
   };
   minItems?: number;

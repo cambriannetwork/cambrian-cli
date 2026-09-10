@@ -31,7 +31,7 @@ const PR: PaymentRequired = {
       extra: { name: 'USD Coin', version: '2' },
     },
   ],
-  resource: { url: 'https://x402.cambrian.org/api/v1/deep42/x', description: 'x' },
+  resource: { url: 'https://x402.cambrian.org/deep42/x', description: 'x' },
 };
 
 describe('parse & select', () => {

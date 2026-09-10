@@ -5,6 +5,20 @@ import { describe, expect, it } from 'vitest';
 import { installSkill } from '../src/cli/skill.js';
 
 describe('installSkill', () => {
+  it('uses the current Solana price-current flag in public guidance', () => {
+    for (const path of [
+      'README.md',
+      'skills/cambrian/SKILL.md',
+      'skills/cambrian/agents/opencode.md',
+      'skills/cambrian/references/cli.md',
+      'skills/cambrian/references/workflows.md',
+    ]) {
+      const contents = readFileSync(join(process.cwd(), path), 'utf8');
+      expect(contents).not.toContain('solana price-current --token-address ');
+      expect(contents).toContain('solana price-current --token-addresses ');
+    }
+  });
+
   it('installs only to an explicit path when tool directories are detected', () => {
     const root = mkdtempSync(join(tmpdir(), 'cambrian-skill-'));
     const home = join(root, 'home');

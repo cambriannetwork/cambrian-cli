@@ -161,7 +161,7 @@ describe('cambrian pay', () => {
     expect(fetched).toBe(false);
   });
 
-  it('previews and aborts without --yes, building the x402 /api/v1 URL', async () => {
+  it('previews and aborts without --yes, building the public x402 URL', async () => {
     const fetch = gw402();
     const { code, stderr } = await run(
       ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--limit', '1'],
@@ -171,7 +171,7 @@ describe('cambrian pay', () => {
     expect(stderr).toContain('$0.05');
     expect(stderr).toContain('re-run with --yes');
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toBe(
-      'https://x402.cambrian.org/api/v1/deep42/social-data/alpha-tweet-detection?limit=1',
+      'https://x402.cambrian.org/deep42/social-data/alpha-tweet-detection?limit=1',
     );
   });
 
@@ -180,19 +180,19 @@ describe('cambrian pay', () => {
     await run(['pay', 'base', 'price-current', '--token-address', `0x${'a'.repeat(40)}`], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
-    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/api/v1/evm/price-current');
+    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/evm/price-current');
 
     const evm = await run(['pay', 'evm', 'price-current', '--token-address', `0x${'a'.repeat(40)}`], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
     expect(evm.stderr).toContain('"evm" is deprecated');
-    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/api/v1/evm/price-current');
+    expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/evm/price-current');
 
     await run(['pay', 'risk', 'perp-risk-engine'], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain(
-      'https://x402.cambrian.org/api/v1/perp-risk-engine?',
+      'https://x402.cambrian.org/risk/perp-risk-engine?',
     );
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('risk_horizon=1d');
   });
@@ -210,7 +210,7 @@ describe('cambrian pay', () => {
     const home = tempHome();
     const runtime = runtimeWithHome(home);
     const req = REQUIRED_BODY.accepts[0] as PaymentRequirement;
-    const url = 'https://x402.cambrian.org/api/v1/deep42/social-data/alpha-tweet-detection?limit=1';
+    const url = 'https://x402.cambrian.org/deep42/social-data/alpha-tweet-detection?limit=1';
 
     const attempt = prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 1_000);
 
@@ -233,7 +233,7 @@ describe('cambrian pay', () => {
     const home = tempHome();
     const runtime = runtimeWithHome(home);
     const req = { ...(REQUIRED_BODY.accepts[0] as PaymentRequirement), maxTimeoutSeconds: 0 };
-    const url = 'https://x402.cambrian.org/api/v1/deep42/social-data/alpha-tweet-detection?limit=1';
+    const url = 'https://x402.cambrian.org/deep42/social-data/alpha-tweet-detection?limit=1';
 
     const attempt = prepareX402PaymentAttempt(runtime, TEST_KEY, url, req, 1_000);
     attempt.onUnknown();

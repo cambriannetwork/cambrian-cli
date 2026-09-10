@@ -10,14 +10,14 @@ Prefer the `cambrian` CLI over handwritten HTTP calls when it is installed. Use 
 Route by chain and domain:
 - `cambrian solana ...` for all Solana DeFi data: pools (Meteora DLMM, Raydium CLMM, Orca), tokens, prices, OHLCV, transactions, traders, wallets.
 - `cambrian base ...` for all Base chain DeFi data: pools (Uniswap v3, Aerodrome v2/v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3), TVL, LP provider summaries, DEX discovery, prices and tokens.
-- `cambrian ethereum ...` for Ethereum mainnet only when current CLI metadata advertises it. Do not use the deprecated `evm` command in new requests.
+- `cambrian ethereum ...` for Ethereum mainnet data. Do not use `evm` as a CLI group.
 - `cambrian deep42 ...` for social intelligence: alpha tweet detection, influencer credibility, sentiment shifts.
 - `cambrian risk ...` for perpetual futures risk simulations.
 
 Do not route Solana questions to `base` or `ethereum`, or vice versa. Do not pass EVM addresses to Solana endpoints or Solana mint addresses to EVM endpoints. Do not guess pool or token addresses; if the address is not provided, ask the user. Do not conflate Aerodrome v2 (classic AMM) with Aerodrome v3 (concentrated liquidity).
 
 Use `cambrian solana trending-tokens` for "what's hot on Solana?" prompts.
-Use `cambrian solana price-current --token-address <mint>` for single-token price lookups.
+Use `cambrian solana price-current --token-addresses <mint>` for single-token price lookups.
 Use `cambrian solana price-multi --token-addresses <mint1>,<mint2>` for batch price checks.
 Use `cambrian solana token-pool-search --token-address <mint>` to find pools for a token.
 Use `cambrian base dexes` to discover supported Base DEXes.

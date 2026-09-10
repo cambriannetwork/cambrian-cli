@@ -118,6 +118,22 @@ function buildClientConfig(client: McpClient, mode: McpMode, parsed: ParsedArgs)
   }
 }
 
+function buildCodexConfig(mode: McpMode, parsed: ParsedArgs): string {
+  if (mode === 'hosted') {
+    return [
+      `[mcp_servers.${CAMBRIAN_MCP_SERVER_NAME}]`,
+      `url = "${resolveHostedUrl(parsed)}"`,
+      'bearer_token_env_var = "CAMBRIAN_API_KEY"',
+    ].join('\n');
+  }
+  return [
+    `[mcp_servers.${CAMBRIAN_MCP_SERVER_NAME}]`,
+    'command = "npx"',
+    `args = ["-y", "${CAMBRIAN_MCP_PACKAGE}"]`,
+    'env_vars = ["CAMBRIAN_API_KEY"]',
+  ].join('\n');
+}
+
 function extractMcpJsonResponse(rawText: string): unknown {
   const trimmed = rawText.trim();
   if (!trimmed) throw new Error('Empty MCP response.');
@@ -326,7 +342,8 @@ export async function handleMcp(parsed: ParsedArgs, runtime: Runtime): Promise<n
 
   switch (subcommand) {
     case 'config':
-      printJson(runtime, buildClientConfig(client, mode, parsed));
+      if (client === 'codex') runtime.stdout(buildCodexConfig(mode, parsed));
+      else printJson(runtime, buildClientConfig(client, mode, parsed));
       return 0;
     case 'install':
       if (client !== 'claude') {

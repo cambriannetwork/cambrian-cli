@@ -5,6 +5,34 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-08-28
+
+### Fixed
+
+- `cambrian mcp config --client codex` now prints valid Codex TOML. Hosted
+  configuration uses `bearer_token_env_var`. Local configuration forwards
+  `CAMBRIAN_API_KEY` with `env_vars`.
+- Updated public examples to use the current Solana `price-current`
+  `--token-addresses` flag.
+
+## [1.3.2] - 2026-08-28
+
+### Fixed
+
+- Runtime OpenAPI metadata now preserves and validates exclusive numeric
+  bounds for parameters and array items.
+- Refreshed the bundled offline registry from the current public OpenAPI and
+  documentation indexes, including the Solana current-price request shape.
+
+## [1.3.1] - 2026-08-18
+
+### Changed
+
+- x402 payments now use the current public API paths.
+- Updated the packaged skill and public documentation for Ethereum routing.
+- Removed obsolete public guidance about internal API paths and compatibility
+  details.
+
 ## [1.3.0] - 2026-08-17
 
 ### Added
