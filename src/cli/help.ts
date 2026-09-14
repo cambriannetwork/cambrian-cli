@@ -1,13 +1,17 @@
-export function rootHelp(ethereumAvailable = false): string {
+import type { EvmChain } from './evm-chains.js';
+
+export function rootHelp(evmChains: readonly EvmChain[] = []): string {
+  const chainLines = evmChains
+    .filter((chain) => chain.command !== 'base')
+    .map((chain) => `  cambrian ${chain.command} <resource> [options]`.padEnd(43) +
+      `${chain.label} DeFi data`);
   return [
     'cambrian - DeFi data, social intelligence, and risk analysis CLI',
     '',
     'Usage:',
     '  cambrian solana <resource> [options]     Solana DeFi data (pools, tokens, prices, transactions)',
     '  cambrian base <resource> [options]       Base chain DeFi data (pools, TVL, prices across 6+ DEXes)',
-    ...(ethereumAvailable
-      ? ['  cambrian ethereum <resource> [options]   Ethereum mainnet DeFi data']
-      : []),
+    ...chainLines,
     '  cambrian deep42 <resource> [options]     Social intelligence (alpha tweets, influencer credibility)',
     '  cambrian risk <resource> [options]       Perpetual risk simulations',
     '  cambrian pay <group> <resource> [options] Pay-per-call via x402 (Base USDC; no API key)',
@@ -37,6 +41,7 @@ export function rootHelp(ethereumAvailable = false): string {
     '',
     'Advanced:',
     '  cambrian schema <status|refresh|clear-cache> Runtime endpoint registry controls',
+    `                                              groups: ${['solana', 'base', ...evmChains.map((c) => c.command), 'deep42', 'risk'].filter((t, i, a) => a.indexOf(t) === i).join(', ')}`,
     '                                              (15-minute per-source request floor)',
     '',
     'Get an API key: https://console.cambrian.org/',
@@ -93,18 +98,23 @@ export function completionHelp(): string {
   ].join('\n');
 }
 
-export function schemaHelp(): string {
+export function schemaHelp(evmChains: readonly EvmChain[] = []): string {
+  const groups = ['solana', 'base', ...evmChains.map((c) => c.command), 'deep42', 'risk']
+    .filter((token, index, all) => all.indexOf(token) === index)
+    .join('|');
   return [
     'Usage:',
-    '  cambrian schema status [solana|base|ethereum|deep42|risk]',
-    '  cambrian schema refresh [solana|base|ethereum|deep42|risk]',
-    '  cambrian schema clear-cache [solana|base|ethereum|deep42|risk]',
+    '  cambrian schema chains',
+    `  cambrian schema status [${groups}]`,
+    `  cambrian schema refresh [${groups}]`,
+    `  cambrian schema clear-cache [${groups}]`,
     '',
     'Validated runtime OpenAPI is authoritative for supported GET/query',
     'commands. Refresh requests only run after a source\'s 15-minute cooldown',
     'has elapsed; refresh never bypasses the floor.',
     'Clear-cache removes last-known-good metadata but leaves the request cooldown intact.',
     'Failed or invalid refreshes fall back to cache, then bundle.',
+    `  "schema chains" reports every registered EVM chain and its active support.`,
   ].join('\n');
 }
 
@@ -119,11 +129,13 @@ export function describeHelp(): string {
   ].join('\n');
 }
 
-export function docsHelp(ethereumAvailable = false): string {
+export function docsHelp(evmChains: readonly EvmChain[] = []): string {
+  const groupList = ['solana', 'base', ...evmChains.map((c) => c.command), 'deep42', 'risk']
+    .filter((token, index, all) => all.indexOf(token) === index);
   return [
     'Usage:',
     '  cambrian docs                    Full API documentation',
-    `  cambrian docs <group>            Group docs (solana, base${ethereumAvailable ? ', ethereum' : ''}, deep42, risk)`,
+    `  cambrian docs <group>            Group docs (${groupList.join(', ')})`,
     '  cambrian docs <group> <resource> Endpoint-specific docs',
     '  cambrian docs guides             List available guides',
     '  cambrian docs guides <name>      Fetch a guide',

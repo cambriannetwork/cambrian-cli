@@ -32,7 +32,7 @@ import {
   type CambrianMetadataGroup,
   type GroupSpec,
 } from '../metadata.js';
-import { BASE_CHAIN_ID, projectEvmMetadata } from './evm-chains.js';
+import { DEFAULT_EVM_CHAIN, EVM_CHAINS, projectEvmChain } from './evm-chains.js';
 import {
   X402_BASE_URL,
   DEFAULT_MAX_AMOUNT_MICRO,
@@ -68,9 +68,7 @@ function buildPayGroups(
 ): Record<string, PayGroup> {
   const out: Record<string, PayGroup> = {};
   const build = (key: 'solana' | 'base' | 'deep42' | 'risk', aliases: Record<string, string>) => {
-    const metadata = key === 'base'
-      ? projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID)
-      : metadataGroups[key];
+    const metadata = metadataGroups[key];
     const spec = metadata.spec;
     return {
       spec,
@@ -80,7 +78,17 @@ function buildPayGroups(
     };
   };
   out.solana = build('solana', {});
-  out.base = build('base', {});
+  // One pay group per advertised EVM chain; `evm` stays an alias for Base.
+  for (const chain of EVM_CHAINS) {
+    const projected = projectEvmChain(metadataGroups.base, chain);
+    if (projected.resources.length === 0 && chain.chainId !== DEFAULT_EVM_CHAIN.chainId) continue;
+    out[chain.command] = {
+      spec: projected.spec,
+      aliases: {},
+      cliDefaults: projected.cliDefaults,
+      allowedOptions: deriveCliMetadata(projected.spec, projected.cliDefaults).allowedOptions,
+    };
+  }
   out.evm = out.base; // alias
   out.deep42 = build('deep42', DEEP42_RESOURCE_ALIASES);
   out.risk = build('risk', {});
@@ -313,7 +321,7 @@ export function payHelp(): string {
     'Pay-per-call via x402 (Base USDC) instead of an API key. Spends real funds.',
     'The gateway returns the current price, which the CLI previews before payment.',
     '',
-    'Groups:  solana | base | deep42 | risk',
+    `Groups:  ${['solana', ...EVM_CHAINS.map((chain) => chain.command), 'deep42', 'risk'].join(' | ')}`,
     '',
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',
@@ -363,7 +371,7 @@ export async function handlePay(
   if (!group) {
     const suggestion = didYouMean(groupArg, Object.keys(payGroups));
     throw new CliUsageError(
-      `Unknown pay group: ${groupArg}.${suggestion} Groups: solana, base, deep42, risk.`,
+      `Unknown pay group: ${groupArg}.${suggestion} Groups: ${Object.keys(payGroups).join(', ')}.`,
     );
   }
   if (!resourceArg) {

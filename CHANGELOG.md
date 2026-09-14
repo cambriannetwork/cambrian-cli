@@ -5,6 +5,34 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-14
+
+### Added
+
+- Added the `cambrian arbitrum` command group for Arbitrum One
+  (`chain_id=42161`). It exposes the 29 operations the EVM OpenAPI advertises
+  for Arbitrum across Uniswap/Sushi/Pancake/Clones pools, Aave/Euler/Morpho
+  lending, token prices, token lists, DEX discovery, and TVL.
+- Added `cambrian schema chains`, which reports every registered EVM chain and
+  the resources the active schema supports for it.
+- Added `npm run check:chains` and `src/cli/evm-chain-audit.ts` to audit EVM
+  `chain_id` coverage against the live OpenAPI document deterministically.
+- Added the `add-evm-chain` development skill documenting the deterministic
+  procedure for adding a future chain.
+
+### Changed
+
+- Generalized the EVM layer to a table-driven chain registry (`EVM_CHAINS` in
+  `src/cli/evm-chains.ts`). Command dispatch, help, shell completion, OpenCLI,
+  docs fallback, schema groups, and `cambrian pay` all derive from it, so
+  adding a chain is one table row plus a metadata refresh.
+- `cambrian pay` now offers a group for every advertised EVM chain, including
+  `ethereum` and `arbitrum`.
+- Refreshed the bundled OpenAPI registry. Alongside Arbitrum this also picked up
+  two new Ethereum-only lending resources (`lending-sky-vaults`,
+  `lending-sparklend-pools`) and widened the `limit` and `offset` bounds on
+  paginated EVM resources.
+
 ## [1.3.3] - 2026-08-28
 
 ### Fixed

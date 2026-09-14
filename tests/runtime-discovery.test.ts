@@ -565,7 +565,7 @@ describe('runtime endpoint discovery through the CLI', () => {
 
     const unavailable = await run(['ethereum', 'tokens'], fetch, root);
     expect(unavailable.code).toBe(2);
-    expect(unavailable.stderr).toContain('Ethereum commands are not available');
+    expect(unavailable.stderr).toContain('Ethereum mainnet commands are not available');
     expect(requests.some((url) => url.includes('/evm/tokens?'))).toBe(false);
 
     const typo = await run(['etherum'], fetch, root);
@@ -599,7 +599,7 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(ethereum.commands.map((command: { name: string }) => command.name)).not.toContain('aero-v2-pools');
     expect(base.commands.map((command: { name: string }) => command.name)).toContain('aero-v2-pools');
     expect(document.commands.find((command: { name: string }) => command.name === 'pay').commands
-      .map((command: { name: string }) => command.name)).not.toContain('ethereum');
+      .map((command: { name: string }) => command.name)).toContain('ethereum');
 
     const docs = await run(['docs', 'ethereum', '--offline'], fetch, root);
     expect(docs.stdout).toContain('tokens');
@@ -646,4 +646,86 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(payConflict.code).toBe(2);
     expect(payConflict.stderr).toContain('--chain-id must be at least 8453');
   });
+
+  it('projects three-chain EVM discovery including Arbitrum while preserving Base and evm', async () => {
+    const root = cacheRoot();
+    const requests: string[] = [];
+    const fetch = routedEvmFetch([1, 8453, 42161], requests);
+
+    const help = await run(['--help'], fetch, root);
+    expect(help.stdout).toContain('cambrian ethereum');
+    expect(help.stdout).toContain('cambrian arbitrum');
+
+    const arbitrumHelp = await run(['arbitrum', '--help'], fetch, root);
+    expect(arbitrumHelp.stdout).toContain('tokens');
+    expect(arbitrumHelp.stdout).not.toContain('aero-v2-pools');
+
+    const completion = await run(['__complete', 'arb'], fetch, root);
+    expect(completion.stdout.trim()).toBe('arbitrum');
+    const arbitrumResources = await run(['__complete', 'arbitrum', ''], fetch, root);
+    expect(arbitrumResources.stdout).toContain('tokens');
+    expect(arbitrumResources.stdout).not.toContain('aero-v2-pools');
+
+    const opencli = await run(['describe', 'opencli', '--offline'], fetch, root);
+    const document = JSON.parse(opencli.stdout);
+    const arbitrum = document.commands.find((command: { name: string }) => command.name === 'arbitrum');
+    expect(arbitrum.commands.map((command: { name: string }) => command.name)).toContain('tokens');
+    expect(arbitrum.commands.map((command: { name: string }) => command.name)).not.toContain('aero-v2-pools');
+    expect(document.commands.find((command: { name: string }) => command.name === 'pay').commands
+      .map((command: { name: string }) => command.name)).toContain('arbitrum');
+
+    const docs = await run(['docs', 'arbitrum', '--offline'], fetch, root);
+    expect(docs.stdout).toContain('tokens');
+    expect(docs.stdout).not.toContain('aero-v2-pools');
+    const endpointDocs = await run(['docs', 'arbitrum', 'tokens', '--offline'], fetch, root);
+    expect(endpointDocs.stdout).toContain('# cambrian arbitrum tokens');
+    expect(endpointDocs.stdout).toContain('default: 42161');
+    expect(endpointDocs.stdout).toContain('range 42161-42161');
+    const unsupportedDocs = await run(
+      ['docs', 'arbitrum', 'aero-v2-pools', '--offline'],
+      fetch,
+      root,
+    );
+    expect(unsupportedDocs.code).toBe(2);
+    expect(unsupportedDocs.stderr).toContain('Unknown arbitrum resource');
+    const schema = await run(['schema', 'status', 'arbitrum'], fetch, root);
+    expect(JSON.parse(schema.stdout).group).toBe('base');
+
+    const chains = await run(['schema', 'chains'], fetch, root);
+    const chainReport = JSON.parse(chains.stdout);
+    expect(chainReport.chains.map((chain: { command: string }) => chain.command))
+      .toEqual(['base', 'ethereum', 'arbitrum']);
+    expect(chainReport.chains.every((chain: { supported: boolean }) => chain.supported)).toBe(true);
+    expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'arbitrum'))
+      .toMatchObject({ chainId: 42161, label: 'Arbitrum One' });
+
+    const typo = await run(['arbitrumm'], fetch, root);
+    expect(typo.stderr).toContain('Did you mean "arbitrum"');
+
+    for (const [command, chainId] of [['arbitrum', 42161], ['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
+      const result = await run([command, 'tokens', '--limit', '1', '--json'], fetch, root);
+      expect(result.code).toBe(0);
+      expect(requests.at(-1)).toContain(`chain_id=${chainId}`);
+      if (command === 'evm') expect(result.stderr).toContain('"evm" is deprecated');
+    }
+
+    const beforeConflict = requests.filter((url) => url.includes('/evm/tokens?')).length;
+    const conflict = await run(
+      ['arbitrum', 'tokens', '--chain-id', '8453', '--limit', '1'],
+      fetch,
+      root,
+    );
+    expect(conflict.code).toBe(2);
+    expect(conflict.stderr).toContain('--chain-id must be at least 42161');
+    expect(requests.filter((url) => url.includes('/evm/tokens?'))).toHaveLength(beforeConflict);
+
+    const payConflict = await run(
+      ['pay', 'arbitrum', 'tokens', '--chain-id', '1'],
+      fetch,
+      root,
+    );
+    expect(payConflict.code).toBe(2);
+    expect(payConflict.stderr).toContain('--chain-id must be at least 42161');
+  });
 });
+

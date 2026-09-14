@@ -32,6 +32,27 @@ describe('complete', () => {
     expect(evm.length).toBeGreaterThan(0);
   });
 
+  it('completes every advertised EVM chain as a first-class command', () => {
+    const top = complete(['']);
+    expect(top).toEqual(expect.arrayContaining(['base', 'ethereum', 'arbitrum']));
+    expect(complete(['arb'])).toEqual(['arbitrum']);
+    expect(complete(['eth'])).toEqual(['ethereum']);
+
+    // Arbitrum excludes Base-only DEXes but keeps shared ones.
+    const arbitrum = complete(['arbitrum', '']);
+    expect(arbitrum).toContain('uniswap-v3-pools');
+    expect(arbitrum).toContain('tokens');
+    expect(arbitrum).not.toContain('aero-v2-pools');
+
+    // schema/docs/pay treat chains uniformly.
+    expect(complete(['schema', ''])).toEqual(['chains', 'status', 'refresh', 'clear-cache']);
+    expect(complete(['schema', 'status', 'arb'])).toEqual(['arbitrum']);
+    expect(complete(['docs', 'arb'])).toEqual(['arbitrum']);
+    const payGroups = complete(['pay', '']);
+    expect(payGroups).toEqual(expect.arrayContaining(['base', 'ethereum', 'arbitrum']));
+    expect(complete(['pay', 'arbitrum', 'uni'])).toContain('uniswap-v3-pools');
+  });
+
   it('completes flags for a chosen resource, filtered by the partial token', () => {
     const all = complete(['solana', 'tokens', '--']);
     expect(all).toContain('--limit');

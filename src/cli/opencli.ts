@@ -6,10 +6,10 @@ import {
 } from '../metadata.js';
 import { deriveCliMetadata } from './dynamic-handler.js';
 import {
-  BASE_CHAIN_ID,
-  ETHEREUM_CHAIN_ID,
-  hasEthereumSupport,
-  projectEvmMetadata,
+  EVM_CHAINS,
+  type EvmChain,
+  projectEvmChain,
+  supportedEvmChains,
 } from './evm-chains.js';
 
 const OPENCLI_SCHEMA_VERSION = '0.1.0';
@@ -163,16 +163,16 @@ export function buildOpenCliDocument(
     metadataGroups.solana.spec,
     metadataGroups.solana.cliDefaults,
   );
-  const baseMetadata = projectEvmMetadata(metadataGroups.base, BASE_CHAIN_ID);
-  const ethereumMetadata = projectEvmMetadata(metadataGroups.base, ETHEREUM_CHAIN_ID);
-  const base = deriveCliMetadata(
-    baseMetadata.spec,
-    baseMetadata.cliDefaults,
-  );
-  const ethereum = deriveCliMetadata(
-    ethereumMetadata.spec,
-    ethereumMetadata.cliDefaults,
-  );
+  const chains = supportedEvmChains(metadataGroups.base);
+  const chainDerived = new Map(chains.map((chain) => {
+    const projected = projectEvmChain(metadataGroups.base, chain);
+    return [chain.command, {
+      chain,
+      ...deriveCliMetadata(projected.spec, projected.cliDefaults),
+    }];
+  }));
+  const baseChain = EVM_CHAINS[0];
+  const base = chainDerived.get(baseChain.command)!;
   const deep42 = deriveCliMetadata(
     metadataGroups.deep42.spec,
     metadataGroups.deep42.cliDefaults,
@@ -199,23 +199,20 @@ export function buildOpenCliDocument(
         options: DATA_OPTIONS,
         commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions),
       },
-      {
-        name: 'base',
-        description: `Query Base chain DeFi endpoints (${base.resources.length} resources).`,
-        options: DATA_OPTIONS,
-        commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions),
-      },
-      ...(hasEthereumSupport(metadataGroups.base) ? [{
-        name: 'ethereum',
-        description: `Query Ethereum mainnet DeFi endpoints (${ethereum.resources.length} resources).`,
-        options: DATA_OPTIONS,
-        commands: buildSubcommands(
-          ethereum.resources,
-          'Ethereum',
-          ethereum.allowedOptions,
-          ethereum.requiredOptions,
-        ),
-      }] : []),
+      ...chains.map((chain) => {
+        const derived = chainDerived.get(chain.command)!;
+        return {
+          name: chain.command,
+          description: `Query ${chain.label} DeFi endpoints (${derived.resources.length} resources).`,
+          options: DATA_OPTIONS,
+          commands: buildSubcommands(
+            derived.resources,
+            chain.label,
+            derived.allowedOptions,
+            derived.requiredOptions,
+          ),
+        };
+      }),
       {
         name: 'deep42',
         description: `Query Deep42 social intelligence endpoints (${deep42.resources.length} resources).`,
@@ -234,7 +231,18 @@ export function buildOpenCliDocument(
         options: PAY_OPTIONS,
         commands: [
           { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana', solana.allowedOptions, solana.requiredOptions) },
-          { name: 'base', commands: buildSubcommands(base.resources, 'Base', base.allowedOptions, base.requiredOptions) },
+          ...chains.map((chain) => {
+            const derived = chainDerived.get(chain.command)!;
+            return {
+              name: chain.command,
+              commands: buildSubcommands(
+                derived.resources,
+                chain.label,
+                derived.allowedOptions,
+                derived.requiredOptions,
+              ),
+            };
+          }),
           { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions) },
           { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk', risk.allowedOptions, risk.requiredOptions) },
         ],
@@ -253,10 +261,10 @@ export function buildOpenCliDocument(
             description: 'List live guides or fetch one by its indexed URL slug.',
           },
           { name: 'solana', commands: buildSubcommands(solana.resources, 'Solana') },
-          { name: 'base', commands: buildSubcommands(base.resources, 'Base') },
-          ...(hasEthereumSupport(metadataGroups.base)
-            ? [{ name: 'ethereum', commands: buildSubcommands(ethereum.resources, 'Ethereum') }]
-            : []),
+          ...chains.map((chain) => {
+            const derived = chainDerived.get(chain.command)!;
+            return { name: chain.command, commands: buildSubcommands(derived.resources, chain.label) };
+          }),
           { name: 'deep42', commands: buildSubcommands(deep42.resources, 'Deep42') },
           { name: 'risk', commands: buildSubcommands(risk.resources, 'Risk') },
         ],

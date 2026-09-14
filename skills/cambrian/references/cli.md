@@ -345,8 +345,10 @@ Meaning:
 
 ## Base Commands
 
-`cambrian base` is pinned to `chain_id=8453`, even when the EVM schema also
-supports Ethereum. Do not use `cambrian evm` as a CLI group.
+`cambrian base` is pinned to `chain_id=8453`, even though the EVM schema also
+supports Ethereum and Arbitrum. Base is the only group that also exposes
+chain-neutral discovery operations such as `chains`. Do not use `cambrian evm`
+as a CLI group.
 
 ### Pools
 
@@ -466,6 +468,39 @@ cambrian ethereum tokens --limit 1
 
 The CLI supplies `chain_id=1` and rejects a conflicting chain flag before the
 request. Use `base`, not `evm`, for Base requests.
+
+## Arbitrum One Commands
+
+`cambrian arbitrum` selects Arbitrum One with `chain_id=42161`. Its help, docs,
+completion, and OpenCLI metadata list exactly the operations the API advertises
+for Arbitrum. Arbitrum supports the shared DEX/lending/price/TVL surface but not
+Base-only DEXes such as Aerodrome or Alienbase.
+
+```bash
+cambrian arbitrum dexes
+cambrian arbitrum tokens
+cambrian arbitrum price-current --token-address 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1
+cambrian arbitrum price-hour --token-address <token> --hours <n>
+cambrian arbitrum uniswap-v3-pools
+cambrian arbitrum uniswap-v3-pool --pool-address <pool>
+cambrian arbitrum sushi-v3-pools
+cambrian arbitrum pancake-v3-pools
+cambrian arbitrum clones-v3-pools
+cambrian arbitrum lending-overview
+cambrian arbitrum lending-protocols
+cambrian arbitrum lending-aave-v3-pools
+cambrian arbitrum lending-morpho-markets
+cambrian arbitrum lending-euler-markets
+cambrian arbitrum tvl-status --wallet-address <wallet>
+cambrian arbitrum tvl-top-owners --token-address <token>
+```
+
+Meaning:
+- the CLI supplies `chain_id=42161` and rejects a conflicting chain flag
+- Arbitrum does not expose Aerodrome/Alienbase/OHLCV resources; run
+  `cambrian arbitrum --help` for the authoritative list
+- use `cambrian schema chains` to print every registered chain and its
+  supported resource count
 
 ## Deep42 Commands
 

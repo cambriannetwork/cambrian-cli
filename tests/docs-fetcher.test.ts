@@ -65,9 +65,9 @@ describe('buildSchemaFallbackDocs', () => {
 
   it('evm endpoint includes default and range info', () => {
     const result = buildSchemaFallbackDocs('evm', 'aero-v2-pools');
-    // limit has default: 100, range 1-1000
+    // limit has default: 100, range 1-10000
     expect(result).toContain('default: 100');
-    expect(result).toContain('range 1-1000');
+    expect(result).toContain('range 1-10000');
   });
 
   it('documents a validated CLI compatibility default in the executable contract', () => {
@@ -175,7 +175,7 @@ describe('fetchDocs — schema fallback on llms.txt failure', () => {
     );
 
     expect(result).toContain('Authoritative executable contract');
-    expect(result).toContain('--limit  (integer, optional, default: 100, range 1-1000)');
+    expect(result).toContain('--limit  (integer, optional, default: 100, range 1-10000)');
     expect(result).not.toContain('Accepted range 1 to 90');
     expect(result).toContain('Pool response semantics remain useful.');
   });
@@ -202,17 +202,17 @@ describe('per-resource --help includes schema hints', () => {
 
   it('evm aero-v2-pools --help shows default and range for --limit', async () => {
     const { stdout } = await captureStdout(['evm', 'aero-v2-pools', '--help']);
-    // limit: default 100, range 1-1000
+    // limit: default 100, range 1-10000
     expect(stdout).toContain('--limit');
     expect(stdout).toContain('default: 100');
-    expect(stdout).toContain('1-1000');
+    expect(stdout).toContain('1-10000');
   });
 
   it('evm aero-v2-pools --help shows default and range for --offset', async () => {
     const { stdout } = await captureStdout(['evm', 'aero-v2-pools', '--help']);
     expect(stdout).toContain('--offset');
     expect(stdout).toContain('default: 0');
-    expect(stdout).toContain('0-100000');
+    expect(stdout).toContain('0-100000000');
   });
 
   it('evm aero-v2-pool --help shows range for --apr-days-annualized', async () => {

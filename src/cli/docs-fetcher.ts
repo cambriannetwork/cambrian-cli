@@ -8,6 +8,7 @@
  */
 
 import { CAMBRIAN_METADATA_GROUPS, DEEP42_RESOURCE_ALIASES } from '../metadata.js';
+import { evmChainForToken } from './evm-chains.js';
 import type {
   CambrianGroup,
   CambrianMetadataGroup,
@@ -27,6 +28,11 @@ const SECTION_HEADERS: Record<string, string> = {
   risk: '### Perp risk engine',
 };
 
+/** Resolves any EVM chain token to the shared `evm` llms.txt section. */
+function sectionHeaderFor(group: string): string | undefined {
+  return evmChainForToken(group) ? SECTION_HEADERS.evm : SECTION_HEADERS[group];
+}
+
 type MetadataGroups = Record<CambrianGroup, CambrianMetadataGroup>;
 
 interface ResolvedEndpoint {
@@ -35,7 +41,7 @@ interface ResolvedEndpoint {
 }
 
 function metadataGroupKey(group: string): CambrianGroup | undefined {
-  if (group === 'evm' || group === 'base' || group === 'ethereum') return 'base';
+  if (evmChainForToken(group)) return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
@@ -197,7 +203,7 @@ export async function fetchDocs(
     if (fullText) {
       // Level 2: extract section for a specific group
       if (group && !resource) {
-        const header = SECTION_HEADERS[group];
+        const header = sectionHeaderFor(group);
         if (header) {
           const section = extractSection(fullText, header);
           if (section) return section;
@@ -216,16 +222,6 @@ export async function fetchDocs(
 }
 
 // ── Schema-derived fallback (offline, from active OpenAPI metadata) ──
-
-// CLI group name -> metadata group key (evm/base both map to the `base` spec).
-const GROUP_TO_METADATA_KEY: Record<string, CambrianGroup> = {
-  solana: 'solana',
-  evm: 'base',
-  base: 'base',
-  ethereum: 'base',
-  deep42: 'deep42',
-  risk: 'risk',
-};
 
 function describeParam(name: string, ps: ParamSpec, cliDefault?: string): string {
   const cliFlag = name.replace(/_/g, '-');
@@ -317,7 +313,7 @@ export function buildSchemaFallbackDocs(
 ): string | null {
   try {
     if (!group) return null;
-    const metadataKey = GROUP_TO_METADATA_KEY[group];
+    const metadataKey = metadataGroupKey(group);
     if (!metadataKey) return null;
     const groupMeta = metadataGroups[metadataKey];
 

@@ -232,12 +232,40 @@ describe('shared Cambrian metadata registry', () => {
 
   it('bundles all Base endpoints visible under the current llms.txt policy', () => {
     const base = CAMBRIAN_METADATA_GROUPS.base.resources;
-    expect(base).toHaveLength(38);
+    expect(base).toHaveLength(40);
     expect(base).not.toContain('aero-v2-provider-positions');
     expect(base).not.toContain('aero-v2-providers');
     expect(base).toContain('chains');
     expect(base).toContain('lending-protocols');
-    expect(base.filter((resource) => resource.startsWith('lending-'))).toHaveLength(15);
+    expect(base.filter((resource) => resource.startsWith('lending-'))).toHaveLength(17);
+  });
+
+  it('bundles Arbitrum (42161) support on every endpoint the API advertises for it', () => {
+    const evm = spec.evm;
+    const arbResources = Object.entries(evm)
+      .filter(([, entry]) => {
+        const chain = entry.params.chain_id as (ParamInfo & { numericEnum?: number[]; min?: number; max?: number }) | undefined;
+        if (!chain) return false;
+        if (chain.numericEnum) return chain.numericEnum.includes(42161);
+        return chain.min === 42161 && chain.max === 42161;
+      })
+      .map(([resource]) => resource)
+      .sort();
+
+    // Stable, deterministic: the exact set of Arbitrum-capable resources.
+    expect(arbResources).toEqual([
+      'clones-v3-pool', 'clones-v3-pools', 'dexes',
+      'lending-aave-v3-pools', 'lending-euler-curator-vaults', 'lending-euler-curators',
+      'lending-euler-markets', 'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
+      'lending-morpho-curator-vaults', 'lending-morpho-curators', 'lending-morpho-markets',
+      'lending-morpho-v1-vault-markets', 'lending-morpho-v1-vaults',
+      'lending-morpho-v2-vault-markets', 'lending-morpho-v2-vaults',
+      'lending-overview', 'lending-protocols', 'pancake-v3-pool', 'pancake-v3-pools',
+      'price-current', 'price-hour', 'sushi-v3-pool', 'sushi-v3-pools', 'tokens',
+      'tvl-status', 'tvl-top-owners', 'uniswap-v3-pool', 'uniswap-v3-pools',
+    ]);
+    expect(arbResources).not.toContain('aero-v2-pools');
+    expect(arbResources).not.toContain('chains');
   });
 
   it('bundles the current token-analysis OpenAPI contract', () => {

@@ -54,18 +54,28 @@ import {
   type CambrianMetadataGroup,
 } from '../metadata.js';
 import {
-  BASE_CHAIN_ID,
-  ETHEREUM_CHAIN_ID,
-  hasEthereumSupport,
-  projectEvmMetadata,
+  DEFAULT_EVM_CHAIN,
+  EVM_CHAINS,
+  type EvmChain,
+  evmChainForToken,
+  hasEvmChainSupport,
+  projectEvmChain,
+  supportedEvmChains,
 } from './evm-chains.js';
 
 // ── Known top-level commands (for dispatch + typo suggestions) ──────
 
-const KNOWN_COMMANDS = ['solana', 'evm', 'base', 'ethereum', 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe'];
+const EVM_COMMAND_TOKENS = EVM_CHAINS.map((chain) => chain.command);
+
+const KNOWN_COMMANDS = ['solana', 'evm', ...EVM_COMMAND_TOKENS, 'deep42', 'risk', 'pay', 'docs', 'config', 'completion', 'schema', 'skill', 'mcp', 'describe'];
 
 /** Command groups that perform real authenticated queries (drive the update notice). */
-const DATA_COMMANDS = ['solana', 'evm', 'base', 'ethereum', 'deep42', 'risk'];
+const DATA_COMMANDS = ['solana', 'evm', ...EVM_COMMAND_TOKENS, 'deep42', 'risk'];
+
+/** Chains advertised by the active schema (drives help/completion/suggestions). */
+function activeEvmChains(runtime: Runtime): EvmChain[] {
+  return supportedEvmChains(loadCachedMetadataGroup('base', runtime).metadata);
+}
 
 const REGISTRY_GROUPS: CambrianGroup[] = ['solana', 'base', 'deep42', 'risk'];
 
@@ -76,10 +86,9 @@ function cachedMetadataGroups(runtime: Runtime): Record<CambrianGroup, CambrianM
 }
 
 function suggestionCommands(runtime: Runtime): string[] {
-  const commands = KNOWN_COMMANDS.filter((command) => command !== 'evm');
-  return hasEthereumSupport(loadCachedMetadataGroup('base', runtime).metadata)
-    ? commands
-    : commands.filter((command) => command !== 'ethereum');
+  const available = new Set(activeEvmChains(runtime).map((chain) => chain.command));
+  return KNOWN_COMMANDS.filter((command) =>
+    command !== 'evm' && (!EVM_COMMAND_TOKENS.includes(command) || available.has(command)));
 }
 
 function canonicalRegistryResource(group: CambrianGroup, resource: string): string {
@@ -87,24 +96,21 @@ function canonicalRegistryResource(group: CambrianGroup, resource: string): stri
 }
 
 function registryGroupForToken(group: string | undefined): CambrianGroup | undefined {
-  if (group === 'evm' || group === 'base' || group === 'ethereum') return 'base';
+  if (group && evmChainForToken(group)) return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
 
 function projectEvmCommand(
   metadata: CambrianMetadataGroup,
-  command: 'base' | 'evm' | 'ethereum',
+  command: string,
 ): CambrianMetadataGroup {
-  return projectEvmMetadata(
-    metadata,
-    command === 'ethereum' ? ETHEREUM_CHAIN_ID : BASE_CHAIN_ID,
-  );
+  return projectEvmChain(metadata, evmChainForToken(command) ?? DEFAULT_EVM_CHAIN);
 }
 
 async function runtimeRootHelp(parsed: ParsedArgs, runtime: Runtime): Promise<string> {
   const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
-  return rootHelp(hasEthereumSupport(metadata));
+  return rootHelp(supportedEvmChains(metadata));
 }
 
 async function runtimeMetadataFor(
@@ -229,15 +235,18 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
       runtime,
     );
     metadataGroups[registryGroup] = registryGroup === 'base' && group
-      ? projectEvmCommand(metadata, group === 'ethereum' ? 'ethereum' : group === 'evm' ? 'evm' : 'base')
+      ? projectEvmCommand(metadata, group)
       : metadata;
-    if (group === 'ethereum') {
+    const docsChain = group ? evmChainForToken(group) : undefined;
+    if (docsChain && docsChain.command !== 'evm' && docsChain.command !== 'base') {
       if (metadataGroups.base.resources.length === 0) {
-        throw new CliUsageError('Ethereum commands are not available in the active EVM schema yet.');
+        throw new CliUsageError(
+          `${docsChain.label} commands are not available in the active EVM schema yet.`,
+        );
       }
       if (resource && !metadataGroups.base.spec[resource]) {
         const suggestion = didYouMean(resource, metadataGroups.base.resources);
-        throw new CliUsageError(`Unknown ethereum resource: ${resource}.${suggestion}`);
+        throw new CliUsageError(`Unknown ${docsChain.command} resource: ${resource}.${suggestion}`);
       }
     }
   }
@@ -413,9 +422,8 @@ function selectedSchemaGroups(token: string | undefined): CambrianGroup[] {
   if (!token) return [...REGISTRY_GROUPS];
   const group = registryGroupForToken(token);
   if (!group) {
-    throw new CliUsageError(
-      `Unknown schema group: ${token}. Use solana, base, deep42, or risk.`,
-    );
+    const valid = ['solana', ...EVM_COMMAND_TOKENS, 'deep42', 'risk'].join(', ');
+    throw new CliUsageError(`Unknown schema group: ${token}. Use ${valid}.`);
   }
   return [group];
 }
@@ -429,9 +437,27 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
     subcommand ? `schema ${subcommand}` : 'schema',
   );
   if (!subcommand || hasOption(parsed, 'help')) {
-    runtime.stdout(schemaHelp());
+    runtime.stdout(schemaHelp(activeEvmChains(runtime)));
     return 0;
   }
+  if (subcommand === 'chains') {
+    assertNoExtraPositionals(parsed, 2, 'schema chains');
+    const metadata = loadCachedMetadataGroup('base', runtime).metadata;
+    printJson(runtime, {
+      chains: EVM_CHAINS.map((chain) => {
+        const projected = projectEvmChain(metadata, chain);
+        return {
+          command: chain.command,
+          chainId: chain.chainId,
+          label: chain.label,
+          supported: hasEvmChainSupport(metadata, chain),
+          resources: projected.resources,
+        };
+      }),
+    });
+    return 0;
+  }
+
   const groupToken = parsed.positionals[2];
   const groups = selectedSchemaGroups(groupToken);
 
@@ -463,7 +489,7 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
   }
 
   throw new CliUsageError(
-    `Unknown schema subcommand: ${subcommand}. Use status, refresh, or clear-cache.`,
+    `Unknown schema subcommand: ${subcommand}. Use chains, status, refresh, or clear-cache.`,
   );
 }
 
@@ -562,38 +588,27 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
         return await handleSolanaQuery(resource, parsed, runtime, client, metadata);
       }
       case 'evm':
-      case 'base': {
-        const currentCommand = command as 'base' | 'evm';
-        if (skipAuth) {
-          const metadata = projectEvmCommand(
-            await runtimeMetadataFor('base', resource, parsed, runtime),
-            currentCommand,
-          );
-          return await handleEvmQuery(resource, parsed, runtime, null!, metadata);
-        }
-        const client = createClient(parsed, runtime);
+      case 'base':
+      case 'ethereum':
+      case 'arbitrum': {
+        const chain = evmChainForToken(command) ?? DEFAULT_EVM_CHAIN;
         const metadata = projectEvmCommand(
           await runtimeMetadataFor('base', resource, parsed, runtime),
-          currentCommand,
+          command,
         );
-        return await handleEvmQuery(resource, parsed, runtime, client, metadata);
-      }
-      case 'ethereum': {
-        const metadata = projectEvmCommand(
-          await runtimeMetadataFor('base', resource, parsed, runtime),
-          'ethereum',
-        );
-        if (metadata.resources.length === 0) {
+        // Base owns chain-neutral endpoints; the alternate chains only appear
+        // when the active schema explicitly advertises their chain id.
+        if (chain.chainId !== DEFAULT_EVM_CHAIN.chainId && metadata.resources.length === 0) {
           throw new CliUsageError(
-            'Ethereum commands are not available in the active EVM schema yet. ' +
+            `${chain.label} commands are not available in the active EVM schema yet. ` +
             'Use "cambrian base --help" for currently supported EVM commands.',
           );
         }
         if (skipAuth) {
-          return await handleEvmQuery(resource, parsed, runtime, null!, metadata, 'ethereum');
+          return await handleEvmQuery(resource, parsed, runtime, null!, metadata, chain.command);
         }
         const client = createClient(parsed, runtime);
-        return await handleEvmQuery(resource, parsed, runtime, client, metadata, 'ethereum');
+        return await handleEvmQuery(resource, parsed, runtime, client, metadata, chain.command);
       }
       case 'deep42': {
         if (skipAuth) {
@@ -635,7 +650,7 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'docs':
         if (hasOption(parsed, 'help')) {
           const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
-          runtime.stdout(docsHelp(hasEthereumSupport(metadata)));
+          runtime.stdout(docsHelp(supportedEvmChains(metadata)));
           return 0;
         }
         return await handleDocs(parsed, runtime);
