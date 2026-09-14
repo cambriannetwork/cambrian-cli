@@ -9,14 +9,18 @@ import {
   ETHEREUM_CHAIN,
   ETHEREUM_CHAIN_ID,
   EVM_CHAINS,
+  advertisedEvmChainIds,
+  discoverEvmChains,
   evmChainForToken,
   evmChainIdForToken,
   hasEvmChainSupport,
   hasEthereumSupport,
+  isSyntheticEvmChainToken,
   projectEvmChain,
   projectEvmMetadata,
   supportedEvmChainIds,
   supportedEvmChains,
+  syntheticEvmChainId,
 } from '../src/cli/evm-chains.js';
 
 function endpoint(chainIds?: number[]): EndpointSpec {
@@ -129,5 +133,57 @@ describe('EVM chain registry', () => {
       max: 42161,
       strict: true,
     });
+  });
+});
+describe('runtime EVM chain discovery', () => {
+  const multiChain = () => metadata({
+    chains: endpoint(),
+    tokens: endpoint([1, 8453, 42161, 10]),
+    'uniswap-v3-pools': endpoint([1, 8453, 42161]),
+    'aero-v2-pools': endpoint([8453]),
+  });
+
+  it('parses chain-<id> tokens and ignores malformed ones', () => {
+    expect(syntheticEvmChainId('chain-10')).toBe(10);
+    expect(syntheticEvmChainId('chain-42161')).toBe(42161);
+    expect(syntheticEvmChainId('chain-')).toBeUndefined();
+    expect(syntheticEvmChainId('chain-x')).toBeUndefined();
+    expect(syntheticEvmChainId('chain-0')).toBeUndefined();
+    expect(syntheticEvmChainId('chain-10x')).toBeUndefined();
+    expect(syntheticEvmChainId('base')).toBeUndefined();
+  });
+
+  it('resolves chain-<id> tokens to synthetic chains', () => {
+    expect(evmChainForToken('chain-10')).toMatchObject({
+      command: 'chain-10',
+      chainId: 10,
+      label: 'Chain 10',
+      group: 'base',
+    });
+    expect(isSyntheticEvmChainToken('chain-10')).toBe(true);
+    expect(isSyntheticEvmChainToken('base')).toBe(false);
+    expect(evmChainForToken('nope')).toBeUndefined();
+  });
+
+  it('discovers advertised ids with no curated row, keeping curated chains first', () => {
+    const discovered = discoverEvmChains(multiChain());
+    expect(discovered.map((chain) => chain.command)).toEqual([
+      'base', 'ethereum', 'arbitrum', 'chain-10',
+    ]);
+    expect(advertisedEvmChainIds(multiChain())).toEqual([1, 10, 8453, 42161]);
+  });
+
+  it('projects a synthetic chain to only its advertised resources', () => {
+    const projection = projectEvmChain(multiChain(), evmChainForToken('chain-10')!);
+    expect(projection.resources).toEqual(['tokens']);
+    expect(projection.spec.tokens.params.chain_id).toMatchObject({ default: 10, min: 10, max: 10 });
+  });
+
+  it('adds no synthetic duplicates for curated chains', () => {
+    const discovered = discoverEvmChains(metadata({
+      chains: endpoint(),
+      tokens: endpoint([1, 8453, 42161]),
+    }));
+    expect(discovered.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum']);
   });
 });

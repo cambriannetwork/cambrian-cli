@@ -8,8 +8,8 @@ import { deriveCliMetadata } from './dynamic-handler.js';
 import {
   EVM_CHAINS,
   type EvmChain,
+  discoverEvmChains,
   projectEvmChain,
-  supportedEvmChains,
 } from './evm-chains.js';
 
 const OPENCLI_SCHEMA_VERSION = '0.1.0';
@@ -163,7 +163,7 @@ export function buildOpenCliDocument(
     metadataGroups.solana.spec,
     metadataGroups.solana.cliDefaults,
   );
-  const chains = supportedEvmChains(metadataGroups.base);
+  const chains = discoverEvmChains(metadataGroups.base);
   const chainDerived = new Map(chains.map((chain) => {
     const projected = projectEvmChain(metadataGroups.base, chain);
     return [chain.command, {

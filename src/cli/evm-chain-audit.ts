@@ -148,9 +148,12 @@ export interface EvmChainAudit {
 
 /**
  * Shared audit kernel over an already-extracted path/resource allow-list map.
- * unregisteredChainIds non-empty means the CLI is missing a chain the API
- * already serves; unsupportedChains non-empty means the registry advertises
- * a chain the supplied document does not (usually a stale document).
+ *
+ * A non-empty `unregisteredChainIds` means the API serves a chain with no
+ * curated row. That chain is still reachable at runtime as `chain-<id>` (see
+ * discoverEvmChains), so users are not blocked - a curated row only adds a
+ * friendly command name. A non-empty `unsupportedChains` means the registry has
+ * a curated chain the supplied document does not advertise (usually stale).
  */
 export function auditEvmChainSupport(
   support: Map<string, number[]>,

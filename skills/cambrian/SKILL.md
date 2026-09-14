@@ -102,6 +102,11 @@ Runtime endpoint rule:
 - The CLI refreshes endpoint metadata automatically;
   compatible GET/query additions, updates, and removals can appear without
   reinstalling the npm package.
+- Chains come from the same live schema. Any chain id the API advertises is
+  usable immediately as `cambrian chain-<id> ...` (for example
+  `cambrian chain-10 tokens`) with no reinstall. `base`, `ethereum`, and
+  `arbitrum` are curated friendly names for their chain ids. `cambrian schema
+  chains` lists every chain the active schema supports.
 - If a newly deployed endpoint is expected but not visible, run
   `cambrian schema refresh <solana|base|ethereum|arbitrum|deep42|risk>` once, then retry it. All
   attempts share a 15-minute per-source floor, including failures and typos.

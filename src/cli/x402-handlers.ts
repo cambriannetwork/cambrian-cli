@@ -32,7 +32,7 @@ import {
   type CambrianMetadataGroup,
   type GroupSpec,
 } from '../metadata.js';
-import { DEFAULT_EVM_CHAIN, EVM_CHAINS, projectEvmChain } from './evm-chains.js';
+import { DEFAULT_EVM_CHAIN, discoverEvmChains, projectEvmChain } from './evm-chains.js';
 import {
   X402_BASE_URL,
   DEFAULT_MAX_AMOUNT_MICRO,
@@ -79,7 +79,7 @@ function buildPayGroups(
   };
   out.solana = build('solana', {});
   // One pay group per advertised EVM chain; `evm` stays an alias for Base.
-  for (const chain of EVM_CHAINS) {
+  for (const chain of discoverEvmChains(metadataGroups.base)) {
     const projected = projectEvmChain(metadataGroups.base, chain);
     if (projected.resources.length === 0 && chain.chainId !== DEFAULT_EVM_CHAIN.chainId) continue;
     out[chain.command] = {
@@ -321,7 +321,7 @@ export function payHelp(): string {
     'Pay-per-call via x402 (Base USDC) instead of an API key. Spends real funds.',
     'The gateway returns the current price, which the CLI previews before payment.',
     '',
-    `Groups:  ${['solana', ...EVM_CHAINS.map((chain) => chain.command), 'deep42', 'risk'].join(' | ')}`,
+    `Groups:  ${['solana', ...discoverEvmChains(CAMBRIAN_METADATA_GROUPS.base).map((chain) => chain.command), 'deep42', 'risk'].join(' | ')}`,
     '',
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',

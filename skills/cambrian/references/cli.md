@@ -469,6 +469,25 @@ cambrian ethereum tokens --limit 1
 The CLI supplies `chain_id=1` and rejects a conflicting chain flag before the
 request. Use `base`, not `evm`, for Base requests.
 
+## Any Other Chain (`chain-<id>`)
+
+Chain availability is derived from the live OpenAPI `chain_id` enums, so a
+newly deployed chain works without reinstalling the CLI. Use its numeric id:
+
+```bash
+cambrian schema chains                 # list curated + discovered chains
+cambrian chain-10 --help               # resources the schema advertises for chain 10
+cambrian chain-10 tokens --limit 5
+cambrian chain-10 price-current --token-address <token>
+cambrian docs chain-10 --offline
+```
+
+- `chain-<id>` is validated against the active schema; an unadvertised id exits 2.
+- `base`, `ethereum`, and `arbitrum` are curated friendly names for
+  `8453`, `1`, and `42161`.
+- Curated names are a convenience, not a gate: users are never blocked waiting
+  for a release when the API adds a chain.
+
 ## Arbitrum One Commands
 
 `cambrian arbitrum` selects Arbitrum One with `chain_id=42161`. Its help, docs,

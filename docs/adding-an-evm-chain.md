@@ -6,8 +6,9 @@
 > new `chain_id`) by reading the OpenAPI `chain_id` enums.
 
 The EVM command surface is **derived from the OpenAPI `chain_id` enum** of each
-operation. There are no per-endpoint chain lists to edit. Adding a chain is a
-small, deterministic change plus a spec refresh.
+operation. There are no per-endpoint chain lists to edit. A chain the live
+schema advertises is usable as `chain-<id>` with no CLI upgrade; a curated row
+(plus a spec refresh) only gives it a friendly name.
 
 ## The Deterministic Source of Truth
 
@@ -27,6 +28,29 @@ and pins endpoints per chain.
 - Audit logic: `src/cli/evm-chain-audit.ts`
 - Audit command: `npm run check:chains`
 
+### Runtime discovery - no upgrade required
+
+Every chain id the active schema advertises is usable **immediately** as a
+`chain-<id>` command, even with no curated row. The OpenAPI enum is the only
+gate:
+
+```bash
+cambrian chain-10 --help
+cambrian chain-10 tokens --limit 5
+cambrian docs chain-10 --offline
+cambrian pay chain-10 tokens
+cambrian schema chains          # lists it as source: "discovered"
+```
+
+`discoverEvmChains()` derives this set from the runtime (or bundled) metadata.
+A curated `EVM_CHAINS` row only upgrades `chain-<id>` to a friendlier token and
+label (for example `chain-10` -> `optimism`). Users are never blocked waiting
+for a release.
+
+If names matter, `GET /evm/chains` returns the canonical `{ id, name }` pairs,
+but that is data (auth required), not schema - so the CLI does not depend on it
+for availability.
+
 ## Step 0 - Audit first (always)
 
 ```bash
@@ -36,10 +60,10 @@ npm run check:chains -- --json       # machine-readable
 npm run check:chains -- --file src/generated/openapi-params.json   # offline
 ```
 
-If the report shows `MISSING FROM REGISTRY: <id>`, the API serves a chain the
-CLI does not expose. Follow the steps below. If it shows
-`Registry chains absent from this document`, the live document is stale or the
-chain was removed - do not add a row.
+If the report shows `NEW CHAIN(S) SERVED BY THE API: <id>`, users can already
+reach it as `chain-<id>`; follow the steps below to add a curated friendly name.
+If it shows `Registry chains absent from this document`, the live document is
+stale or the chain was removed - do not add a row.
 
 ## Step 1 - Confirm the chain in the raw OpenAPI
 
@@ -59,7 +83,10 @@ curl -s https://api.cambrian.org/evm/openapi.json \
 `{ id, name }` pairs the API serves. **The OpenAPI enum is authoritative for
 which endpoints accept the chain.**
 
-## Step 2 - Add one row to the chain registry
+## Step 2 - Add one row to the chain registry (friendly name)
+
+Availability is already automatic via `chain-<id>`; this step is only to give
+the chain a stable, human-friendly command token.
 
 `src/cli/evm-chains.ts`:
 

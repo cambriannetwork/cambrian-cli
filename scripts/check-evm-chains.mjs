@@ -115,8 +115,15 @@ async function main() {
     }
     if (audit.unregisteredChainIds.length > 0) {
       console.log('');
-      console.log('MISSING FROM REGISTRY: ' + audit.unregisteredChainIds.join(', '));
-      console.log('Add a chain row in src/cli/evm-chains.ts and run the add-evm-chain skill.');
+      console.log('NEW CHAIN(S) SERVED BY THE API: ' + audit.unregisteredChainIds.join(', '));
+      console.log(
+        'The CLI already exposes each as chain-<id> at runtime with no upgrade, ' +
+        'so users are not blocked.',
+      );
+      console.log(
+        'Add a curated row in src/cli/evm-chains.ts (see the add-evm-chain skill) ' +
+        'to give it a friendly command name.',
+      );
     }
     if (audit.unsupportedChains.length > 0) {
       console.log('');

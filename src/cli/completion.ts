@@ -9,9 +9,9 @@ import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
 import type { CambrianGroup, CambrianMetadataGroup } from '../metadata.js';
 import { CliUsageError } from './core.js';
 import {
+  discoverEvmChains,
   evmChainForToken,
   projectEvmChain,
-  supportedEvmChains,
 } from './evm-chains.js';
 
 export const COMPLETION_SHELLS = ['bash', 'zsh', 'fish'] as const;
@@ -55,7 +55,7 @@ function completionMetadata(
 
 /** Every group token offered by completion: static + advertised EVM chains. */
 function groupTokens(metadataGroups: Record<CambrianGroup, CambrianMetadataGroup>): string[] {
-  const chains = supportedEvmChains(metadataGroups.base);
+  const chains = discoverEvmChains(metadataGroups.base);
   return [
     'solana',
     ...chains.map((chain) => chain.command),
@@ -86,7 +86,7 @@ export function complete(
   metadataGroups: Record<CambrianGroup, CambrianMetadataGroup> = CAMBRIAN_METADATA_GROUPS,
 ): string[] {
   const args = words.length === 0 ? [''] : words;
-  const chains = supportedEvmChains(metadataGroups.base);
+  const chains = discoverEvmChains(metadataGroups.base);
   const evmTokens = chains.map((chain) => chain.command);
   const schemaGroups = ['solana', ...evmTokens, 'deep42', 'risk'];
 

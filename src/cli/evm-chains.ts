@@ -67,10 +67,46 @@ export const EVM_GROUP_TOKENS: readonly string[] = [
 
 const EVM_CHAIN_BY_TOKEN = new Map(EVM_CHAINS.map((chain) => [chain.command, chain]));
 
-/** Resolves a CLI group token (`base`, `ethereum`, `arbitrum`, `evm`) to its chain. */
+/**
+ * Prefix for runtime-discovered chains that have no curated name yet.
+ * The active OpenAPI advertises chain ids only, so any chain id the schema
+ * serves but the table does not name is exposed as `chain-<id>`. This keeps
+ * OpenAPI the source of truth: a newly deployed chain is usable without a CLI
+ * upgrade. A later release can promote it to a friendly command token.
+ */
+export const SYNTHETIC_CHAIN_PREFIX = 'chain-';
+
+/** Parses a `chain-<id>` token into its chain id, or undefined. */
+export function syntheticEvmChainId(token: string): number | undefined {
+  if (!token.startsWith(SYNTHETIC_CHAIN_PREFIX)) return undefined;
+  const raw = token.slice(SYNTHETIC_CHAIN_PREFIX.length);
+  if (!/^[0-9]+$/.test(raw)) return undefined;
+  const id = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+}
+
+/** Builds a runtime chain descriptor for a chain id with no curated row. */
+export function syntheticEvmChain(chainId: number): EvmChain {
+  return {
+    command: `${SYNTHETIC_CHAIN_PREFIX}${chainId}`,
+    chainId,
+    label: `Chain ${chainId}`,
+    group: 'base',
+  };
+}
+
+/** True when the token is a runtime-discovered `chain-<id>` command. */
+export function isSyntheticEvmChainToken(token: string): boolean {
+  return syntheticEvmChainId(token) !== undefined;
+}
+
+/** Resolves a CLI group token (`base`, `ethereum`, `arbitrum`, `evm`, `chain-<id>`) to its chain. */
 export function evmChainForToken(token: string): EvmChain | undefined {
   if (token === 'evm') return DEFAULT_EVM_CHAIN;
-  return EVM_CHAIN_BY_TOKEN.get(token);
+  const known = EVM_CHAIN_BY_TOKEN.get(token);
+  if (known) return known;
+  const syntheticId = syntheticEvmChainId(token);
+  return syntheticId === undefined ? undefined : syntheticEvmChain(syntheticId);
 }
 
 /** Resolves a CLI group token to a chain id, or undefined when it is not EVM. */
@@ -91,6 +127,33 @@ export function supportedEvmChains(metadata: CambrianMetadataGroup): EvmChain[] 
 /** Chain ids the active schema advertises, Base first. */
 export function supportedEvmChainIds(metadata: CambrianMetadataGroup): number[] {
   return supportedEvmChains(metadata).map((chain) => chain.chainId);
+}
+
+/** Every chain id that appears in any endpoint's chain_id allow-list. */
+export function advertisedEvmChainIds(metadata: CambrianMetadataGroup): number[] {
+  const ids = new Set<number>();
+  for (const endpoint of Object.values(metadata.spec)) {
+    const chain = endpoint.params.chain_id;
+    if (!chain) continue;
+    if (chain.numericEnum) for (const id of chain.numericEnum) ids.add(id);
+    if (typeof chain.min === 'number' && chain.min === chain.max) ids.add(chain.min);
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
+/**
+ * Every EVM chain command the active schema advertises: curated chains that
+ * have support, followed by `chain-<id>` tokens for advertised ids without a
+ * curated row. This is what dispatch, help, completion, OpenCLI, docs, and
+ * `cambrian pay` enumerate, so new chains appear without a CLI upgrade.
+ */
+export function discoverEvmChains(metadata: CambrianMetadataGroup): EvmChain[] {
+  const curated = supportedEvmChains(metadata);
+  const named = new Set(curated.map((chain) => chain.chainId));
+  const extras = advertisedEvmChainIds(metadata)
+    .filter((id) => !named.has(id))
+    .map((id) => syntheticEvmChain(id));
+  return [...curated, ...extras];
 }
 
 function supportsChain(param: ParamSpec, chainId: number): boolean {

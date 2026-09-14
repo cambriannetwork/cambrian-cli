@@ -5,6 +5,26 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-14
+
+### Added
+
+- Runtime EVM chain discovery. Any chain id the active OpenAPI advertises is now
+  usable immediately as `cambrian chain-<id> <resource>` (for example
+  `cambrian chain-10 tokens`), so a newly deployed chain works without
+  reinstalling or upgrading the CLI. Discovery flows through dispatch, help,
+  completion, OpenCLI, docs, and `cambrian pay`.
+- `cambrian schema chains` now lists runtime-discovered chains (with
+  `source: "discovered"`) alongside the curated ones.
+
+### Changed
+
+- `cambrian schema chains` reads the active, refresh-aware registry instead of
+  the cached snapshot, so newly deployed chains appear immediately.
+- `npm run check:chains` reports a newly served chain as already reachable via
+  `chain-<id>`, and treats the curated `EVM_CHAINS` row as the way to add a
+  friendly name rather than a hard availability gate.
+
 ## [1.4.0] - 2026-09-14
 
 ### Added

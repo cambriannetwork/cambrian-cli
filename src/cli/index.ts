@@ -57,10 +57,11 @@ import {
   DEFAULT_EVM_CHAIN,
   EVM_CHAINS,
   type EvmChain,
+  discoverEvmChains,
   evmChainForToken,
   hasEvmChainSupport,
+  isSyntheticEvmChainToken,
   projectEvmChain,
-  supportedEvmChains,
 } from './evm-chains.js';
 
 // ── Known top-level commands (for dispatch + typo suggestions) ──────
@@ -72,9 +73,14 @@ const KNOWN_COMMANDS = ['solana', 'evm', ...EVM_COMMAND_TOKENS, 'deep42', 'risk'
 /** Command groups that perform real authenticated queries (drive the update notice). */
 const DATA_COMMANDS = ['solana', 'evm', ...EVM_COMMAND_TOKENS, 'deep42', 'risk'];
 
-/** Chains advertised by the active schema (drives help/completion/suggestions). */
+/** Every chain command the active schema advertises, including `chain-<id>` discoveries. */
 function activeEvmChains(runtime: Runtime): EvmChain[] {
-  return supportedEvmChains(loadCachedMetadataGroup('base', runtime).metadata);
+  return discoverEvmChains(loadCachedMetadataGroup('base', runtime).metadata);
+}
+
+/** True for any token the EVM dispatcher can route (curated or `chain-<id>`). */
+function isEvmChainCommand(command: string): boolean {
+  return evmChainForToken(command) !== undefined;
 }
 
 const REGISTRY_GROUPS: CambrianGroup[] = ['solana', 'base', 'deep42', 'risk'];
@@ -90,6 +96,7 @@ function suggestionCommands(runtime: Runtime): string[] {
   return KNOWN_COMMANDS.filter((command) =>
     command !== 'evm' && (!EVM_COMMAND_TOKENS.includes(command) || available.has(command)));
 }
+
 
 function canonicalRegistryResource(group: CambrianGroup, resource: string): string {
   return group === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
@@ -110,7 +117,7 @@ function projectEvmCommand(
 
 async function runtimeRootHelp(parsed: ParsedArgs, runtime: Runtime): Promise<string> {
   const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
-  return rootHelp(supportedEvmChains(metadata));
+  return rootHelp(discoverEvmChains(metadata));
 }
 
 async function runtimeMetadataFor(
@@ -442,19 +449,36 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
   }
   if (subcommand === 'chains') {
     assertNoExtraPositionals(parsed, 2, 'schema chains');
-    const metadata = loadCachedMetadataGroup('base', runtime).metadata;
-    printJson(runtime, {
-      chains: EVM_CHAINS.map((chain) => {
+    // Refresh-aware: report what the active registry actually serves, so a
+    // newly deployed chain shows up here without a CLI upgrade.
+    const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
+    const discovered = discoverEvmChains(metadata);
+    const rows = [
+      // Curated chains, including any the active schema no longer advertises.
+      ...EVM_CHAINS.map((chain) => {
         const projected = projectEvmChain(metadata, chain);
         return {
           command: chain.command,
           chainId: chain.chainId,
           label: chain.label,
+          source: 'curated' as const,
           supported: hasEvmChainSupport(metadata, chain),
           resources: projected.resources,
         };
       }),
-    });
+      // Advertised ids with no curated row, usable as `chain-<id>` today.
+      ...discovered
+        .filter((chain) => isSyntheticEvmChainToken(chain.command))
+        .map((chain) => ({
+          command: chain.command,
+          chainId: chain.chainId,
+          label: chain.label,
+          source: 'discovered' as const,
+          supported: true,
+          resources: projectEvmChain(metadata, chain).resources,
+        })),
+    ];
+    printJson(runtime, { chains: rows });
     return 0;
   }
 
@@ -556,14 +580,19 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       return 0;
     }
 
+    // `chain-<id>` tokens are resolved from the active schema, so they are
+    // valid data commands even though KNOWN_COMMANDS is static.
+    const isEvmChain = isEvmChainCommand(command);
+
     // --help with no recognized command → root help
-    if (hasOption(parsed, 'help') && !KNOWN_COMMANDS.includes(command)) {
+    if (hasOption(parsed, 'help') && !KNOWN_COMMANDS.includes(command) && !isEvmChain) {
       runtime.stdout(await runtimeRootHelp(parsed, runtime));
       return 0;
     }
 
     const resource = parsed.positionals[1] ?? '';
-    if (DATA_COMMANDS.includes(command)) {
+    const isDataCommand = DATA_COMMANDS.includes(command) || isEvmChain;
+    if (isDataCommand) {
       assertNoExtraPositionals(parsed, 2, resource ? `${command} ${resource}` : command);
     }
     const wantsHelp = hasOption(parsed, 'help');
@@ -572,9 +601,37 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
 
     // Gentle "update available" nudge on real queries — stderr only, throttled,
     // suppressed for non-TTY/CI so piped output and agents are never affected.
-    if (DATA_COMMANDS.includes(command) && !skipAuth) {
+    if (isDataCommand && !skipAuth) {
       maybeNotifyUpdate(runtime, readPackageVersion());
     }
+
+    // Shared EVM execution for curated chains and runtime `chain-<id>` tokens.
+    const runEvmCommand = async (chainToken: string): Promise<number> => {
+      const chain = evmChainForToken(chainToken) ?? DEFAULT_EVM_CHAIN;
+      const metadata = projectEvmCommand(
+        await runtimeMetadataFor('base', resource, parsed, runtime),
+        chainToken,
+      );
+      // Base owns chain-neutral endpoints; every other chain only appears when
+      // the active schema explicitly advertises its chain id.
+      if (chain.chainId !== DEFAULT_EVM_CHAIN.chainId && metadata.resources.length === 0) {
+        if (isSyntheticEvmChainToken(chainToken)) {
+          throw new CliUsageError(
+            `${chain.label} is not advertised by the active EVM schema. ` +
+            'Run "cambrian schema chains" to list supported chains.',
+          );
+        }
+        throw new CliUsageError(
+          `${chain.label} commands are not available in the active EVM schema yet. ` +
+          'Use "cambrian base --help" for currently supported EVM commands.',
+        );
+      }
+      if (skipAuth) {
+        return await handleEvmQuery(resource, parsed, runtime, null!, metadata, chain.command);
+      }
+      const client = createClient(parsed, runtime);
+      return await handleEvmQuery(resource, parsed, runtime, client, metadata, chain.command);
+    };
 
     switch (command) {
       // ── Data commands ────────────────────────────────────────
@@ -590,26 +647,8 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'evm':
       case 'base':
       case 'ethereum':
-      case 'arbitrum': {
-        const chain = evmChainForToken(command) ?? DEFAULT_EVM_CHAIN;
-        const metadata = projectEvmCommand(
-          await runtimeMetadataFor('base', resource, parsed, runtime),
-          command,
-        );
-        // Base owns chain-neutral endpoints; the alternate chains only appear
-        // when the active schema explicitly advertises their chain id.
-        if (chain.chainId !== DEFAULT_EVM_CHAIN.chainId && metadata.resources.length === 0) {
-          throw new CliUsageError(
-            `${chain.label} commands are not available in the active EVM schema yet. ` +
-            'Use "cambrian base --help" for currently supported EVM commands.',
-          );
-        }
-        if (skipAuth) {
-          return await handleEvmQuery(resource, parsed, runtime, null!, metadata, chain.command);
-        }
-        const client = createClient(parsed, runtime);
-        return await handleEvmQuery(resource, parsed, runtime, client, metadata, chain.command);
-      }
+      case 'arbitrum':
+        return await runEvmCommand(command);
       case 'deep42': {
         if (skipAuth) {
           const metadata = await runtimeMetadataFor('deep42', resource, parsed, runtime);
@@ -650,7 +689,7 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'docs':
         if (hasOption(parsed, 'help')) {
           const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
-          runtime.stdout(docsHelp(supportedEvmChains(metadata)));
+          runtime.stdout(docsHelp(discoverEvmChains(metadata)));
           return 0;
         }
         return await handleDocs(parsed, runtime);
@@ -675,6 +714,10 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'describe':
         return await handleDescribe(parsed, runtime);
       default: {
+        // Runtime-discovered `chain-<id>` tokens route through the EVM path.
+        if (isEvmChain) {
+          return await runEvmCommand(command);
+        }
         const suggestion = didYouMean(command, suggestionCommands(runtime));
         throw new CliUsageError(
           `Unknown command: ${command}.${suggestion} Run "cambrian --help" for a list.`,

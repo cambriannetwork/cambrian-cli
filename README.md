@@ -94,6 +94,10 @@ appear without reinstalling `cambrian` or publishing another npm version.
   Each group lists only the operations that support its chain. Chains are
   table-driven from `EVM_CHAINS` in `src/cli/evm-chains.ts` and audited against
   the OpenAPI `chain_id` enums with `npm run check:chains`.
+- New chains need no CLI upgrade. Any chain id the live OpenAPI advertises is
+  usable immediately as `cambrian chain-<id> <resource>` (for example
+  `cambrian chain-10 tokens`); curated names such as `arbitrum` are friendly
+  aliases. `cambrian schema chains` lists every supported chain.
 - Validated results are cached for 15 minutes. Successful, failed, explicit,
   unknown-resource, and concurrent attempts all share the same per-physical-URL
   request floor. EVM and Solana share a fallback attempt only when both need the
