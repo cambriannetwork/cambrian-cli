@@ -49,8 +49,15 @@ export const ARBITRUM_CHAIN: EvmChain = {
   group: 'base',
 };
 
+export const ROBINHOOD_CHAIN: EvmChain = {
+  command: 'robinhood',
+  chainId: 4663,
+  label: 'Robinhood Chain',
+  group: 'base',
+};
+
 /** Ordered list of every EVM chain command. Base must come first. */
-export const EVM_CHAINS: readonly EvmChain[] = [BASE_CHAIN, ETHEREUM_CHAIN, ARBITRUM_CHAIN];
+export const EVM_CHAINS: readonly EvmChain[] = [BASE_CHAIN, ETHEREUM_CHAIN, ARBITRUM_CHAIN, ROBINHOOD_CHAIN];
 
 /** The chain that owns chain-neutral (no `chain_id`) operations. */
 export const DEFAULT_EVM_CHAIN = BASE_CHAIN;
@@ -58,6 +65,7 @@ export const DEFAULT_EVM_CHAIN = BASE_CHAIN;
 export const BASE_CHAIN_ID = BASE_CHAIN.chainId;
 export const ETHEREUM_CHAIN_ID = ETHEREUM_CHAIN.chainId;
 export const ARBITRUM_CHAIN_ID = ARBITRUM_CHAIN.chainId;
+export const ROBINHOOD_CHAIN_ID = ROBINHOOD_CHAIN.chainId;
 
 /** Every CLI token that resolves to the shared EVM metadata group. */
 export const EVM_GROUP_TOKENS: readonly string[] = [

@@ -254,7 +254,7 @@ describe('shared Cambrian metadata registry', () => {
 
     // Stable, deterministic: the exact set of Arbitrum-capable resources.
     expect(arbResources).toEqual([
-      'clones-v3-pool', 'clones-v3-pools', 'dexes',
+      'dexes',
       'lending-aave-v3-pools', 'lending-euler-curator-vaults', 'lending-euler-curators',
       'lending-euler-markets', 'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
       'lending-morpho-curator-vaults', 'lending-morpho-curators', 'lending-morpho-markets',
@@ -266,6 +266,29 @@ describe('shared Cambrian metadata registry', () => {
     ]);
     expect(arbResources).not.toContain('aero-v2-pools');
     expect(arbResources).not.toContain('chains');
+  });
+
+  it('bundles only the 20 Robinhood resources advertised by production', () => {
+    const robinhoodResources = Object.entries(spec.evm)
+      .filter(([, entry]) => {
+        const chain = entry.params.chain_id as (ParamInfo & { numericEnum?: number[]; min?: number; max?: number }) | undefined;
+        return chain?.numericEnum?.includes(4663) === true || (chain?.min === 4663 && chain.max === 4663);
+      })
+      .map(([resource]) => resource)
+      .sort();
+
+    expect(robinhoodResources).toEqual([
+      'dexes',
+      'lending-euler-curator-vaults', 'lending-euler-curators', 'lending-euler-markets',
+      'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
+      'lending-morpho-curator-vaults', 'lending-morpho-curators', 'lending-morpho-markets',
+      'lending-morpho-v1-vault-markets', 'lending-morpho-v1-vaults',
+      'lending-morpho-v2-vault-markets', 'lending-morpho-v2-vaults',
+      'lending-overview', 'lending-protocols', 'price-current', 'price-hour',
+      'tokens', 'tvl-status', 'tvl-top-owners',
+    ]);
+    expect(robinhoodResources).not.toContain('ohlcv-token');
+    expect(robinhoodResources).not.toContain('uniswap-v3-pools');
   });
 
   it('bundles the current token-analysis OpenAPI contract', () => {

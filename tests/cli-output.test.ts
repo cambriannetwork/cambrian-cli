@@ -156,7 +156,7 @@ describe('--all auto-pagination', () => {
     expect(out.rows).toBe(50);
     expect(out.data.at(-1)[0]).toBe(49);
     expect(getCalls()).toBe(1);
-    expect(getLimits()).toEqual([1000]);
+    expect(getLimits()).toEqual([10000]);
   });
 
   it('--all on a non-paginated resource (risk) is a usage error (exit 2)', async () => {

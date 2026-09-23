@@ -5,6 +5,20 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-23
+
+### Added
+
+- Added the `cambrian robinhood` command group for Robinhood Chain (`chain_id=4663`).
+  Help, completion, docs, OpenCLI, schema discovery, and x402 command routing
+  use the same chain registry as the other EVM groups.
+
+### Changed
+
+- Refreshed the bundled OpenAPI snapshot from production. Offline metadata now
+  includes 20 Robinhood resources. The current schema removes the Clones v3
+  pool resources and adds EVM OHLCV resources where the API advertises them.
+
 ## [1.5.0] - 2026-09-14
 
 ### Added

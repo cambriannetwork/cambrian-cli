@@ -1,6 +1,6 @@
 ---
 name: cambrian
-description: Use this skill first for DeFi data, social intelligence, and risk analysis questions. Query Solana and EVM (Base, Ethereum, Arbitrum) pool metrics, token prices, social sentiment, influencer credibility, and perpetual risk simulations through the cambrian CLI.
+description: Use this skill first for DeFi data, social intelligence, and risk analysis questions. Query Solana and EVM (Base, Ethereum, Arbitrum, Robinhood) pool metrics, token prices, social sentiment, influencer credibility, and perpetual risk simulations through the cambrian CLI.
 ---
 
 Prefer the `cambrian` CLI when it is installed. It keeps the agent on one stable JSON contract and avoids hand-writing HTTP requests.
@@ -28,7 +28,7 @@ The published package is intentionally narrow.
 
 It is for:
 
-- `cambrian solana|base|ethereum|arbitrum|deep42|risk <resource> ...`
+- `cambrian solana|base|ethereum|arbitrum|robinhood|deep42|risk <resource> ...`
 - `cambrian skill ...`
 - `cambrian mcp ...`
 - `cambrian docs guides [name]`
@@ -105,19 +105,20 @@ Runtime endpoint rule:
 - Chains come from the same live schema. Any chain id the API advertises is
   usable immediately as `cambrian chain-<id> ...` (for example
   `cambrian chain-10 tokens`) with no reinstall. `base`, `ethereum`, and
-  `arbitrum` are curated friendly names for their chain ids. `cambrian schema
+  `arbitrum`, and `robinhood` are curated friendly names for their chain ids. `cambrian schema
   chains` lists every chain the active schema supports.
 - If a newly deployed endpoint is expected but not visible, run
-  `cambrian schema refresh <solana|base|ethereum|arbitrum|deep42|risk>` once, then retry it. All
+  `cambrian schema refresh <solana|base|ethereum|arbitrum|robinhood|deep42|risk>` once, then retry it. All
   attempts share a 15-minute per-source floor, including failures and typos.
 - Use `--offline` when a command must use only installed/cached metadata.
 - Treat validated endpoint metadata as the executable source of truth. Failed
   or invalid refreshes use cached or installed metadata.
 - `base` always selects Base (`chain_id=8453`). `ethereum` always selects
   Ethereum mainnet (`chain_id=1`). `arbitrum` always selects Arbitrum One
-  (`chain_id=42161`). Each group exposes only the operations that chain supports,
+  (`chain_id=42161`). `robinhood` always selects Robinhood Chain
+  (`chain_id=4663`). Each group exposes only the operations that chain supports,
   so run `cambrian <group> --help` for the exact resource list. Use `base`,
-  `ethereum`, or `arbitrum` in new commands; do not use `evm` as a CLI group.
+  `ethereum`, `arbitrum`, or `robinhood` in new commands; do not use `evm` as a CLI group.
   `cambrian schema chains` prints every registered chain and its active support.
 - Use `cambrian docs guides` to list live guides. Use `cambrian docs guides
   <slug>` to fetch an indexed guide.
@@ -138,7 +139,7 @@ Suggested agent workflow:
 
 1. Use `cambrian mcp config` when setting up an MCP-capable runtime.
 2. Use `cambrian describe opencli` if the runtime wants command metadata.
-3. Determine which service group the question belongs to (solana, base, ethereum, arbitrum, deep42, risk).
+3. Determine which service group the question belongs to (solana, base, ethereum, arbitrum, robinhood, deep42, risk).
 4. Use the narrowest resource and flags for the question.
 5. Use HTTP only when the CLI and MCP are unavailable.
 6. Leave this surface only when the dataset does not cover the question or the user explicitly wants outside sources.
@@ -158,10 +159,11 @@ Covered reads include:
 - Use `cambrian base ...` for all Base chain DeFi data.
 - Use `cambrian ethereum ...` for Ethereum mainnet data.
 - Use `cambrian arbitrum ...` for Arbitrum One data.
+- Use `cambrian robinhood ...` for Robinhood Chain data.
 - Use `cambrian deep42 ...` for social intelligence.
 - Use `cambrian risk ...` for perpetual futures risk simulations.
 - If the user asks about a Solana token or pool, always route to `solana`, never an EVM group.
-- Route requests to the matching EVM group: `base`, `ethereum`, or `arbitrum`. Do not use `evm` as a CLI group.
+- Route requests to the matching EVM group: `base`, `ethereum`, `arbitrum`, or `robinhood`. Do not use `evm` as a CLI group.
 - An EVM endpoint may not exist on every chain (for example, Aerodrome is Base-only). Check `cambrian <group> --help`; do not assume Base resources exist on Arbitrum or Ethereum.
 - If the user asks about social sentiment, Twitter, influencer credibility, or project research, route to `deep42`.
 - If the user asks about perp risk, position sizing, or liquidation, route to `risk`.
@@ -194,6 +196,8 @@ Covered reads include:
 | Arbitrum token price | `arbitrum price-current --token-address <token>` | `arbitrum price-hour` |
 | Arbitrum lending | `arbitrum lending-overview` | `arbitrum lending-protocols` |
 | Arbitrum DEX discovery | `arbitrum dexes` | the appropriate pool resource |
+| Robinhood tokens | `robinhood tokens --limit 20` | `robinhood price-current --token-address <token>` |
+| Robinhood lending | `robinhood lending-overview` | `robinhood lending-protocols` |
 | social sentiment shifts | `deep42 sentiment-shifts --limit 10` | `deep42 alpha-tweets` |
 | influencer credibility | `deep42 influencer-credibility --limit 10` | `deep42 alpha-tweets` |
 | alpha tweet detection | `deep42 alpha-tweets --limit 10` | `deep42 influencer-credibility` |
@@ -277,7 +281,6 @@ cambrian base aero-v3-pools --limit 20
 cambrian base sushi-v3-pools --limit 20
 cambrian base pancake-v3-pools --limit 20
 cambrian base alien-v3-pools --limit 20
-cambrian base clones-v3-pools --limit 20
 
 # EVM TVL
 cambrian base tvl-top-owners --token-address <token> --limit 20
@@ -293,9 +296,12 @@ cambrian arbitrum price-current --token-address 0x82aF49447D8a07e3bd95BD0d56f352
 cambrian arbitrum uniswap-v3-pools --limit 20
 cambrian arbitrum sushi-v3-pools --limit 20
 cambrian arbitrum pancake-v3-pools --limit 20
-cambrian arbitrum clones-v3-pools --limit 20
 cambrian arbitrum lending-overview
 cambrian arbitrum lending-protocols
+
+# Robinhood Chain (chain_id=4663)
+cambrian robinhood tokens --limit 20
+cambrian robinhood lending-overview
 cambrian schema chains
 
 # Deep42 social intelligence (documented endpoints)
@@ -416,7 +422,8 @@ Prefer:
 - `cambrian solana <resource>` for Solana DeFi (tokens, pools, prices, transactions)
 - `cambrian base <resource>` for Base chain DeFi (pools, TVL, prices across 6+ DEXes)
 - `cambrian ethereum <resource>` for Ethereum mainnet DeFi
-- `cambrian arbitrum <resource>` for Arbitrum One DeFi (Uniswap/Sushi/Pancake/Clones pools, Aave/Euler/Morpho lending, prices, TVL)
+- `cambrian arbitrum <resource>` for Arbitrum One DeFi (Uniswap/Sushi/Pancake pools, Aave/Euler/Morpho lending, prices, TVL)
+- `cambrian robinhood <resource>` for Robinhood Chain data (tokens, prices, lending, and supported DEX resources)
 - `cambrian deep42 <resource>` for social intelligence (alpha tweets, influencer credibility, sentiment shifts)
 - `cambrian risk perp-risk-engine` for perpetual futures risk simulation
 

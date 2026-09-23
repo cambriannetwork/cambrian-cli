@@ -87,7 +87,7 @@ describe('cambrian pay', () => {
     const { code, stdout } = await run(['pay']);
     expect(code).toBe(0);
     expect(stdout).toContain('Pay-per-call via x402');
-    expect(stdout).toContain('solana | base | ethereum | arbitrum | deep42 | risk');
+    expect(stdout).toContain('solana | base | ethereum | arbitrum | robinhood | deep42 | risk');
     expect(stdout).not.toContain('base (evm)');
     expect(stdout).toContain('--timeout <ms>');
     expect(stdout).toContain('--json');

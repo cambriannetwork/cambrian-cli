@@ -647,14 +647,15 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(payConflict.stderr).toContain('--chain-id must be at least 8453');
   });
 
-  it('projects three-chain EVM discovery including Arbitrum while preserving Base and evm', async () => {
+  it('projects named EVM chains including Robinhood while preserving Base and evm', async () => {
     const root = cacheRoot();
     const requests: string[] = [];
-    const fetch = routedEvmFetch([1, 8453, 42161], requests);
+    const fetch = routedEvmFetch([1, 8453, 42161, 4663], requests);
 
     const help = await run(['--help'], fetch, root);
     expect(help.stdout).toContain('cambrian ethereum');
     expect(help.stdout).toContain('cambrian arbitrum');
+    expect(help.stdout).toContain('cambrian robinhood');
 
     const arbitrumHelp = await run(['arbitrum', '--help'], fetch, root);
     expect(arbitrumHelp.stdout).toContain('tokens');
@@ -665,6 +666,7 @@ describe('runtime endpoint discovery through the CLI', () => {
     const arbitrumResources = await run(['__complete', 'arbitrum', ''], fetch, root);
     expect(arbitrumResources.stdout).toContain('tokens');
     expect(arbitrumResources.stdout).not.toContain('aero-v2-pools');
+    expect((await run(['__complete', 'rob'], fetch, root)).stdout.trim()).toBe('robinhood');
 
     const opencli = await run(['describe', 'opencli', '--offline'], fetch, root);
     const document = JSON.parse(opencli.stdout);
@@ -673,6 +675,8 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(arbitrum.commands.map((command: { name: string }) => command.name)).not.toContain('aero-v2-pools');
     expect(document.commands.find((command: { name: string }) => command.name === 'pay').commands
       .map((command: { name: string }) => command.name)).toContain('arbitrum');
+    expect(document.commands.find((command: { name: string }) => command.name === 'robinhood').commands
+      .map((command: { name: string }) => command.name)).toContain('tokens');
 
     const docs = await run(['docs', 'arbitrum', '--offline'], fetch, root);
     expect(docs.stdout).toContain('tokens');
@@ -694,15 +698,17 @@ describe('runtime endpoint discovery through the CLI', () => {
     const chains = await run(['schema', 'chains'], fetch, root);
     const chainReport = JSON.parse(chains.stdout);
     expect(chainReport.chains.map((chain: { command: string }) => chain.command))
-      .toEqual(['base', 'ethereum', 'arbitrum']);
+      .toEqual(['base', 'ethereum', 'arbitrum', 'robinhood']);
     expect(chainReport.chains.every((chain: { supported: boolean }) => chain.supported)).toBe(true);
     expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'arbitrum'))
       .toMatchObject({ chainId: 42161, label: 'Arbitrum One' });
+    expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'robinhood'))
+      .toMatchObject({ chainId: 4663, label: 'Robinhood Chain' });
 
     const typo = await run(['arbitrumm'], fetch, root);
     expect(typo.stderr).toContain('Did you mean "arbitrum"');
 
-    for (const [command, chainId] of [['arbitrum', 42161], ['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
+    for (const [command, chainId] of [['robinhood', 4663], ['arbitrum', 42161], ['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
       const result = await run([command, 'tokens', '--limit', '1', '--json'], fetch, root);
       expect(result.code).toBe(0);
       expect(requests.at(-1)).toContain(`chain_id=${chainId}`);
@@ -728,4 +734,3 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(payConflict.stderr).toContain('--chain-id must be at least 42161');
   });
 });
-

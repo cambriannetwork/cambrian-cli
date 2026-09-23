@@ -15,7 +15,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 10
         },
@@ -24,7 +24,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -57,7 +57,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -66,7 +66,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -244,7 +244,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -253,7 +253,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -358,7 +358,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -367,7 +367,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -401,7 +401,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -410,7 +410,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -463,7 +463,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 24
         },
@@ -472,7 +472,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -545,7 +545,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -554,7 +554,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -600,7 +600,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -609,7 +609,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         },
@@ -676,7 +676,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 20
         },
@@ -685,7 +685,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -769,7 +769,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -778,7 +778,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -812,7 +812,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -821,7 +821,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -836,7 +836,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -845,7 +845,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -898,7 +898,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -907,7 +907,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -1019,7 +1019,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 10
         },
@@ -1028,7 +1028,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         }
@@ -1067,7 +1067,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 1000,
+          "max": 10000,
           "description": "Limit the number of results.",
           "default": 100
         },
@@ -1076,7 +1076,7 @@
           "type": "integer",
           "strict": true,
           "min": 0,
-          "max": 100000,
+          "max": 100000000,
           "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
           "default": 0
         },
@@ -1406,126 +1406,6 @@
       "method": "GET",
       "params": {}
     },
-    "clones-v3-pool": {
-      "apiPath": "/api/v1/evm/clones/v3/pool",
-      "method": "GET",
-      "params": {
-        "chain_id": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "numericEnum": [
-            1,
-            8453,
-            42161
-          ],
-          "description": "EVM chain ID.",
-          "default": 8453
-        },
-        "pool_address": {
-          "required": true,
-          "type": "string",
-          "strict": true,
-          "description": "Pool address with 0x prefix",
-          "pattern": "^0x[a-fA-F0-9]{40}$"
-        }
-      }
-    },
-    "clones-v3-pools": {
-      "apiPath": "/api/v1/evm/clones/v3/pools",
-      "method": "GET",
-      "params": {
-        "chain_id": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "numericEnum": [
-            1,
-            8453,
-            42161
-          ],
-          "description": "EVM chain ID.",
-          "default": 8453
-        },
-        "token_address": {
-          "required": false,
-          "type": "string",
-          "strict": true,
-          "description": "Pool token address. See tokens for valid addresses.",
-          "pattern": "^0x[a-fA-F0-9]{40}$"
-        },
-        "limit": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "min": 1,
-          "max": 10000,
-          "description": "Limit the number of results.",
-          "default": 100
-        },
-        "offset": {
-          "required": false,
-          "type": "integer",
-          "strict": true,
-          "min": 0,
-          "max": 100000000,
-          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
-          "default": 0
-        },
-        "order_asc": {
-          "required": false,
-          "type": "array",
-          "strict": true,
-          "description": "List of column names to order by in ascending order divided by comma. Leave empty items to combine with descending order",
-          "items": {
-            "type": "string",
-            "enum": [
-              "chainId",
-              "dexAddress",
-              "dexName",
-              "poolAddress",
-              "token0Address",
-              "token0Symbol",
-              "token0Decimals",
-              "token1Address",
-              "token1Symbol",
-              "token1Decimals",
-              "createdAt",
-              "fee",
-              "tickSpacing"
-            ]
-          },
-          "style": "form",
-          "explode": false
-        },
-        "order_desc": {
-          "required": false,
-          "type": "array",
-          "strict": true,
-          "description": "List of column names to order by in descending order divided by comma. Leave empty items to combine with ascending order",
-          "items": {
-            "type": "string",
-            "enum": [
-              "chainId",
-              "dexAddress",
-              "dexName",
-              "poolAddress",
-              "token0Address",
-              "token0Symbol",
-              "token0Decimals",
-              "token1Address",
-              "token1Symbol",
-              "token1Decimals",
-              "createdAt",
-              "fee",
-              "tickSpacing"
-            ]
-          },
-          "style": "form",
-          "explode": false
-        }
-      }
-    },
     "dexes": {
       "apiPath": "/api/v1/evm/dexes",
       "method": "GET",
@@ -1537,7 +1417,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -1573,12 +1454,6 @@
           ],
           "description": "EVM chain ID.",
           "default": 8453
-        },
-        "protocol_id": {
-          "required": false,
-          "type": "string",
-          "strict": true,
-          "description": "Filter by protocol ID. Ex: aave-v3, morpho-v1, morpho-v2, euler-lend, etc."
         },
         "min_tvl_usd": {
           "required": false,
@@ -1720,7 +1595,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -1855,7 +1731,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -1960,7 +1837,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2067,7 +1945,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2158,7 +2037,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2309,7 +2189,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2444,7 +2325,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2549,7 +2431,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2656,7 +2539,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2751,7 +2635,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2888,7 +2773,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -2981,7 +2867,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3132,7 +3019,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3269,7 +3157,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3606,6 +3495,164 @@
         }
       }
     },
+    "ohlcv-pool": {
+      "apiPath": "/api/v1/evm/ohlcv/pool",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "numericEnum": [
+            1,
+            8453
+          ],
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "pool_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "after_time": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1420070400,
+          "max": 4102444799
+        },
+        "before_time": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1420070400,
+          "max": 4102444799
+        },
+        "interval": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "enum": [
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "4h",
+            "6h",
+            "8h",
+            "12h",
+            "1d",
+            "3d",
+            "1w"
+          ]
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 10000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        }
+      }
+    },
+    "ohlcv-token": {
+      "apiPath": "/api/v1/evm/ohlcv/token",
+      "method": "GET",
+      "params": {
+        "chain_id": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "numericEnum": [
+            1,
+            8453
+          ],
+          "description": "EVM chain ID.",
+          "default": 8453
+        },
+        "token_address": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "after_time": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1420070400,
+          "max": 4102444799,
+          "description": "Unix timestamp (in seconds) after which to retrieve OHLCV data."
+        },
+        "before_time": {
+          "required": true,
+          "type": "integer",
+          "strict": true,
+          "min": 1420070400,
+          "max": 4102444799,
+          "description": "Unix timestamp (in seconds) before which to retrieve OHLCV data."
+        },
+        "interval": {
+          "required": true,
+          "type": "string",
+          "strict": true,
+          "enum": [
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "4h",
+            "6h",
+            "8h",
+            "12h",
+            "1d",
+            "3d",
+            "1w"
+          ]
+        },
+        "use_filter": {
+          "required": true,
+          "type": "boolean",
+          "strict": true,
+          "description": "Whether to use the MAD filter for the OHLCV query."
+        },
+        "limit": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 1,
+          "max": 10000,
+          "description": "Limit the number of results.",
+          "default": 100
+        },
+        "offset": {
+          "required": false,
+          "type": "integer",
+          "strict": true,
+          "min": 0,
+          "max": 100000000,
+          "description": "Offset the results, allows you to skip a number of rows before starting to return rows.",
+          "default": 0
+        }
+      }
+    },
     "pancake-v3-pool": {
       "apiPath": "/api/v1/evm/pancake/v3/pool",
       "method": "GET",
@@ -3737,7 +3784,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3763,7 +3811,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3926,7 +3975,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -3968,7 +4018,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453
@@ -4018,7 +4069,8 @@
           "numericEnum": [
             1,
             8453,
-            42161
+            42161,
+            4663
           ],
           "description": "EVM chain ID.",
           "default": 8453

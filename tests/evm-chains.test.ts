@@ -9,6 +9,8 @@ import {
   ETHEREUM_CHAIN,
   ETHEREUM_CHAIN_ID,
   EVM_CHAINS,
+  ROBINHOOD_CHAIN,
+  ROBINHOOD_CHAIN_ID,
   advertisedEvmChainIds,
   discoverEvmChains,
   evmChainForToken,
@@ -80,12 +82,26 @@ describe('EVM chain metadata projection', () => {
 });
 
 describe('EVM chain registry', () => {
-  it('exposes Base, Ethereum, and Arbitrum with stable ids', () => {
+  it('names Robinhood and exposes only its advertised operations', () => {
+    expect(ROBINHOOD_CHAIN).toMatchObject({ command: 'robinhood', chainId: 4663, label: 'Robinhood Chain' });
+    expect(ROBINHOOD_CHAIN.chainId).toBe(ROBINHOOD_CHAIN_ID);
+
+    const source = metadata({
+      chains: endpoint(),
+      tokens: endpoint([1, 8453, 42161, 4663]),
+      'uniswap-v3-pools': endpoint([1, 8453, 42161]),
+    });
+    expect(projectEvmChain(source, ROBINHOOD_CHAIN).resources).toEqual(['tokens']);
+    expect(projectEvmChain(source, ROBINHOOD_CHAIN).spec.tokens.params.chain_id)
+      .toMatchObject({ default: 4663, min: 4663, max: 4663 });
+  });
+
+  it('exposes the named EVM chains with stable ids', () => {
     expect(BASE_CHAIN).toMatchObject({ command: 'base', chainId: 8453 });
     expect(ETHEREUM_CHAIN).toMatchObject({ command: 'ethereum', chainId: 1 });
     expect(ARBITRUM_CHAIN).toMatchObject({ command: 'arbitrum', chainId: 42161 });
     expect(ARBITRUM_CHAIN.chainId).toBe(ARBITRUM_CHAIN_ID);
-    expect(EVM_CHAINS.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum']);
+    expect(EVM_CHAINS.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum', 'robinhood']);
     expect(DEFAULT_EVM_CHAIN.command).toBe('base');
   });
 
@@ -93,6 +109,7 @@ describe('EVM chain registry', () => {
     expect(evmChainIdForToken('base')).toBe(8453);
     expect(evmChainIdForToken('ethereum')).toBe(1);
     expect(evmChainIdForToken('arbitrum')).toBe(42161);
+    expect(evmChainIdForToken('robinhood')).toBe(4663);
     expect(evmChainIdForToken('evm')).toBe(8453);
     expect(evmChainForToken('evm')).toBe(BASE_CHAIN);
     expect(evmChainForToken('solana')).toBeUndefined();

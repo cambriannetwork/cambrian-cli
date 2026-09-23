@@ -346,7 +346,7 @@ Meaning:
 ## Base Commands
 
 `cambrian base` is pinned to `chain_id=8453`, even though the EVM schema also
-supports Ethereum and Arbitrum. Base is the only group that also exposes
+supports Ethereum, Arbitrum, and Robinhood. Base is the only group that also exposes
 chain-neutral discovery operations such as `chains`. Do not use `cambrian evm`
 as a CLI group.
 
@@ -400,7 +400,6 @@ Clones v3:
 
 ```bash
 cambrian base clones-v3-pool --pool-address <pool>
-cambrian base clones-v3-pools
 ```
 
 Meaning:
@@ -483,8 +482,8 @@ cambrian docs chain-10 --offline
 ```
 
 - `chain-<id>` is validated against the active schema; an unadvertised id exits 2.
-- `base`, `ethereum`, and `arbitrum` are curated friendly names for
-  `8453`, `1`, and `42161`.
+- `base`, `ethereum`, `arbitrum`, and `robinhood` are curated friendly names for
+  `8453`, `1`, `42161`, and `4663`.
 - Curated names are a convenience, not a gate: users are never blocked waiting
   for a release when the API adds a chain.
 
@@ -504,7 +503,6 @@ cambrian arbitrum uniswap-v3-pools
 cambrian arbitrum uniswap-v3-pool --pool-address <pool>
 cambrian arbitrum sushi-v3-pools
 cambrian arbitrum pancake-v3-pools
-cambrian arbitrum clones-v3-pools
 cambrian arbitrum lending-overview
 cambrian arbitrum lending-protocols
 cambrian arbitrum lending-aave-v3-pools
@@ -520,6 +518,20 @@ Meaning:
   `cambrian arbitrum --help` for the authoritative list
 - use `cambrian schema chains` to print every registered chain and its
   supported resource count
+
+## Robinhood Chain Commands
+
+`cambrian robinhood` selects Robinhood Chain with `chain_id=4663`. The
+production OpenAPI advertises 20 resources for this chain. Check
+`cambrian robinhood --help` for the active resource list.
+
+```bash
+cambrian robinhood tokens --limit 20
+cambrian robinhood lending-overview
+cambrian robinhood lending-protocols
+```
+
+The CLI supplies `chain_id=4663` and rejects a conflicting chain flag.
 
 ## Deep42 Commands
 
