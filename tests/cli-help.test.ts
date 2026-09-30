@@ -167,6 +167,12 @@ describe('CLI help output', () => {
     expect(stdout).toContain('--token-address <token_address>');
   });
 
+  it('per-resource --help example quotes an enum value that contains a space', async () => {
+    const { stdout } = await captureStdout(['solana', 'traders-leaderboard', '--help']);
+    expect(stdout).toContain('--interval "24 HOUR"');
+    expect(stdout).not.toMatch(/--interval 24 HOUR/);
+  });
+
   it('per-resource --help for risk marks every position field required', async () => {
     const { stdout } = await captureStdout(['risk', 'perp-risk-engine', '--help']);
     for (const flag of ['token-address', 'entry-price', 'leverage', 'direction', 'risk-horizon']) {

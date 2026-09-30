@@ -16,6 +16,7 @@ import {
   isMainModule,
   printJson,
   CliUsageError,
+  parseNonNegativeInt,
 } from './core.js';
 import type { ParsedArgs, Runtime } from './core.js';
 import { CambrianData } from '../client/index.js';
@@ -153,21 +154,13 @@ async function allRuntimeMetadata(
 function parseTimeoutOption(parsed: ParsedArgs): number | undefined {
   const raw = optionalOptionValue(parsed, 'timeout');
   if (!raw) return undefined;
-  const parsedMs = Number.parseInt(raw, 10);
-  if (!Number.isInteger(parsedMs) || parsedMs < 0) {
-    throw new CliUsageError('--timeout must be a non-negative integer (milliseconds).');
-  }
-  return parsedMs;
+  return parseNonNegativeInt(raw, 'timeout', ' (milliseconds)');
 }
 
 function parseRetriesOption(parsed: ParsedArgs): number | undefined {
   const raw = optionalOptionValue(parsed, 'retries');
   if (!raw) return undefined;
-  const count = Number.parseInt(raw, 10);
-  if (!Number.isInteger(count) || count < 0) {
-    throw new CliUsageError('--retries must be a non-negative integer.');
-  }
-  return count;
+  return parseNonNegativeInt(raw, 'retries');
 }
 
 /**

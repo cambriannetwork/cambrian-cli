@@ -194,18 +194,23 @@ export function assertNoExtraPositionals(
   }
 }
 
+// Whole-string digits only: Number.parseInt would read '2abc' as 2 and '50ms' as 50.
+function parseStrictInt(value: string): number {
+  return /^\d+$/.test(value) ? Number(value) : Number.NaN;
+}
+
 export function parsePositiveInt(value: string, optionName: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
+  const parsed = parseStrictInt(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
     throw new CliUsageError(`--${optionName} must be a positive integer.`);
   }
   return parsed;
 }
 
-export function parseNonNegativeInt(value: string, optionName: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new CliUsageError(`--${optionName} must be a non-negative integer.`);
+export function parseNonNegativeInt(value: string, optionName: string, suffix = ''): number {
+  const parsed = parseStrictInt(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new CliUsageError(`--${optionName} must be a non-negative integer${suffix}.`);
   }
   return parsed;
 }

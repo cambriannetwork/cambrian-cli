@@ -173,6 +173,14 @@ describe('--all auto-pagination', () => {
     expect(getCalls()).toBe(0);
   });
 
+  it.each(['2abc', '2.5', '0'])('--max-items %s is a usage error sent before any request', async (value) => {
+    const { fetch, getCalls } = fetchPaged(1000);
+    const { code, stderr } = await run(['base', 'tokens', '--all', '--max-items', value], { fetch });
+    expect(code).toBe(2);
+    expect(stderr).toContain('--max-items must be a positive integer.');
+    expect(getCalls()).toBe(0);
+  });
+
   it('--all=false is a usage error, not a request to paginate', async () => {
     const { fetch, getCalls } = fetchPaged(1000);
     const { code, stderr } = await run(['base', 'tokens', '--all=false'], { fetch });

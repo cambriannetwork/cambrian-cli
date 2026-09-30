@@ -19,6 +19,7 @@ import {
   assertNoUnknownOptions,
   assertNoExtraPositionals,
   parseCsvValues,
+  parseNonNegativeInt,
   CliUsageError,
 } from './core.js';
 import { configDir, readConfig, writeConfig, type CambrianConfig } from './config.js';
@@ -107,11 +108,7 @@ function parseOutputFormat(parsed: ParsedArgs): OutputFormat {
 function parsePayTimeout(parsed: ParsedArgs): number {
   const raw = optionalOptionValue(parsed, 'timeout');
   if (!raw) return DEFAULT_X402_TIMEOUT_MS;
-  const parsedMs = Number.parseInt(raw, 10);
-  if (!Number.isInteger(parsedMs) || parsedMs < 0) {
-    throw new CliUsageError('--timeout must be a non-negative integer (milliseconds).');
-  }
-  return parsedMs;
+  return parseNonNegativeInt(raw, 'timeout', ' (milliseconds)');
 }
 
 function pendingWindowMs(req: PaymentRequirement): number {

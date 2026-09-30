@@ -301,7 +301,8 @@ export function buildResourceHelp(
     .filter((f) => requiredSet.has(f))
     .map((f) => {
       const apiParam = f.replace(/-/g, '_');
-      return `--${f} ${exampleValueFor(apiParam, entry.params[apiParam])}`;
+      const value = exampleValueFor(apiParam, entry.params[apiParam]);
+      return `--${f} ${/\s/.test(value) ? `"${value}"` : value}`;
     });
   const exampleCmd =
     `cambrian ${groupCommand} ${resource}` +

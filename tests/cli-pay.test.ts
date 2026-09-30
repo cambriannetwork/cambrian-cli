@@ -131,6 +131,21 @@ describe('cambrian pay', () => {
     expect(fetched).toBe(false);
   });
 
+  it('rejects a --timeout with trailing characters before the x402 probe', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--timeout', '50ms'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('--timeout must be a non-negative integer (milliseconds).');
+    expect(fetched).toBe(false);
+  });
+
   it('rejects missing required resource params before the x402 probe', async () => {
     let fetched = false;
     const fetch = (async () => {

@@ -249,6 +249,19 @@ describe('CLI --timeout', () => {
     expect(code).toBe(2);
     expect(stderr).toContain('--timeout');
   });
+
+  it.each([
+    ['--timeout', '50ms', '--timeout must be a non-negative integer (milliseconds).'],
+    ['--timeout', '1e3', '--timeout must be a non-negative integer (milliseconds).'],
+    ['--retries', '2x', '--retries must be a non-negative integer.'],
+  ])('rejects %s %s with trailing characters before any request', async (flag, value, message) => {
+    let fetched = false;
+    const fetch = (async () => { fetched = true; return new Response('{}'); }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(['solana', 'latest-block', flag, value], { fetch });
+    expect(code).toBe(2);
+    expect(stderr).toContain(message);
+    expect(fetched).toBe(false);
+  });
 });
 
 describe('CLI value-bearing global options', () => {

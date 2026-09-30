@@ -5,6 +5,18 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-09-30
+
+### Fixed
+
+- `--max-items`, `--timeout`, and `--retries` now reject a value with trailing
+  characters (exit 2). Before, `--max-items 2abc` ran as `2` and
+  `--timeout 50ms` ran as `50`. This also applies to `cambrian pay --timeout`.
+- A per-resource `--help` example now quotes an enum value that contains a
+  space. `solana traders-leaderboard --help` shows `--interval "24 HOUR"`, which
+  runs as shown. Before, it showed `--interval 24 HOUR`, which failed with
+  "Too many arguments".
+
 ## [1.7.0] - 2026-09-30
 
 ### Fixed
