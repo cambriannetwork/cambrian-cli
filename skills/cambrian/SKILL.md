@@ -175,12 +175,12 @@ Covered reads include:
 | If the prompt is about... | Start with... | Then usually follow with... |
 | --- | --- | --- |
 | Solana token price | `solana price-current --token-addresses <mint>` | `solana token-details`, `solana trade-statistics` |
-| Solana token info | `solana token-details --token-address <mint>` | `solana tokens-holders`, `solana tokens-security` |
+| Solana token info | `solana token-details --token-addresses <mint>` | `solana tokens-holders`, `solana tokens-security` |
 | Solana token holders | `solana tokens-holders --program-id <mint>` | `solana tokens-holders-over-time` |
 | Solana trending tokens | `solana trending-tokens --limit 10` | `solana price-current`, `solana trade-statistics` |
-| Solana pool metrics (Orca) | `solana orca-pool --pool-address <pool>` | `solana orca-pools-fee-metrics`, `solana orca-pools` |
-| Solana pool metrics (Meteora) | `solana meteora-dlmm-pool --pool-address <pool>` | `solana meteora-dlmm-pools` |
-| Solana pool metrics (Raydium) | `solana raydium-clmm-pool --pool-address <pool>` | `solana raydium-clmm-pools` |
+| Solana pool metrics (Orca) | `solana orca-pool --pool-addresses <pool>` | `solana orca-pools-fee-metrics`, `solana orca-pools` |
+| Solana pool metrics (Meteora) | `solana meteora-dlmm-pool --pool-addresses <pool>` | `solana meteora-dlmm-pools` |
+| Solana pool metrics (Raydium) | `solana raydium-clmm-pool --pool-addresses <pool>` | `solana raydium-clmm-pools` |
 | Solana OHLCV | `solana ohlcv-token --token-address <mint> --after-time <unix> --before-time <unix> --interval 1h` | `solana price-current` |
 | Solana transactions | `solana pool-transactions` or `solana token-transactions` | `solana trade-statistics` |
 | Solana trader leaderboard | `solana traders-leaderboard --token-address <mint> --interval "24 HOUR"` | `solana trade-statistics` |
@@ -233,8 +233,8 @@ These are the main commands an agent should reach for first. For full flags and 
 # Solana tokens and prices
 cambrian solana trending-tokens --limit 10
 cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
-cambrian solana price-multi --token-addresses So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-cambrian solana token-details --token-address <mint>
+cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+cambrian solana token-details --token-addresses <mint>
 cambrian solana tokens --limit 20
 cambrian solana tokens-holders --program-id <mint>
 cambrian solana tokens-security --token-address <mint>
@@ -247,12 +247,12 @@ cambrian solana ohlcv-pool --pool-address <pool> --after-time <unix> --before-ti
 cambrian solana ohlcv-base-quote --base-address <mint> --quote-address <mint> --after-time <unix> --before-time <unix> --interval 1h
 
 # Solana pools
-cambrian solana orca-pool --pool-address <pool>
+cambrian solana orca-pool --pool-addresses <pool>
 cambrian solana orca-pools --limit 20
 cambrian solana orca-pools-fee-metrics --pool-address <pool> --days 7
-cambrian solana meteora-dlmm-pool --pool-address <pool>
+cambrian solana meteora-dlmm-pool --pool-addresses <pool>
 cambrian solana meteora-dlmm-pools --limit 20
-cambrian solana raydium-clmm-pool --pool-address <pool>
+cambrian solana raydium-clmm-pool --pool-addresses <pool>
 cambrian solana raydium-clmm-pools --limit 20
 cambrian solana token-pool-search --token-address <mint>
 
@@ -268,7 +268,7 @@ cambrian base tokens
 
 # EVM prices
 cambrian base price-current --token-address 0x4200000000000000000000000000000000000006
-cambrian base price-hour --token-address <token> --hours 24
+cambrian base price-hour --token-address <token> --limit 24
 
 # EVM pools
 cambrian base uniswap-v3-pool --pool-address <pool>
@@ -277,7 +277,6 @@ cambrian base aero-v2-pool --pool-address <pool>
 cambrian base aero-v2-pools --limit 20
 cambrian base aero-v2-fee-metrics --pool-address <pool>
 cambrian base aero-v3-pool --pool-address <pool>
-cambrian base aero-v3-pools --limit 20
 cambrian base sushi-v3-pools --limit 20
 cambrian base pancake-v3-pools --limit 20
 cambrian base alien-v3-pools --limit 20
@@ -326,7 +325,7 @@ cambrian risk perp-risk-engine --token-address So1111111111111111111111111111111
 Practical defaults:
 
 - Use `solana trending-tokens --limit 10` for "what's hot on Solana?" prompts
-- Use `solana price-current` for quick single-token price lookups; `solana price-multi` for batch
+- Use `solana price-current` for price lookups; pass comma-separated mints to `--token-addresses` for a batch
 - Use `solana token-details` when the user asks "what is this token?" with a mint address
 - Use `solana token-pool-search` to find pools for a token when the pool address is unknown
 - Use `base dexes` to discover supported Base DEXes
@@ -425,7 +424,7 @@ Prefer:
 - `cambrian arbitrum <resource>` for Arbitrum One DeFi (Uniswap/Sushi/Pancake pools, Aave/Euler/Morpho lending, prices, TVL)
 - `cambrian robinhood <resource>` for Robinhood Chain data (tokens, prices, lending, and supported DEX resources)
 - `cambrian deep42 <resource>` for social intelligence (alpha tweets, influencer credibility, sentiment shifts)
-- `cambrian risk perp-risk-engine` for perpetual futures risk simulation
+- `cambrian risk perp-risk-engine --token-address <addr> --entry-price <n> --leverage <n> --direction long --risk-horizon 1d` for perpetual futures risk simulation (all five flags are required)
 
 Require `CAMBRIAN_API_KEY` or `--api-key`.
 Do not rely on local `.env` files in the published package.

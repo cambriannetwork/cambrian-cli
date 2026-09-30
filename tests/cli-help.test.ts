@@ -167,14 +167,15 @@ describe('CLI help output', () => {
     expect(stdout).toContain('--token-address <token_address>');
   });
 
-  it('per-resource --help for risk shows defaulted flags as optional', async () => {
+  it('per-resource --help for risk marks every position field required', async () => {
     const { stdout } = await captureStdout(['risk', 'perp-risk-engine', '--help']);
-    expect(stdout).toContain('--token-address');
-    expect(stdout).not.toContain('--token-address (required)');
-    expect(stdout).not.toContain('--entry-price (required)');
-    expect(stdout).not.toContain('--leverage (required)');
-    expect(stdout).not.toContain('--direction (required)');
-    expect(stdout).not.toContain('--risk-horizon (required)');
+    for (const flag of ['token-address', 'entry-price', 'leverage', 'direction', 'risk-horizon']) {
+      expect(stdout).toContain(`--${flag} (required)`);
+    }
+    expect(stdout).not.toContain('CLI default');
+    expect(stdout).toContain('--direction (required) [long|short]');
+    expect(stdout).toContain('--risk-horizon (required) [1h|1d|1w|1mo]');
+    expect(stdout).toContain('--direction long --risk-horizon 1h');
   });
 
   it('cambrian mcp config prints hosted Claude config by default', async () => {

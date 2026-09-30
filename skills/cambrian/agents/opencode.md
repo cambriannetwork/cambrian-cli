@@ -18,7 +18,7 @@ Do not route Solana questions to `base` or `ethereum`, or vice versa. Do not pas
 
 Use `cambrian solana trending-tokens` for "what's hot on Solana?" prompts.
 Use `cambrian solana price-current --token-addresses <mint>` for single-token price lookups.
-Use `cambrian solana price-multi --token-addresses <mint1>,<mint2>` for batch price checks.
+Use `cambrian solana price-current --token-addresses <mint1>,<mint2>` for batch price checks.
 Use `cambrian solana token-pool-search --token-address <mint>` to find pools for a token.
 Use `cambrian base dexes` to discover supported Base DEXes.
 Use `cambrian deep42 social-data/alpha-tweet-detection --limit 10` for high-alpha tweet feeds.

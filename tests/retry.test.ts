@@ -74,6 +74,29 @@ describe('BaseClient retry behavior', () => {
     expect(seq.getCalls()).toBe(1);
   });
 
+  it('retries a body-read TIMEOUT, then succeeds', async () => {
+    let calls = 0;
+    const fetch = (async (_url: string, init?: RequestInit) => {
+      calls += 1;
+      if (calls > 1) return new Response('{"ok":true}', { status: 200 });
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{'));
+          init?.signal?.addEventListener('abort', () => {
+            const e = new Error('aborted');
+            e.name = 'AbortError';
+            controller.error(e);
+          });
+        },
+      }), { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+    vi.spyOn(BaseClient.prototype as unknown as { delay: (ms: number) => Promise<void> }, 'delay')
+      .mockResolvedValue(undefined);
+    const client = new CambrianData({ apiKey: 'k', fetch, maxRetries: 1, timeoutMs: 20 });
+    await expect(client.opabinia.query('/latest-block')).resolves.toEqual({ ok: true });
+    expect(calls).toBe(2);
+  });
+
   it('retries a 500 then succeeds', async () => {
     const seq = fetchSequence([{ status: 500 }, { status: 200, body: '{"ok":true}' }]);
     const client = clientWith(seq.fn, 2);

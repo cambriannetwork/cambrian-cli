@@ -172,15 +172,36 @@ export class BaseClient {
       ? setTimeout(() => controller.abort(), this.timeoutMs)
       : undefined;
 
-    let res: Response;
+    // The deadline covers the whole exchange: headers and body.
     try {
-      res = await this.fetchFn(`${this.baseUrl}${path}`, {
+      const res = await this.fetchFn(`${this.baseUrl}${path}`, {
         ...init,
         headers,
         signal: init.signal ?? controller.signal,
       });
+
+      if (!res.ok) {
+        const errorBody = await this.extractErrorBody(res);
+        throw new ApiError({
+          status: res.status,
+          code: mapStatusToCode(res.status, errorBody.code),
+          message: errorBody.message,
+          body: errorBody.rawBody,
+          rateLimit: parseRateLimitInfo(res.headers),
+          retryable: isRetryableStatus(res.status),
+          rawBody: errorBody.rawBody,
+        });
+      }
+
+      const payload = await res.json() as T;
+      Object.defineProperty(payload as object, '_rateLimit', {
+        value: parseRateLimitInfo(res.headers),
+        enumerable: false,
+        configurable: true,
+        writable: false,
+      });
+      return payload;
     } catch (err) {
-      if (timer !== undefined) clearTimeout(timer);
       if (this.isAbortError(err)) {
         throw new ApiError({
           status: 408,
@@ -193,30 +214,9 @@ export class BaseClient {
         });
       }
       throw err;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
-    if (timer !== undefined) clearTimeout(timer);
-
-    if (!res.ok) {
-      const errorBody = await this.extractErrorBody(res);
-      throw new ApiError({
-        status: res.status,
-        code: mapStatusToCode(res.status, errorBody.code),
-        message: errorBody.message,
-        body: errorBody.rawBody,
-        rateLimit: parseRateLimitInfo(res.headers),
-        retryable: isRetryableStatus(res.status),
-        rawBody: errorBody.rawBody,
-      });
-    }
-
-    const payload = await res.json() as T;
-    Object.defineProperty(payload as object, '_rateLimit', {
-      value: parseRateLimitInfo(res.headers),
-      enumerable: false,
-      configurable: true,
-      writable: false,
-    });
-    return payload;
   }
 
   private isAbortError(err: unknown): boolean {

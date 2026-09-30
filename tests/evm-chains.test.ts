@@ -81,6 +81,45 @@ describe('EVM chain metadata projection', () => {
   });
 });
 
+describe('EVM address defaults', () => {
+  const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+  function priceCurrent(chainDefault?: number): EndpointSpec {
+    const base = endpoint([1, 8453, 42161]);
+    const chain = { ...base.params.chain_id };
+    if (chainDefault === undefined) delete chain.default;
+    return {
+      ...base,
+      params: {
+        chain_id: chain,
+        token_address: { required: false, type: 'string', strict: true, pattern: '^0x[a-fA-F0-9]{40}$', default: BASE_USDC },
+        filter: { required: false, type: 'string', strict: true, default: 'usdc' },
+      },
+    };
+  }
+
+  it('keeps the address default on the schema default chain', () => {
+    const base = projectEvmMetadata(metadata({ 'price-current': priceCurrent(8453) }), BASE_CHAIN_ID);
+    expect(base.spec['price-current'].params.token_address).toMatchObject({ required: false, default: BASE_USDC });
+  });
+
+  it('requires the address on every other chain and keeps non-address defaults', () => {
+    for (const chainId of [ETHEREUM_CHAIN_ID, ARBITRUM_CHAIN_ID]) {
+      const params = projectEvmMetadata(metadata({ 'price-current': priceCurrent(8453) }), chainId)
+        .spec['price-current'].params;
+      expect(params.token_address.required).toBe(true);
+      expect(params.token_address).not.toHaveProperty('default');
+      expect(params.token_address.pattern).toBe('^0x[a-fA-F0-9]{40}$');
+      expect(params.filter).toMatchObject({ required: false, default: 'usdc' });
+    }
+  });
+
+  it('treats Base as the home chain when the schema declares no chain default', () => {
+    const source = metadata({ 'price-current': priceCurrent(undefined) });
+    expect(projectEvmMetadata(source, BASE_CHAIN_ID).spec['price-current'].params.token_address.default).toBe(BASE_USDC);
+    expect(projectEvmMetadata(source, ETHEREUM_CHAIN_ID).spec['price-current'].params.token_address.required).toBe(true);
+  });
+});
+
 describe('EVM chain registry', () => {
   it('names Robinhood and exposes only its advertised operations', () => {
     expect(ROBINHOOD_CHAIN).toMatchObject({ command: 'robinhood', chainId: 4663, label: 'Robinhood Chain' });

@@ -60,12 +60,12 @@ const DATA_OPTIONS = [
     arguments: [{ name: 'fields', required: true }],
     description: 'Project comma-separated response fields.',
   },
-  { name: 'all', recursive: true, description: 'Fetch every page for paginated resources.' },
+  { name: 'all', recursive: true, description: 'Fetch every page for paginated resources (not with --limit).' },
   {
     name: 'max-items',
     recursive: true,
     arguments: [{ name: 'count', required: true }],
-    description: 'Cap rows returned by --all.',
+    description: 'Cap rows requested by --all.',
   },
   {
     name: 'timeout',

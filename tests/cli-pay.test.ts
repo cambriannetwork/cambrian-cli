@@ -161,6 +161,21 @@ describe('cambrian pay', () => {
     expect(fetched).toBe(false);
   });
 
+  it('rejects --yes=false instead of treating it as authorization', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--limit', '1', '--yes=false'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('--yes does not take a value.');
+    expect(fetched).toBe(false);
+  });
+
   it('previews and aborts without --yes, building the public x402 URL', async () => {
     const fetch = gw402();
     const { code, stderr } = await run(
@@ -188,7 +203,10 @@ describe('cambrian pay', () => {
     expect(evm.stderr).toContain('"evm" is deprecated');
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('/evm/price-current');
 
-    await run(['pay', 'risk', 'perp-risk-engine'], {
+    await run([
+      'pay', 'risk', 'perp-risk-engine', '--token-address', 'So11111111111111111111111111111111111111112',
+      '--entry-price', '150', '--leverage', '5', '--direction', 'long', '--risk-horizon', '1d',
+    ], {
       env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch,
     });
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain(

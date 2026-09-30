@@ -12,7 +12,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } f
 import { join } from 'path';
 import type { ParsedArgs, Runtime } from './core.js';
 import {
-  getOption,
+  flagEnabled,
   hasOption,
   requireOptionValue,
   optionalOptionValue,
@@ -24,7 +24,7 @@ import {
 import { configDir, readConfig, writeConfig, type CambrianConfig } from './config.js';
 import { didYouMean } from './suggest.js';
 import { formatResult, OUTPUT_FORMATS, type OutputFormat } from './output.js';
-import { coerceValue, deriveCliMetadata, serializeQueryParams } from './dynamic-handler.js';
+import { buildQueryParams, deriveCliMetadata, serializeQueryParams } from './dynamic-handler.js';
 import {
   CAMBRIAN_METADATA_GROUPS,
   DEEP42_RESOURCE_ALIASES,
@@ -388,41 +388,7 @@ export async function handlePay(
   const allowed = group.allowedOptions[resource] ?? [];
   assertNoUnknownOptions(parsed, [...PAY_GLOBAL_OPTIONS, ...allowed], `pay ${groupArg} ${resourceArg}`);
 
-  const queryParams: Record<string, unknown> = {};
-  const defaults = group.cliDefaults[resource] ?? {};
-  for (const [apiParam, paramSpec] of Object.entries(entry.params)) {
-    const cliFlag = apiParam.replace(/_/g, '-');
-
-    if (paramSpec.type === 'boolean') {
-      if (hasOption(parsed, cliFlag)) {
-        const rawBoolean = getOption(parsed, cliFlag);
-        if (rawBoolean !== 'true' && rawBoolean !== 'false') {
-          throw new CliUsageError(`--${cliFlag} must be true or false.`);
-        }
-        queryParams[apiParam] = rawBoolean === 'true';
-      } else if (paramSpec.default !== undefined) {
-        queryParams[apiParam] = paramSpec.default;
-      } else if (apiParam in defaults) {
-        queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
-      } else if (paramSpec.required) {
-        throw new CliUsageError(`Missing required option --${cliFlag}.`);
-      }
-      continue;
-    }
-
-    const rawValue = getOption(parsed, cliFlag);
-    if (rawValue && rawValue !== 'true') {
-      queryParams[apiParam] = coerceValue(rawValue, paramSpec, cliFlag);
-    } else if (paramSpec.default !== undefined) {
-      queryParams[apiParam] = paramSpec.strict
-        ? paramSpec.default
-        : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
-    } else if (apiParam in defaults) {
-      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
-    } else if (paramSpec.required) {
-      throw new CliUsageError(`Missing required option --${cliFlag}.`);
-    }
-  }
+  const queryParams = buildQueryParams(entry, parsed, group.cliDefaults[resource] ?? {});
   const serialized = serializeQueryParams(entry, queryParams);
   const query = new URLSearchParams();
   for (const [apiParam, value] of Object.entries(serialized)) {
@@ -452,11 +418,11 @@ export async function handlePay(
   const capMicro = hasOption(parsed, 'max-amount')
     ? usdToMicro(requireOptionValue(parsed, 'max-amount'))
     : DEFAULT_MAX_AMOUNT_MICRO;
-  const authorized = hasOption(parsed, 'yes');
+  const authorized = flagEnabled(parsed, 'yes');
   const output = parseOutputFormat(parsed);
   const timeoutMs = parsePayTimeout(parsed);
   const fields = hasOption(parsed, 'fields')
-    ? parseCsvValues(getOption(parsed, 'fields') ?? '', 'fields')
+    ? parseCsvValues(requireOptionValue(parsed, 'fields'), 'fields')
     : undefined;
 
   const result = await payAndFetch({

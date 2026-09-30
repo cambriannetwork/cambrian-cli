@@ -186,8 +186,9 @@ describe('shared Cambrian metadata registry', () => {
     const aprDays = aeroPool?.params.find((param) => param.name === 'apr_days_annualized');
     expect(aprDays?.required).toBe(false);
 
+    // The risk schema requires every position field and the CLI supplies none.
     const risk = CAMBRIAN_MCP_TOOLS.find((tool) => tool.name === 'cambrian_risk_perp_risk_engine');
-    expect(risk?.params.every((param) => param.required === false)).toBe(true);
+    expect(risk?.params.every((param) => param.required === true)).toBe(true);
   });
 
   it('builds MCP tools from a validated runtime registry without changing the bundled default', () => {

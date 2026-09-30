@@ -35,9 +35,11 @@ function extractRows(page: unknown): unknown[] | null {
 }
 
 /**
- * Repeatedly queries `apiPath`, advancing `offset` by `pageSize`, until a short
- * page is returned or `maxItems` rows are collected. Rebuilds the first page's
- * shape: a TableResponse → `{columns, data, rows}`; a bare array → the array.
+ * Repeatedly queries `apiPath`, advancing `offset` page by page, until a short
+ * page is returned or `maxItems` rows are collected. Each request asks for at
+ * most the rows still needed, so `maxItems` also bounds what the API returns.
+ * Rebuilds the first page's shape: a TableResponse → `{columns, data, rows}`;
+ * a bare array → the array.
  *
  * @param resourceLabel  "<group> <resource>", used only in the error message
  *                       when a response turns out not to be a list.
@@ -58,7 +60,8 @@ export async function collectAllPages(
   let firstWrapped = false;
 
   for (;;) {
-    const page = await queryFn(apiPath, { ...baseParams, limit: pageSize, offset });
+    const limit = Math.min(pageSize, maxItems - merged.length);
+    const page = await queryFn(apiPath, { ...baseParams, limit, offset });
     const rows = extractRows(page);
     if (rows === null) {
       throw new CliUsageError(
@@ -81,8 +84,8 @@ export async function collectAllPages(
     }
 
     if (merged.length >= maxItems) break;
-    if (rows.length < pageSize) break; // last page reached
-    offset += pageSize;
+    if (rows.length < limit) break; // last page reached
+    offset += limit;
   }
 
   const finalRows = merged.slice(0, maxItems);

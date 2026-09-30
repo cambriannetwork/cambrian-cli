@@ -46,6 +46,20 @@ describe('collectAllPages', () => {
     expect(getCalls()).toBe(3); // stops once 25 collected
   });
 
+  it('asks each page for at most the rows still needed', async () => {
+    const limits: number[] = [];
+    const { fn } = tablePager(1000);
+    const recording = async (path: string, params: Record<string, unknown>) => {
+      limits.push(Number(params.limit));
+      return fn(path, params);
+    };
+    await collectAllPages(recording, '/x', { offset: 0 }, 'solana tokens', { pageSize: 10, maxItems: 25 });
+    expect(limits).toEqual([10, 10, 5]);
+    limits.length = 0;
+    await collectAllPages(recording, '/x', { offset: 0 }, 'solana tokens', { pageSize: 10_000, maxItems: 2 });
+    expect(limits).toEqual([2]);
+  });
+
   it('makes a single call when the first page is short', async () => {
     const { fn, getCalls } = tablePager(4);
     const out = (await collectAllPages(fn, '/x', {}, 'solana tokens', {

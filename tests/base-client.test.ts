@@ -172,6 +172,55 @@ describe('BaseClient error normalization', () => {
   });
 });
 
+describe('timeout covers the response body', () => {
+  function abortError(): Error {
+    const e = new Error('aborted');
+    e.name = 'AbortError';
+    return e;
+  }
+
+  it('raises TIMEOUT when headers arrive but the body stalls', async () => {
+    const stallingBody = (async (_url: string, init?: RequestInit) =>
+      new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('['));
+          init?.signal?.addEventListener('abort', () => controller.error(abortError()));
+        },
+      }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof globalThis.fetch;
+
+    const client = new CambrianData({ apiKey: 'test-key', fetch: stallingBody, timeoutMs: 20 });
+    const err = await client.opabinia.query('/latest-block').then(() => null, (e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.code).toBe('TIMEOUT');
+    expect(err.status).toBe(408);
+  });
+
+  it('times out a slow body from a real HTTP server, and not a fast one', async () => {
+    const { createServer } = await import('node:http');
+    const server = createServer((req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.write('[');
+      setTimeout(() => res.end(']'), req.url?.includes('slow') ? 400 : 0);
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as { port: number };
+    try {
+      const client = new CambrianData({
+        apiKey: 'test-key',
+        opabiniaBaseUrl: `http://127.0.0.1:${port}`,
+        timeoutMs: 100,
+      });
+      const slow = await client.opabinia.query('/slow').then(() => null, (e) => e);
+      expect(slow).toBeInstanceOf(ApiError);
+      expect(slow.code).toBe('TIMEOUT');
+      await expect(client.opabinia.query('/fast')).resolves.toEqual([]);
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+});
+
 describe('public API routing', () => {
   it('uses the consolidated gateway without the internal /api/v1 prefix', async () => {
     const urls: string[] = [];

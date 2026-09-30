@@ -131,6 +131,15 @@ export function hasOption(parsed: ParsedArgs, name: string): boolean {
   return parsed.options.has(name);
 }
 
+/** A presence-only flag: bare or `=true` turns it on; any other inline value is a usage error. */
+export function flagEnabled(parsed: ParsedArgs, name: string): boolean {
+  const values = getOptions(parsed, name);
+  if (values.some((value) => value !== 'true')) {
+    throw new CliUsageError(`--${name} does not take a value.`);
+  }
+  return values.length > 0;
+}
+
 export function requireOption(parsed: ParsedArgs, name: string, helpText?: string): string {
   const value = getOption(parsed, name);
   if (!value || value === 'true') {

@@ -233,6 +233,97 @@ describe('payAndFetch flow', () => {
   });
 });
 
+describe('payAndFetch timeout covers the response body', () => {
+  function stallingBodyFetch(status: number, headers: Record<string, string> = {}): typeof globalThis.fetch {
+    return (async (_url: string, init?: RequestInit) =>
+      new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{'));
+          init?.signal?.addEventListener('abort', () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            controller.error(error);
+          });
+        },
+      }), { status, headers: { 'content-type': 'application/json', ...headers } })) as unknown as typeof globalThis.fetch;
+  }
+
+  it('times out a 402 probe whose body stalls, before any payment', async () => {
+    let paid = 0;
+    await expect(
+      payAndFetch({
+        fetch: stallingBodyFetch(402),
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 20,
+        getPayFetch: async () => { paid += 1; throw new Error('must not pay'); },
+        authorize: () => true,
+      }),
+    ).rejects.toThrow(/unpaid gateway probe timed out after 20ms/);
+    expect(paid).toBe(0);
+  });
+
+  it('times out a probe whose body stalls', async () => {
+    await expect(
+      payAndFetch({
+        fetch: stallingBodyFetch(200),
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 20,
+        getPayFetch: async () => { throw new Error('must not pay'); },
+        authorize: () => true,
+      }),
+    ).rejects.toThrow(/unpaid gateway probe timed out after 20ms/);
+  });
+
+  it('reports an accepted payment and its receipt when the paid body stalls', async () => {
+    let unknown = 0;
+    let succeeded = 0;
+    await expect(
+      payAndFetch({
+        fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 20,
+        getPayFetch: async () => stallingBodyFetch(200, { 'payment-response': 'receipt-abc' }) as unknown as PayFetch,
+        authorize: () => true,
+        preparePayment: () => ({
+          onSuccess: () => { succeeded += 1; },
+          onUnknown: () => { unknown += 1; },
+        }),
+      }),
+    ).rejects.toThrow(
+      /accepted the payment \(HTTP 200\), but the response body timed out after 20ms\..*check your wallet activity before retrying\. Receipt: receipt-abc/,
+    );
+    expect(unknown).toBe(1);
+    expect(succeeded).toBe(0);
+  });
+
+  it('reports an accepted payment when the paid body breaks without a deadline', async () => {
+    let unknown = 0;
+    const resetBody = (async () => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{'));
+        controller.error(new TypeError('terminated'));
+      },
+    }), { status: 200, headers: { 'payment-response': 'receipt-xyz' } })) as unknown as PayFetch;
+    await expect(
+      payAndFetch({
+        fetch: (async () => gateway402()) as unknown as typeof globalThis.fetch,
+        url: 'https://x/api',
+        capMicro: 100000,
+        timeoutMs: 0,
+        getPayFetch: async () => resetBody,
+        authorize: () => true,
+        preparePayment: () => ({ onUnknown: () => { unknown += 1; } }),
+      }),
+    ).rejects.toThrow(
+      /accepted the payment \(HTTP 200\), but the response body could not be read \(terminated\)\..*Receipt: receipt-xyz/,
+    );
+    expect(unknown).toBe(1);
+  });
+});
+
 describe('loadPayFetch (real @x402 SDK wiring)', () => {
   // End-to-end on-chain settlement is verified against the live gateway (a real
   // $0.05 Base-mainnet payment) — see docs/x402.md. Here we just assert the SDK

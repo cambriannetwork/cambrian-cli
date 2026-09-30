@@ -255,7 +255,7 @@ Execution best practice after setup:
 | --- | --- | --- |
 | Solana token price or info | `solana price-current` or `solana token-details` | `solana tokens`, `solana trade-statistics` |
 | Solana token holders or security | `solana tokens-holders` or `solana tokens-security` | `solana tokens-holders-over-time` |
-| Solana trending tokens | `solana trending-tokens` | `solana token-details-multi`, `solana price-volume-multi` |
+| Solana trending tokens | `solana trending-tokens` | `solana token-details`, `solana price-volume` |
 | Solana pool metrics | `solana <dex>-pool` | `solana ohlcv-pool`, `solana pool-transactions` |
 | Solana OHLCV candles | `solana ohlcv-token` or `solana ohlcv-pool` | `solana price-current` |
 | Solana transactions | `solana pool-transactions` or `solana token-transactions` | `solana trade-statistics` |
@@ -289,15 +289,15 @@ Routing rules that matter:
 # Solana
 cambrian solana trending-tokens
 cambrian solana price-current --token-addresses <mint>
-cambrian solana price-multi --token-addresses <mint1>,<mint2>
-cambrian solana token-details --token-address <mint>
+cambrian solana price-current --token-addresses <mint1>,<mint2>
+cambrian solana token-details --token-addresses <mint>
 cambrian solana tokens-holders --program-id <mint>
 cambrian solana tokens-security --token-address <mint>
 cambrian solana ohlcv-token --token-address <mint> --interval 1h --after-time <unix> --before-time <unix>
 cambrian solana ohlcv-pool --pool-address <pool> --interval 1h --after-time <unix> --before-time <unix>
-cambrian solana meteora-dlmm-pool --pool-address <pool>
-cambrian solana orca-pool --pool-address <pool>
-cambrian solana raydium-clmm-pool --pool-address <pool>
+cambrian solana meteora-dlmm-pool --pool-addresses <pool>
+cambrian solana orca-pool --pool-addresses <pool>
+cambrian solana raydium-clmm-pool --pool-addresses <pool>
 cambrian solana pool-transactions --pool-address <pool> --days <n>
 cambrian solana token-transactions --token-address <mint> --days <n>
 cambrian solana trade-statistics --token-addresses <mint> --timeframe <tf>
@@ -362,8 +362,8 @@ default output is unchanged (pretty JSON), so all flags are opt-in.
 | --- | --- |
 | `--output table\|json\|tsv` | Render tabular results as an aligned table or TSV (default `json`; non-tabular data falls back to JSON) |
 | `--fields a,b,c` | Project the response to only these columns/fields (smaller payloads for agents) |
-| `--all` | Auto-paginate and merge all pages (paginated resources only) |
-| `--max-items <n>` | Cap total rows when paginating (default `10000`) |
+| `--all` | Auto-paginate and merge all pages (paginated resources only). `--all` sets the page size, so do not combine it with `--limit` |
+| `--max-items <n>` | Cap total rows requested with `--all` (default `10000`). Each page asks only for the rows still needed |
 | `--retries <n>` | Retry transient failures (408/429/5xx) with jittered backoff (default `0`) |
 | `--json` | Emit structured JSON errors on stderr; successful output is controlled by `--output` and already defaults to JSON |
 | `--timeout <ms>` | Per-request timeout (default `90000`) |

@@ -223,8 +223,8 @@ describe('per-resource --help includes schema hints', () => {
 
   it('risk perp-risk-engine --help still shows required/optional markers', async () => {
     const { stdout } = await captureStdout(['risk', 'perp-risk-engine', '--help']);
-    // Existing behavior: --token-address is optional (has default)
-    expect(stdout).toContain('--token-address');
-    expect(stdout).not.toContain('--token-address (required)');
+    // The risk API requires the position; the CLI no longer invents one.
+    expect(stdout).toContain('--token-address (required)');
+    expect(stdout).toContain('--leverage (required)');
   });
 });

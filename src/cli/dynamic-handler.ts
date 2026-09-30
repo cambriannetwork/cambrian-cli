@@ -1,6 +1,7 @@
 import type { ParsedArgs, Runtime } from './core.js';
 import {
   getOption,
+  flagEnabled,
   hasOption,
   requireOptionValue,
   assertNoUnknownOptions,
@@ -39,6 +40,15 @@ export function deriveCliMetadata(
 }
 
 // ── Type coercion from spec metadata ─────────────────────────────
+
+/** Choices of a closed alternation pattern such as `^(long|short)$`, else undefined. */
+export function patternChoices(pattern: string | undefined): string[] | undefined {
+  const match = pattern?.match(/^\^\(([\w-]+(?:\|[\w-]+)+)\)\$$/);
+  return match?.[1].split('|');
+}
+
+/** Array flags whose empty items are position placeholders, not typos. */
+const POSITIONAL_ARRAY_FLAGS = new Set(['order-asc', 'order-desc']);
 
 export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string): unknown {
   // Enum validation (case-insensitive match, returns canonical casing)
@@ -105,16 +115,20 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       return value === 'true';
     }
     case 'array': {
-      const values = value.split(',').map((s) => s.trim()).filter(Boolean);
-      if (values.length === 0) {
+      const items = value.split(',').map((s) => s.trim());
+      // Sort lists are positional: `--order-asc a, --order-desc ,b` sorts by a
+      // ascending, then b descending, so their empty slots must reach the API.
+      const values = POSITIONAL_ARRAY_FLAGS.has(cliFlag) ? items : items.filter(Boolean);
+      const named = values.filter(Boolean);
+      if (named.length === 0) {
         throw new CliUsageError(`--${cliFlag} must contain at least one value.`);
       }
-      if (paramSpec.minItems !== undefined && values.length < paramSpec.minItems) {
+      if (paramSpec.minItems !== undefined && named.length < paramSpec.minItems) {
         throw new CliUsageError(
           `--${cliFlag} must contain at least ${paramSpec.minItems} values.`,
         );
       }
-      if (paramSpec.maxItems !== undefined && values.length > paramSpec.maxItems) {
+      if (paramSpec.maxItems !== undefined && named.length > paramSpec.maxItems) {
         throw new CliUsageError(
           `--${cliFlag} must contain at most ${paramSpec.maxItems} values.`,
         );
@@ -131,11 +145,14 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
         ...(paramSpec.items.pattern ? { pattern: paramSpec.items.pattern } : {}),
         strict: true,
       };
-      return values.map((item) => coerceValue(item, itemSpec, cliFlag));
+      return values.map((item) => (item === '' ? item : coerceValue(item, itemSpec, cliFlag)));
     }
     default:
       if (paramSpec.pattern && !new RegExp(paramSpec.pattern).test(value)) {
-        throw new CliUsageError(`--${cliFlag} has an invalid format.`);
+        const choices = patternChoices(paramSpec.pattern);
+        throw new CliUsageError(
+          choices ? `--${cliFlag} must be one of: ${choices.join(', ')}.` : `--${cliFlag} has an invalid format.`,
+        );
       }
       return value;
   }
@@ -159,6 +176,54 @@ export function serializeQueryParams(
     }
   }
   return serialized;
+}
+
+/**
+ * Builds API query params from parsed flags: an explicit flag wins, then the
+ * OpenAPI default, then a validated CLI default. A flag given without a value
+ * is a usage error, never a silent fallback to the default.
+ */
+export function buildQueryParams(
+  entry: EndpointSpec,
+  parsed: ParsedArgs,
+  defaults: Record<string, string>,
+): Record<string, unknown> {
+  const queryParams: Record<string, unknown> = {};
+  for (const [apiParam, paramSpec] of Object.entries(entry.params)) {
+    const cliFlag = apiParam.replace(/_/g, '-');
+    if (hasOption(parsed, cliFlag)) {
+      if (paramSpec.type === 'boolean') {
+        // Boolean params: a bare flag means true.
+        const rawBoolean = getOption(parsed, cliFlag);
+        if (rawBoolean !== 'true' && rawBoolean !== 'false') {
+          throw new CliUsageError(`--${cliFlag} must be true or false.`);
+        }
+        queryParams[apiParam] = rawBoolean === 'true';
+      } else {
+        queryParams[apiParam] = coerceValue(requireOptionValue(parsed, cliFlag), paramSpec, cliFlag);
+      }
+    } else if (paramSpec.default !== undefined) {
+      queryParams[apiParam] = paramSpec.type === 'boolean' || paramSpec.strict
+        ? paramSpec.default
+        : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
+    } else if (apiParam in defaults) {
+      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
+    } else if (paramSpec.required) {
+      throw new CliUsageError(`Missing required option --${cliFlag}.`);
+    }
+  }
+  // The API answers a bare 400 when one sort position names a column in both lists.
+  const { order_asc: asc, order_desc: desc } = queryParams;
+  if (Array.isArray(asc) && Array.isArray(desc)) {
+    const clash = asc.findIndex((name, i) => name !== '' && (desc[i] ?? '') !== '');
+    if (clash >= 0) {
+      throw new CliUsageError(
+        `--order-asc and --order-desc both name a column at position ${clash + 1}. ` +
+          "Leave that position empty in one list, for example --order-asc 'supplyUsd,' --order-desc ',borrowUsd'.",
+      );
+    }
+  }
+  return queryParams;
 }
 
 // ── Schema hint formatting (from the active OpenAPI metadata) ──
@@ -192,6 +257,8 @@ function exampleValueFor(apiParam: string, ps: ParamSpec | undefined): string {
   if (ps?.enum && ps.enum.length > 0) return ps.enum[0];
   if (ps?.numericEnum && ps.numericEnum.length > 0) return String(ps.numericEnum[0]);
   if (ps?.default !== undefined) return String(ps.default);
+  const choices = patternChoices(ps?.pattern);
+  if (choices) return choices[0];
   return `<${apiParam}>`;
 }
 
@@ -221,6 +288,8 @@ export function buildResourceHelp(
           if (requiredSet.has(f)) line += ' (required)';
           if (ps?.enum) line += ` [${ps.enum.join('|')}]`;
           if (ps?.numericEnum) line += ` [${ps.numericEnum.join('|')}]`;
+          const choices = patternChoices(ps?.pattern);
+          if (choices) line += ` [${choices.join('|')}]`;
           if (ps) line += formatSchemaHints(ps, defaults[apiParam]);
           if (ps?.description) line += `\n      ${ps.description}`;
           return line;
@@ -255,8 +324,8 @@ export function buildResourceHelp(
     '  --json            Emit structured JSON errors on stderr.',
     '  --output <fmt>    Output format: json (default), table, or tsv.',
     '  --fields a,b,c    Project to only these columns/fields (comma-separated).',
-    '  --all             Auto-paginate and merge all pages (paginated resources only).',
-    '  --max-items <n>   Cap total rows when paginating (default 10000).',
+    '  --all             Auto-paginate and merge all pages (paginated resources only; not with --limit).',
+    '  --max-items <n>   Cap total rows requested with --all (default 10000).',
     '  --timeout <ms>    Per-request timeout in milliseconds (default 90000).',
     '  --retries <n>     Retry transient failures (408/429/5xx) with backoff (default 0).',
     '  --offline         Do not refresh endpoint metadata; data requests still require network.',
@@ -320,9 +389,9 @@ export async function handleDynamicQuery(
   // ── Phase 2 opt-in data-path flags (--output / --fields / --all / --max-items)
   const output = parseOutputFormat(parsed);
   const fields = hasOption(parsed, 'fields')
-    ? parseCsvValues(getOption(parsed, 'fields') ?? '', 'fields')
+    ? parseCsvValues(requireOptionValue(parsed, 'fields'), 'fields')
     : undefined;
-  const wantAll = hasOption(parsed, 'all');
+  const wantAll = flagEnabled(parsed, 'all');
   const hasMaxItems = hasOption(parsed, 'max-items');
   if (hasMaxItems && !wantAll) {
     throw new CliUsageError('--max-items requires --all.');
@@ -332,48 +401,16 @@ export async function handleDynamicQuery(
       `--all is not supported for ${groupCommand} ${resource} (no pagination).`,
     );
   }
-
-  // Build query params. OpenAPI defaults are authoritative; compatibility CLI
-  // defaults are used only when the registry has validated them against the
-  // active schema.
-  const defaults = cliDefaults[resource] ?? {};
-  const queryParams: Record<string, unknown> = {};
-
-  for (const [apiParam, paramSpec] of Object.entries(entry.params)) {
-    const cliFlag = apiParam.replace(/_/g, '-');
-
-    // Boolean params: presence of flag = true
-    if (paramSpec.type === 'boolean') {
-      if (hasOption(parsed, cliFlag)) {
-        const rawBoolean = getOption(parsed, cliFlag);
-        if (rawBoolean !== 'true' && rawBoolean !== 'false') {
-          throw new CliUsageError(`--${cliFlag} must be true or false.`);
-        }
-        queryParams[apiParam] = rawBoolean === 'true';
-      } else if (paramSpec.default !== undefined) {
-        queryParams[apiParam] = paramSpec.default;
-      } else if (apiParam in defaults) {
-        queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
-      } else if (paramSpec.required) {
-        throw new CliUsageError(`Missing required option --${cliFlag}.`);
-      }
-      continue;
-    }
-
-    const rawValue = getOption(parsed, cliFlag);
-
-    if (rawValue && rawValue !== 'true') {
-      queryParams[apiParam] = coerceValue(rawValue, paramSpec, cliFlag);
-    } else if (paramSpec.default !== undefined) {
-      queryParams[apiParam] = paramSpec.strict
-        ? paramSpec.default
-        : coerceValue(String(paramSpec.default), paramSpec, cliFlag);
-    } else if (apiParam in defaults) {
-      queryParams[apiParam] = coerceValue(defaults[apiParam], paramSpec, cliFlag);
-    } else if (paramSpec.required) {
-      throw new CliUsageError(`Missing required option --${cliFlag}.`);
-    }
+  if (wantAll && hasOption(parsed, 'limit')) {
+    throw new CliUsageError(
+      '--limit cannot be combined with --all, because --all sets the page size. ' +
+        'Use --max-items to cap the total rows.',
+    );
   }
+
+  // OpenAPI defaults are authoritative; compatibility CLI defaults are used
+  // only when the registry has validated them against the active schema.
+  const queryParams = buildQueryParams(entry, parsed, cliDefaults[resource] ?? {});
 
   const executeQuery: QueryFn = (path, params) =>
     queryFn(path, serializeQueryParams(entry, params));

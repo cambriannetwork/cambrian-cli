@@ -164,6 +164,26 @@ export function discoverEvmChains(metadata: CambrianMetadataGroup): EvmChain[] {
   return [...curated, ...extras];
 }
 
+const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+
+/**
+ * A default address in the shared EVM schema belongs to the schema's default
+ * chain (for example, Base USDC on `price-current`). On any other chain it names
+ * a token that does not exist there, so the flag becomes required instead.
+ */
+function withoutForeignAddressDefaults(
+  params: Record<string, ParamSpec>,
+  schemaChainId: unknown,
+  chainId: number,
+): Record<string, ParamSpec> {
+  if (schemaChainId === chainId) return params;
+  return Object.fromEntries(Object.entries(params).map(([name, param]) => {
+    if (typeof param.default !== 'string' || !EVM_ADDRESS.test(param.default)) return [name, param];
+    const { default: _default, ...rest } = param;
+    return [name, { ...rest, required: true }];
+  }));
+}
+
 function supportsChain(param: ParamSpec, chainId: number): boolean {
   return param.numericEnum?.includes(chainId) === true ||
     (param.min === chainId && param.max === chainId);
@@ -181,7 +201,7 @@ export function projectEvmMetadata(
     const projected: EndpointSpec = {
       ...endpoint,
       params: {
-        ...endpoint.params,
+        ...withoutForeignAddressDefaults(endpoint.params, chain.default ?? BASE_CHAIN_ID, chainId),
         chain_id: { ...rest, default: chainId, min: chainId, max: chainId },
       },
     };

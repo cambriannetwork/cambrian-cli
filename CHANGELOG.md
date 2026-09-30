@@ -5,6 +5,54 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-09-30
+
+### Fixed
+
+- A data flag given without a value (`--limit`, `--limit=`, `--min-tvl-usd`,
+  `--fields`) is now a usage error (exit 2). Before, the CLI silently used the
+  default or dropped the filter, which could broaden a query. This also applies
+  to `cambrian pay`.
+- `--order-asc` and `--order-desc` keep their empty positions, so the documented
+  mixed-direction form (`--order-asc 'supplyUsd,' --order-desc ',borrowUsd'`)
+  reaches the API. Before, every combined sort failed with an API 400. A
+  position that names a column in both lists now fails locally with an example.
+- `--timeout` now covers the response body, not only the headers. The same fix
+  applies to `cambrian pay`. When a paid response stalls or breaks after a
+  success status, the CLI reports that the gateway accepted the payment, prints
+  the receipt when the gateway sent one, and asks you to check wallet activity
+  before retrying.
+- `pay --yes=false` no longer authorizes a payment, and `--all=false` no longer
+  paginates. `--yes` and `--all` accept only the bare flag or `=true`; any other
+  value exits 2 before a request.
+- `--all` now asks each page only for the rows that `--max-items` still needs.
+  Before, it always requested the schema maximum (10,000 rows) and then
+  discarded the extra rows.
+- `ethereum`, `arbitrum`, `robinhood`, and `chain-<id>` no longer inherit the
+  shared schema's Base USDC `token_address` default on `price-current`, which
+  returned an empty result on those chains. The flag is now required there;
+  `base price-current` keeps the default.
+- The README and the packaged `cambrian` skill no longer show commands that the
+  current API rejects. Removed resources (`price-multi`, `*-multi`,
+  `price-volume-single`, `aero-v3-pools`, `clones-v3-pool`) now point to their
+  batch equivalents, and stale flags (`--token-address` on `token-details`,
+  `--pool-address` on Solana `*-pool`, `--hours`, `--sort-by credibility_score`,
+  `sentiment-shifts --token`) are corrected.
+
+### Changed
+
+- `risk perp-risk-engine` no longer invents a position. The CLI defaults
+  (Solana USDC, entry price 2800, 10x long, 1d) are removed, and all five
+  position flags are required, as the risk API schema already declares.
+  Help, the example command, and errors for `--direction` and `--risk-horizon`
+  now list the allowed values from the schema pattern.
+- `--limit` together with `--all` is now a usage error, because `--all` sets
+  the page size. Use `--max-items` to cap the total rows.
+- Library: the `timeoutMs` option of the `cambrian` client now covers the body
+  read too. In `cambrian/metadata`, `RISK_CLI_DEFAULTS` is now `{}`, and the
+  `cambrian_risk_perp_risk_engine` entry in `CAMBRIAN_MCP_TOOLS` marks all five
+  parameters as required.
+
 ## [1.6.0] - 2026-09-23
 
 ### Added

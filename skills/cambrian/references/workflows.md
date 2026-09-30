@@ -23,7 +23,7 @@ Order:
 Example:
 
 ```bash
-cambrian solana token-details --token-address <mint>
+cambrian solana token-details --token-addresses <mint>
 cambrian solana price-current --token-addresses <mint>
 cambrian solana tokens-security --token-address <mint>
 cambrian solana tokens-holders --program-id <mint>
@@ -57,10 +57,10 @@ Order:
 Example:
 
 ```bash
-cambrian solana orca-pool --pool-address <pool>
+cambrian solana orca-pool --pool-addresses <pool>
 cambrian solana orca-pools-fee-metrics --pool-address <pool> --days 7
 cambrian solana orca-pools-liquidity-map --pool-address <pool> --resolution 100
-cambrian solana ohlcv-pool --pool-address <pool> --interval 1h --after-time <ISO> --before-time <ISO>
+cambrian solana ohlcv-pool --pool-address <pool> --interval 1h --after-time <unix> --before-time <unix>
 cambrian solana pool-transactions --pool-address <pool> --days 7
 ```
 
@@ -84,7 +84,7 @@ Order:
 
 1. `solana trending-tokens` for the trending list
 2. `solana token-details` on the top candidates
-3. `solana price-current` or `solana price-volume-multi` for price context
+3. `solana price-current` or `solana price-volume` for price context
 4. `solana tokens-security` for safety check on interesting candidates
 5. optionally `deep42 social-data/sentiment-shifts` for social confirmation
 
@@ -92,8 +92,8 @@ Example:
 
 ```bash
 cambrian solana trending-tokens
-cambrian solana token-details-multi --token-addresses <mint1>,<mint2>,<mint3>
-cambrian solana price-volume-multi --token-addresses <mint1>,<mint2>,<mint3> --timeframe 24h
+cambrian solana token-details --token-addresses <mint1>,<mint2>,<mint3>
+cambrian solana price-volume --token-addresses <mint1>,<mint2>,<mint3> --timeframe 24h
 cambrian solana tokens-security --token-address <mint1>
 cambrian deep42 social-data/sentiment-shifts
 ```
@@ -211,7 +211,7 @@ Order:
 Example:
 
 ```bash
-cambrian deep42 social-data/influencer-credibility --sort-by credibility_score --order desc --limit 10
+cambrian deep42 social-data/influencer-credibility --sort-by accuracy --order desc --limit 10
 cambrian deep42 social-data/alpha-tweet-detection --limit 10
 ```
 
@@ -240,7 +240,7 @@ Example:
 ```bash
 cambrian risk perp-risk-engine --token-address So11111111111111111111111111111111111111112 --entry-price 150 --leverage 5 --direction long --risk-horizon 1d
 cambrian solana price-current --token-addresses So11111111111111111111111111111111111111112
-cambrian deep42 social-data/sentiment-shifts --token SOL
+cambrian deep42 social-data/sentiment-shifts --comparison-period 24h --limit 50   # find the SOL row by tokenSymbol
 ```
 
 What to extract:
@@ -270,7 +270,7 @@ Example:
 ```bash
 cambrian base dexes
 cambrian base uniswap-v3-pools
-cambrian base tvl-top-owners
+cambrian base tvl-top-owners --token-address <token>
 ```
 
 What to extract:

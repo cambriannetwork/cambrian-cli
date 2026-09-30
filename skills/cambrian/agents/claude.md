@@ -18,7 +18,7 @@ Route by chain and domain:
 
 Do not route Solana questions to `base` or vice versa. Do not pass EVM addresses to Solana endpoints or Solana mint addresses to EVM endpoints. Do not guess pool or token addresses; if the address is not provided, ask the user.
 
-Use `solana trending-tokens` for "what's hot on Solana?" prompts. Use `solana price-current` for single-token price lookups and `solana price-multi` for batch checks. Use `solana token-pool-search` to find pools for a token when the pool address is unknown. Use `base dexes` to discover supported Base DEXes. Use `deep42 social-data/sentiment-shifts` for broad sentiment, not token prices. Use `deep42 social-data/alpha-tweet-detection` for high-alpha tweet feeds. Use `deep42 social-data/influencer-credibility` for influencer rankings. Use `risk perp-risk-engine` only for perpetual futures risk analysis.
+Use `solana trending-tokens` for "what's hot on Solana?" prompts. Use `solana price-current` for price lookups; pass comma-separated mints to `--token-addresses` for batch checks. Use `solana token-pool-search` to find pools for a token when the pool address is unknown. Use `base dexes` to discover supported Base DEXes. Use `deep42 social-data/sentiment-shifts` for broad sentiment, not token prices. Use `deep42 social-data/alpha-tweet-detection` for high-alpha tweet feeds. Use `deep42 social-data/influencer-credibility` for influencer rankings. Use `risk perp-risk-engine` only for perpetual futures risk analysis.
 
 Do not conflate Aerodrome v2 (classic AMM) with Aerodrome v3 (concentrated liquidity).
 

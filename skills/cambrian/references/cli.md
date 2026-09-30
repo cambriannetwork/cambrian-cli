@@ -98,13 +98,13 @@ cambrian solana tokens
 Token details:
 
 ```bash
-cambrian solana token-details --token-address <mint>
-cambrian solana token-details-multi --token-addresses <mint1>,<mint2>
+cambrian solana token-details --token-addresses <mint>
+cambrian solana token-details --token-addresses <mint1>,<mint2>
 ```
 
 Meaning:
 - returns token metadata, supply, market cap, and descriptive fields
-- use `token-details-multi` for batch lookups instead of separate per-token calls
+- pass comma-separated mints (up to 50) for batch lookups instead of separate per-token calls
 
 Token holders:
 
@@ -151,14 +151,14 @@ cambrian solana price-unix --token-address <mint> --unixtime <unix>
 Multi-token price:
 
 ```bash
-cambrian solana price-multi --token-addresses <mint1>,<mint2>,<mint3>
+cambrian solana price-current --token-addresses <mint1>,<mint2>,<mint3>
 ```
 
 Meaning:
 - `price-current` for latest spot price
 - `price-hour` for the last hourly candle; `--interval` is required
 - `price-unix` for a price at a specific timestamp
-- `price-multi` for batch price lookups; preferred over multiple `price-current` calls
+- `price-current` with comma-separated mints for batch price lookups; preferred over one call per token
 
 Trending tokens:
 
@@ -173,14 +173,14 @@ Meaning:
 Price and volume:
 
 ```bash
-cambrian solana price-volume-single --token-address <mint> --timeframe <tf>
-cambrian solana price-volume-multi --token-addresses <mint1>,<mint2> --timeframe <tf>
+cambrian solana price-volume --token-addresses <mint> --timeframe <tf>
+cambrian solana price-volume --token-addresses <mint1>,<mint2> --timeframe <tf>
 ```
 
 Meaning:
 - combined price and volume snapshot
 - `--timeframe` is required
-- use `multi` for batch lookups
+- pass comma-separated mints for batch lookups
 
 Trade statistics:
 
@@ -224,32 +224,31 @@ Meaning:
 Meteora DLMM:
 
 ```bash
-cambrian solana meteora-dlmm-pool --pool-address <pool>
-cambrian solana meteora-dlmm-pool-multi --pool-addresses <pool1>,<pool2>
+cambrian solana meteora-dlmm-pool --pool-addresses <pool>
+cambrian solana meteora-dlmm-pool --pool-addresses <pool1>,<pool2>
 cambrian solana meteora-dlmm-pools
 ```
 
 Meaning:
-- `pool` returns metrics for a single Meteora DLMM pool
-- `pool-multi` returns metrics for multiple pools in one call
+- `pool` returns metrics for one Meteora DLMM pool, or for several comma-separated pools in one call
 - `pools` returns a list/search across Meteora DLMM pools
 
 Raydium CLMM:
 
 ```bash
-cambrian solana raydium-clmm-pool --pool-address <pool>
-cambrian solana raydium-clmm-pool-multi --pool-addresses <pool1>,<pool2>
+cambrian solana raydium-clmm-pool --pool-addresses <pool>
+cambrian solana raydium-clmm-pool --pool-addresses <pool1>,<pool2>
 cambrian solana raydium-clmm-pools
 ```
 
 Meaning:
-- same pattern as Meteora: single pool, multi pool, pool list
+- same pattern as Meteora: one or more pools, pool list
 
 Orca:
 
 ```bash
-cambrian solana orca-pool --pool-address <pool>
-cambrian solana orca-pool-multi --pool-addresses <pool1>,<pool2>
+cambrian solana orca-pool --pool-addresses <pool>
+cambrian solana orca-pool --pool-addresses <pool1>,<pool2>
 cambrian solana orca-pools
 cambrian solana orca-pools-fee-metrics --pool-address <pool> --days <n>
 cambrian solana orca-pools-fee-ranges --pool-address <pool> --days <n>
@@ -372,7 +371,6 @@ Aerodrome v3 (concentrated liquidity, Base chain):
 
 ```bash
 cambrian base aero-v3-pool --pool-address <pool>
-cambrian base aero-v3-pools
 ```
 
 SushiSwap v3:
@@ -394,12 +392,6 @@ Alienbase v3:
 ```bash
 cambrian base alien-v3-pool --pool-address <pool>
 cambrian base alien-v3-pools
-```
-
-Clones v3:
-
-```bash
-cambrian base clones-v3-pool --pool-address <pool>
 ```
 
 Meaning:
@@ -447,13 +439,13 @@ Meaning:
 ```bash
 cambrian base tokens
 cambrian base price-current --token-address <token>
-cambrian base price-hour --token-address <token> --hours <n>
+cambrian base price-hour --token-address <token> --limit <n>
 ```
 
 Meaning:
 - `tokens` returns the token list
 - `price-current` returns the latest price for a Base token
-- `price-hour` returns the last hourly candle; `--hours` is required
+- `price-hour` returns hourly USD prices, newest first; `--limit` sets the number of hours (default 100)
 
 ## Ethereum Mainnet Commands
 
@@ -498,7 +490,7 @@ Base-only DEXes such as Aerodrome or Alienbase.
 cambrian arbitrum dexes
 cambrian arbitrum tokens
 cambrian arbitrum price-current --token-address 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1
-cambrian arbitrum price-hour --token-address <token> --hours <n>
+cambrian arbitrum price-hour --token-address <token> --limit <n>
 cambrian arbitrum uniswap-v3-pools
 cambrian arbitrum uniswap-v3-pool --pool-address <pool>
 cambrian arbitrum sushi-v3-pools
@@ -560,7 +552,7 @@ Meaning:
 - `--min-tweets` (int) filters out influencers below a tweet count threshold
 - `--limit` (int) controls how many results to return
 - `--token-focus` (string) narrows results to influencers discussing a specific token
-- `--sort-by` accepts one of: `credibility`, `tweets`, `engagement`, `reach`, `alpha`, `accuracy`
+- `--sort-by` accepts `return_vs_bitcoin` (default), `win_rate_vs_bitcoin`, `accuracy`, `conservative_accuracy`, `tweets`, `alpha`, `engagement`, or `reach`. The schema also lists `influence` and `credibility`, but the current API rejects them
 - `--order` accepts `asc` or `desc`
 - `--time-window` (string) sets the evaluation period
 - use for "who are the most credible crypto influencers?" or "rank influencers by accuracy"

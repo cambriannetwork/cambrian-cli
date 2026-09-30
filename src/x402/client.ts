@@ -89,6 +89,20 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
 }
 
+function paymentReceipt(res: Response): string | null {
+  return res.headers.get('payment-response') ?? res.headers.get('x-payment-response');
+}
+
+// Headers arrived with a success status, so the gateway accepted the payment.
+function acceptedMessage(res: Response, failure: string): string {
+  const receipt = paymentReceipt(res);
+  return (
+    `x402: the gateway accepted the payment (HTTP ${res.status}), but the response body ` +
+    `${failure}. The payment has probably settled; check your wallet ` +
+    `activity before retrying.${receipt ? ` Receipt: ${receipt}` : ''}`
+  );
+}
+
 function timeoutMessage(phase: 'probe' | 'paid', timeoutMs: number): string {
   if (phase === 'paid') {
     return (
@@ -99,26 +113,28 @@ function timeoutMessage(phase: 'probe' | 'paid', timeoutMs: number): string {
   return `x402: unpaid gateway probe timed out after ${timeoutMs}ms.`;
 }
 
+/** Fetches `url` and reads its body; the deadline covers both headers and body. */
 async function fetchWithTimeout(
   fetchFn: PayFetch,
   url: string,
   timeoutMs: number,
   phase: 'probe' | 'paid',
   headers?: RequestInit['headers'],
-): Promise<Response> {
+): Promise<{ res: Response; body: unknown }> {
   const init: RequestInit = { method: 'GET', ...(headers ? { headers } : {}) };
-  if (timeoutMs === 0) {
-    return fetchFn(url, init);
-  }
-
-  const controller = new AbortController();
-  const timer: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = timeoutMs > 0 ? new AbortController() : undefined;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+  let res: Response | undefined;
   try {
-    return await fetchFn(url, { ...init, signal: controller.signal });
+    res = await fetchFn(url, controller ? { ...init, signal: controller.signal } : init);
+    return { res, body: await readBody(res) };
   } catch (err) {
-    if (isAbortError(err)) {
-      throw new Error(timeoutMessage(phase, timeoutMs));
+    const aborted = isAbortError(err);
+    if (phase === 'paid' && res?.ok) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(acceptedMessage(res, aborted ? `timed out after ${timeoutMs}ms` : `could not be read (${detail})`));
     }
+    if (aborted) throw new Error(timeoutMessage(phase, timeoutMs));
     throw err;
   } finally {
     clearTimeout(timer);
@@ -165,17 +181,16 @@ export interface PayOptions {
  */
 export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_X402_TIMEOUT_MS;
-  const probe = await fetchWithTimeout(opts.fetch, opts.url, timeoutMs, 'probe');
+  const { res: probe, body: probeBody } = await fetchWithTimeout(opts.fetch, opts.url, timeoutMs, 'probe');
 
   if (probe.status !== 402) {
-    const body = await readBody(probe);
     if (!probe.ok) {
       throw new Error(`x402 gateway returned ${probe.status} (expected 402 or 200).`);
     }
-    return { paid: false, status: probe.status, body }; // not paywalled
+    return { paid: false, status: probe.status, body: probeBody }; // not paywalled
   }
 
-  const req = selectRequirement(parsePaymentRequired(await readBody(probe)));
+  const req = selectRequirement(parsePaymentRequired(probeBody));
   assertWithinCap(req, opts.capMicro);
 
   opts.onPreview?.(req);
@@ -188,13 +203,13 @@ export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
   const payFetch = await opts.getPayFetch();
   const attempt = opts.preparePayment?.(req);
   let paidRes: Response;
+  let body: unknown;
   try {
-    paidRes = await fetchWithTimeout(payFetch, opts.url, timeoutMs, 'paid', attempt?.headers);
+    ({ res: paidRes, body } = await fetchWithTimeout(payFetch, opts.url, timeoutMs, 'paid', attempt?.headers));
   } catch (err) {
     attempt?.onUnknown?.();
     throw err;
   }
-  const body = await readBody(paidRes);
   if (!paidRes.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);
     if (paidRes.status === 402 || paidRes.status === 403) {
@@ -213,6 +228,6 @@ export async function payAndFetch(opts: PayOptions): Promise<PayResult> {
     paid: true,
     status: paidRes.status,
     body,
-    receipt: paidRes.headers.get('payment-response') ?? paidRes.headers.get('x-payment-response'),
+    receipt: paymentReceipt(paidRes),
   };
 }
