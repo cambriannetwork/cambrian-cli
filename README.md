@@ -478,17 +478,17 @@ const trending = await client.opabinia.getSolanaTrendingTokens({
 console.log(trending);
 
 const price = await client.opabinia.getSolanaPriceCurrent({
-  token_address: "So11111111111111111111111111111111111111112",
+  token_addresses: "So11111111111111111111111111111111111111112",
 });
 console.log(price);
 
 const tokenDetails = await client.opabinia.getSolanaTokenDetails({
-  token_address: "<mint>",
+  token_addresses: "<mint>",
 });
 console.log(tokenDetails);
 
 const pool = await client.opabinia.getSolanaOrcaPool({
-  pool_address: "<pool>",
+  pool_addresses: "<pool>",
 });
 console.log(pool);
 

@@ -199,6 +199,11 @@ function parseStrictInt(value: string): number {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN;
 }
 
+// Plain decimal only: Number() also accepts '0x10', '0b1', '0o7', 'Infinity', and padded whitespace.
+export function parseStrictDecimal(value: string): number {
+  return /^-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(value) ? Number(value) : Number.NaN;
+}
+
 export function parsePositiveInt(value: string, optionName: string): number {
   const parsed = parseStrictInt(value);
   if (!Number.isSafeInteger(parsed) || parsed < 1) {

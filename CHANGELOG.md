@@ -5,6 +5,36 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-09-30
+
+### Fixed
+
+- Number flags (for example `--entry-price` and `cambrian pay --max-amount`)
+  now accept only plain decimal values. Before, `0x10`, `0b1`, `0o7`,
+  `Infinity`, and padded values such as `" 5 "` were accepted, so
+  `--max-amount 0x1` meant a 1 USD limit.
+- TypeScript client: `getSolanaPriceCurrent`, `getSolanaTokenDetails`, and the
+  Orca, Meteora, and Raydium `get*Pool` methods now send `token_addresses` or
+  `pool_addresses`, which the live API requires. The old singular keys still
+  work. Before, each call returned an API 400.
+- TypeScript client: the `*Multi` methods and `getSolanaPriceVolumeSingle`/
+  `getSolanaPriceVolumeMulti` now call the live endpoints. Before, they called
+  removed paths and returned 404. They are deprecated. Use
+  `getSolanaPriceCurrent`, `getSolanaTokenDetails`, `getSolana*Pool`, and the
+  new `getSolanaPriceVolume`.
+- TypeScript client: `getEvmPriceHour` sends `hours` as `limit`, and
+  `getEvmTvlStatus` no longer sends `whitelisted`. Before, the API returned 400
+  for both. Both methods now accept `limit` and `offset`, and
+  `getEvmTvlStatus` accepts `hasprice`.
+- TypeScript client: array params (`order_asc`, `order_desc`) are sent
+  comma-joined, as the API requires, not as repeated keys.
+
+### Deprecated
+
+- `getEvmAeroV2Providers`, `getEvmAeroV2ProviderPositions`, `getEvmAeroV3Pools`,
+  `getEvmClonesV3Pools`, and `getEvmClonesV3Pool`. The API removed these
+  endpoints (404). The methods will be removed in 2.0.
+
 ## [1.7.1] - 2026-09-30
 
 ### Fixed

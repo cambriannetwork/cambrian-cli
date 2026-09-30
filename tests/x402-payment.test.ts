@@ -75,6 +75,10 @@ describe('formatUsd / usdToMicro', () => {
     expect(usdToMicro('1')).toBe(1000000);
     expect(() => usdToMicro('-1')).toThrowError(CliUsageError);
     expect(() => usdToMicro('abc')).toThrowError(CliUsageError);
+    for (const bad of ['0x1', '0b1', 'Infinity', ' 1 ', '1e']) {
+      expect(() => usdToMicro(bad)).toThrowError(CliUsageError);
+    }
+    expect(usdToMicro('.05')).toBe(50000);
   });
 });
 

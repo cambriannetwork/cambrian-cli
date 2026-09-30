@@ -7,6 +7,7 @@ import {
   assertNoUnknownOptions,
   parseCsvValues,
   parsePositiveInt,
+  parseStrictDecimal,
   CliUsageError,
 } from './core.js';
 import { didYouMean } from './suggest.js';
@@ -87,7 +88,7 @@ export function coerceValue(value: string, paramSpec: ParamSpec, cliFlag: string
       return n;
     }
     case 'number': {
-      const n = Number(value);
+      const n = parseStrictDecimal(value);
       if (!Number.isFinite(n)) {
         throw new CliUsageError(`--${cliFlag} must be a number.`);
       }

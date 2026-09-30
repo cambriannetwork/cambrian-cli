@@ -278,13 +278,16 @@ export interface EvmPriceCurrentParams {
   token_address?: string;
 }
 
-export interface EvmPriceHourParams {
+export interface EvmPriceHourParams extends PaginationParams {
   token_address: string;
-  hours: number;
+  /** @deprecated The API has no `hours` param; it is sent as `limit`. Use limit. */
+  hours?: number;
 }
 
-export interface EvmTvlStatusParams {
+export interface EvmTvlStatusParams extends PaginationParams {
   wallet_address: string;
+  hasprice?: boolean;
+  /** @deprecated The API does not support this param; it is not sent. */
   whitelisted?: boolean;
 }
 

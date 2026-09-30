@@ -315,6 +315,16 @@ describe('runtime parameter validation and serialization', () => {
       .toThrow('--entry-price must be less than 10.');
   });
 
+  it('accepts only plain decimal numbers', () => {
+    const spec = { required: true, type: 'number', strict: true };
+    for (const ok of ['150', '-2', '1.5', '.5', '5.', '1e2', '2.5E-3']) {
+      expect(coerceValue(ok, spec, 'entry-price')).toBe(Number(ok));
+    }
+    for (const bad of ['0x10', '0b1', '0o7', 'Infinity', ' 5 ', '+5', '1_000', '', '.', '1e']) {
+      expect(() => coerceValue(bad, spec, 'entry-price')).toThrow('--entry-price must be a number.');
+    }
+  });
+
   it('uses strict integers for discovered params without changing legacy coercion', () => {
     expect(() => coerceValue('12abc', {
       required: true,

@@ -230,6 +230,21 @@ describe('cambrian pay', () => {
     expect((gw402 as unknown as { lastUrl?: string }).lastUrl).toContain('risk_horizon=1d');
   });
 
+  it('rejects a hex --max-amount before the x402 probe', async () => {
+    let fetched = false;
+    const fetch = (async () => {
+      fetched = true;
+      return gw402();
+    }) as unknown as typeof globalThis.fetch;
+    const { code, stderr } = await run(
+      ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--max-amount', '0x1', '--yes'],
+      { env: { CAMBRIAN_X402_PRIVATE_KEY: TEST_KEY }, fetch },
+    );
+    expect(code).toBe(2);
+    expect(stderr).toContain('--max-amount must be a non-negative dollar amount');
+    expect(fetched).toBe(false);
+  });
+
   it('rejects when price exceeds --max-amount (exit 2)', async () => {
     const { code, stderr } = await run(
       ['pay', 'deep42', 'social-data/alpha-tweet-detection', '--max-amount', '0.01', '--yes'],

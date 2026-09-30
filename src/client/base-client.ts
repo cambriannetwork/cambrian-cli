@@ -268,7 +268,8 @@ export class BaseClient {
     for (const [key, value] of Object.entries(entries)) {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
-        for (const v of value) params.append(key, String(v));
+        // Every API array param (order_asc, order_desc) is OpenAPI form style with explode=false.
+        params.set(key, value.join(','));
       } else {
         params.set(key, String(value));
       }

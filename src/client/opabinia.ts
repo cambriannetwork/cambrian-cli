@@ -57,6 +57,12 @@ import type {
 
 const DEFAULT_BASE_URL = 'https://api.cambrian.org';
 
+// Legacy singular keys (token_address, pool_address) still work; the live endpoints take only the plural form.
+function pluralize(opts: object, key: string): Record<string, unknown> {
+  const { [key]: one, ...rest } = opts as Record<string, unknown>;
+  return one === undefined ? rest : { [`${key}es`]: one, ...rest };
+}
+
 export class OpabiniaClient extends BaseClient {
   private withQuery(path: string, opts: object): string {
     const query = this.buildParams(opts);
@@ -91,12 +97,13 @@ export class OpabiniaClient extends BaseClient {
     return this.request(this.withQuery('/solana/tokens', opts));
   }
 
-  async getSolanaTokenDetails(opts: SolanaTokenAddressParams): Promise<TableResponse> {
-    return this.request(`/solana/token-details?${this.buildParams(opts)}`);
+  async getSolanaTokenDetails(opts: SolanaMultiTokenAddressParams | SolanaTokenAddressParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/token-details', pluralize(opts, 'token_address')));
   }
 
+  /** @deprecated Use getSolanaTokenDetails({ token_addresses }); /solana/token-details-multi was removed. */
   async getSolanaTokenDetailsMulti(opts: SolanaMultiTokenAddressParams): Promise<TableResponse> {
-    return this.request(`/solana/token-details-multi?${this.buildParams(opts)}`);
+    return this.getSolanaTokenDetails(opts);
   }
 
   async getSolanaTokenSecurity(opts: SolanaTokenAddressParams): Promise<TableResponse> {
@@ -123,16 +130,17 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Pricing ─────────────────────────────────────────────────────
-  async getSolanaPriceCurrent(opts: SolanaTokenAddressParams): Promise<TableResponse> {
-    return this.request(`/solana/price-current?${this.buildParams(opts)}`);
+  async getSolanaPriceCurrent(opts: SolanaMultiTokenAddressParams | SolanaTokenAddressParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/price-current', pluralize(opts, 'token_address')));
   }
 
   async getSolanaPriceHour(opts: SolanaPriceHourParams): Promise<TableResponse> {
     return this.request(`/solana/price-hour?${this.buildParams(opts)}`);
   }
 
+  /** @deprecated Use getSolanaPriceCurrent({ token_addresses }); /solana/price-multi was removed. */
   async getSolanaPriceMulti(opts: SolanaMultiTokenAddressParams): Promise<TableResponse> {
-    return this.request(`/solana/price-multi?${this.buildParams(opts)}`);
+    return this.getSolanaPriceCurrent(opts);
   }
 
   async getSolanaPriceUnix(opts: SolanaPriceUnixParams): Promise<TableResponse> {
@@ -140,12 +148,18 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Price-volume ────────────────────────────────────────────────
-  async getSolanaPriceVolumeSingle(opts: SolanaPriceVolumeParams): Promise<TableResponse> {
-    return this.request(`/solana/price-volume/single?${this.buildParams(opts)}`);
+  async getSolanaPriceVolume(opts: SolanaPriceVolumeMultiParams | SolanaPriceVolumeParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/price-volume', pluralize(opts, 'token_address')));
   }
 
+  /** @deprecated Use getSolanaPriceVolume(); /solana/price-volume/single was removed. */
+  async getSolanaPriceVolumeSingle(opts: SolanaPriceVolumeParams): Promise<TableResponse> {
+    return this.getSolanaPriceVolume(opts);
+  }
+
+  /** @deprecated Use getSolanaPriceVolume(); /solana/price-volume/multi was removed. */
   async getSolanaPriceVolumeMulti(opts: SolanaPriceVolumeMultiParams): Promise<TableResponse> {
-    return this.request(`/solana/price-volume/multi?${this.buildParams(opts)}`);
+    return this.getSolanaPriceVolume(opts);
   }
 
   // ── OHLCV ───────────────────────────────────────────────────────
@@ -215,12 +229,13 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Meteora DLMM ───────────────────────────────────────────────
-  async getSolanaMeteoraPool(opts: SolanaMeteoraPoolParams): Promise<TableResponse> {
-    return this.request(`/solana/meteora-dlmm/pool?${this.buildParams(opts)}`);
+  async getSolanaMeteoraPool(opts: SolanaMeteoraPoolMultiParams | SolanaMeteoraPoolParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/meteora-dlmm/pool', pluralize(opts, 'pool_address')));
   }
 
+  /** @deprecated Use getSolanaMeteoraPool({ pool_addresses }); /solana/meteora-dlmm/pool-multi was removed. */
   async getSolanaMeteoraPoolMulti(opts: SolanaMeteoraPoolMultiParams): Promise<TableResponse> {
-    return this.request(`/solana/meteora-dlmm/pool-multi?${this.buildParams(opts)}`);
+    return this.getSolanaMeteoraPool(opts);
   }
 
   async getSolanaMeteoraPools(opts: SolanaMeteoraPoolsParams = {}): Promise<TableResponse> {
@@ -228,12 +243,13 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Raydium CLMM ───────────────────────────────────────────────
-  async getSolanaRaydiumPool(opts: SolanaRaydiumPoolParams): Promise<TableResponse> {
-    return this.request(`/solana/raydium-clmm/pool?${this.buildParams(opts)}`);
+  async getSolanaRaydiumPool(opts: SolanaRaydiumPoolMultiParams | SolanaRaydiumPoolParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/raydium-clmm/pool', pluralize(opts, 'pool_address')));
   }
 
+  /** @deprecated Use getSolanaRaydiumPool({ pool_addresses }); /solana/raydium-clmm/pool-multi was removed. */
   async getSolanaRaydiumPoolMulti(opts: SolanaRaydiumPoolMultiParams): Promise<TableResponse> {
-    return this.request(`/solana/raydium-clmm/pool-multi?${this.buildParams(opts)}`);
+    return this.getSolanaRaydiumPool(opts);
   }
 
   async getSolanaRaydiumPools(opts: SolanaRaydiumPoolsParams = {}): Promise<TableResponse> {
@@ -245,12 +261,13 @@ export class OpabiniaClient extends BaseClient {
     return this.request('/solana/orca/pools?dex=orca');
   }
 
-  async getSolanaOrcaPool(opts: SolanaOrcaPoolParams): Promise<TableResponse> {
-    return this.request(`/solana/orca/pool?${this.buildParams(opts)}`);
+  async getSolanaOrcaPool(opts: SolanaOrcaPoolMultiParams | SolanaOrcaPoolParams): Promise<TableResponse> {
+    return this.request(this.withQuery('/solana/orca/pool', pluralize(opts, 'pool_address')));
   }
 
+  /** @deprecated Use getSolanaOrcaPool({ pool_addresses }); /solana/orca/pool-multi was removed. */
   async getSolanaOrcaPoolMulti(opts: SolanaOrcaPoolMultiParams): Promise<TableResponse> {
-    return this.request(`/solana/orca/pool-multi?${this.buildParams(opts)}`);
+    return this.getSolanaOrcaPool(opts);
   }
 
   async getSolanaOrcaFeeMetrics(opts: SolanaOrcaFeeMetricsParams): Promise<TableResponse> {
@@ -291,12 +308,16 @@ export class OpabiniaClient extends BaseClient {
   }
 
   async getEvmPriceHour(opts: EvmPriceHourParams): Promise<TableResponse> {
-    return this.request(`/evm/price-hour?${this.buildParams(opts)}`);
+    // The API has no `hours` param; it returns one row per hour, so `limit` sets the count.
+    const { hours, ...rest } = opts;
+    return this.request(this.withQuery('/evm/price-hour', { limit: hours, ...rest }));
   }
 
   // ── TVL ─────────────────────────────────────────────────────────
   async getEvmTvlStatus(opts: EvmTvlStatusParams): Promise<TableResponse> {
-    return this.request(`/evm/tvl/status?${this.buildParams(opts)}`);
+    // The API returns 400 for the unknown `whitelisted` param, so it is not sent.
+    const { whitelisted: _whitelisted, ...rest } = opts;
+    return this.request(this.withQuery('/evm/tvl/status', rest));
   }
 
   async getEvmTvlTopOwners(opts: EvmTvlTopOwnersParams): Promise<TableResponse> {
@@ -320,10 +341,12 @@ export class OpabiniaClient extends BaseClient {
     return this.request(`/evm/aero/v2/fee-metrics?${this.buildParams(opts)}`);
   }
 
+  /** @deprecated The API removed this endpoint (HTTP 404). This method will be removed in 2.0. */
   async getEvmAeroV2Providers(opts: EvmAeroV2ProvidersParams = {}): Promise<TableResponse> {
     return this.request(this.withQuery('/evm/aero/v2/providers', opts));
   }
 
+  /** @deprecated The API removed this endpoint (HTTP 404). This method will be removed in 2.0. */
   async getEvmAeroV2ProviderPositions(opts: EvmAeroV2ProviderPositionsParams): Promise<TableResponse> {
     return this.request(`/evm/aero/v2/provider-positions?${this.buildParams(opts)}`);
   }
@@ -333,6 +356,7 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Aerodrome V3 ───────────────────────────────────────────────
+  /** @deprecated The API removed this endpoint (HTTP 404). This method will be removed in 2.0. */
   async getEvmAeroV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
     return this.request(this.withQuery('/evm/aero/v3/pools', opts));
   }
@@ -369,10 +393,12 @@ export class OpabiniaClient extends BaseClient {
   }
 
   // ── Clones V3 ───────────────────────────────────────────────────
+  /** @deprecated The API removed this endpoint (HTTP 404). This method will be removed in 2.0. */
   async getEvmClonesV3Pools(opts: EvmPoolsParams = {}): Promise<TableResponse> {
     return this.request(this.withQuery('/evm/clones/v3/pools', opts));
   }
 
+  /** @deprecated The API removed this endpoint (HTTP 404). This method will be removed in 2.0. */
   async getEvmClonesV3Pool(opts: EvmPoolParams): Promise<TableResponse> {
     return this.request(`/evm/clones/v3/pool?${this.buildParams(opts)}`);
   }

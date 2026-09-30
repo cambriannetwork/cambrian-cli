@@ -8,7 +8,7 @@
  * powers `--max-amount` and the `--yes` cost preview. See docs/x402.md.
  */
 
-import { CliUsageError } from '../cli/core.js';
+import { CliUsageError, parseStrictDecimal } from '../cli/core.js';
 
 export const X402_BASE_URL = 'https://x402.cambrian.org';
 export const USDC_DECIMALS = 6;
@@ -84,7 +84,7 @@ export function formatUsd(micro: string | number): string {
 
 /** Converts a `--max-amount` dollar string to micro-USDC (throws if invalid). */
 export function usdToMicro(usd: string): number {
-  const n = Number(usd);
+  const n = parseStrictDecimal(usd);
   if (!Number.isFinite(n) || n < 0) {
     throw new CliUsageError('--max-amount must be a non-negative dollar amount (e.g. 0.10).');
   }
