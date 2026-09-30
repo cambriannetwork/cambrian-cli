@@ -5,6 +5,16 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-30
+
+### Added
+
+- `cambrian/tools` export: one agent tool per CLI command, with the CLI's own
+  validation, defaults, and query serialization (`listCambrianCliTools`,
+  `toolInputSchema`, `buildToolQuery`, `ToolArgumentError`). An MCP server
+  that uses it gets new commands, chains, and fixes from each CLI release with
+  no code of its own.
+
 ## [1.7.2] - 2026-09-30
 
 ### Fixed

@@ -52,6 +52,17 @@ await build({
   external: [],
 });
 
+// CLI-derived agent tool surface (validation, defaults, chain projection) for MCP consumers.
+await build({
+  entryPoints: ['src/tools.ts'],
+  outfile: 'dist/tools.js',
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node20',
+  external: [],
+});
+
 // Emit type declarations with paths that match package.json exports.
 const tscBin = process.platform === 'win32' ? 'node_modules\\.bin\\tsc.cmd' : 'node_modules/.bin/tsc';
 execSync(`${tscBin} --project tsconfig.json --emitDeclarationOnly --outDir dist`, {

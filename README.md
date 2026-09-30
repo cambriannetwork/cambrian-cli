@@ -19,6 +19,7 @@ DeFi data, social intelligence, and perpetual risk analysis for agents across So
 - `cambrian describe opencli` -- machine-readable command contract
 - a typed TypeScript client from `cambrian`
 - shared metadata for MCP/server consumers from `cambrian/metadata`
+- CLI commands as MCP-ready tools (same validation, defaults, and query) from `cambrian/tools`
 
 The package does not bundle your API key.
 The installed package does not read project-local `.env` files. Pass credentials with CLI flags or environment variables in the invoking process.
