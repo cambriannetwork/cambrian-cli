@@ -8,10 +8,13 @@
  * (src/cli/evm-chains.ts). This is the single command an agent (or CI) runs to
  * answer "which chains does the API serve, and does the CLI expose them all?".
  *
+ * Every advertised chain is usable without a CLI release: under its OpenAPI
+ * `x-enum-varnames` name, a cached `/evm/chains` name, or `chain-<id>`. A
+ * curated row only pins a friendly token and label.
+ *
  * Exit codes:
- *   0  registry covers every chain the OpenAPI serves
- *   1  a chain is served by the API but missing from the registry (needs a row)
- *   1  --strict and a registry chain is absent from the document
+ *   0  every chain the OpenAPI serves is reachable (always true without --strict)
+ *   1  --strict and a chain has no curated row, or a registry chain is absent
  *
  * Usage:
  *   node scripts/check-evm-chains.mjs
@@ -87,8 +90,13 @@ async function main() {
     return 0;
   }
 
-  const { auditEvmChains, auditNormalizedEvmChains, openApiChainSupport, normalizedChainSupport } =
-    await loadAuditor();
+  const {
+    auditEvmChains,
+    auditNormalizedEvmChains,
+    discoveredEvmCommands,
+    openApiChainSupport,
+    normalizedChainSupport,
+  } = await loadAuditor();
   const { document, source } = await loadDocument(options);
   // Auto-detect format: raw OpenAPI has an `openapi` field; the normalized
   // registry snapshot is keyed by metadata group (`evm`, `solana`, ...).
@@ -96,9 +104,10 @@ async function main() {
     document && typeof document === 'object' && typeof document.openapi === 'string';
   const audit = isRawOpenApi ? auditEvmChains(document) : auditNormalizedEvmChains(document);
   const support = isRawOpenApi ? openApiChainSupport(document) : normalizedChainSupport(document);
+  const discovered = isRawOpenApi ? discoveredEvmCommands(document) : [];
 
   if (options.json) {
-    console.log(JSON.stringify({ source, endpointCount: support.size, ...audit }, null, 2));
+    console.log(JSON.stringify({ source, endpointCount: support.size, ...audit, discovered }, null, 2));
   } else {
     console.log('EVM chain audit against ' + source);
     console.log('  format: ' + (isRawOpenApi ? 'raw OpenAPI' : 'normalized registry'));
@@ -116,13 +125,16 @@ async function main() {
     if (audit.unregisteredChainIds.length > 0) {
       console.log('');
       console.log('NEW CHAIN(S) SERVED BY THE API: ' + audit.unregisteredChainIds.join(', '));
+      console.log('The CLI already serves each one at runtime with no upgrade:');
+      for (const chain of discovered) {
+        console.log('  chain_id=' + String(chain.chainId).padEnd(7) + 'cambrian ' + chain.command);
+      }
       console.log(
-        'The CLI already exposes each as chain-<id> at runtime with no upgrade, ' +
-        'so users are not blocked.',
+        'chain-<id> means the OpenAPI has no x-enum-varnames name for it. With an API key, ' +
+        'the CLI takes the name from /evm/chains instead.',
       );
       console.log(
-        'Add a curated row in src/cli/evm-chains.ts (see the add-evm-chain skill) ' +
-        'to give it a friendly command name.',
+        'Add a curated row in src/cli/evm-chains.ts only to pin a different token or label.',
       );
     }
     if (audit.unsupportedChains.length > 0) {
@@ -134,7 +146,7 @@ async function main() {
     }
   }
 
-  if (audit.unregisteredChainIds.length > 0) return 1;
+  if (options.strict && audit.unregisteredChainIds.length > 0) return 1;
   if (options.strict && audit.unsupportedChains.length > 0) return 1;
   return 0;
 }

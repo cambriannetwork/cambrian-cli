@@ -29,8 +29,8 @@ const SECTION_HEADERS: Record<string, string> = {
 };
 
 /** Resolves any EVM chain token to the shared `evm` llms.txt section. */
-function sectionHeaderFor(group: string): string | undefined {
-  return evmChainForToken(group) ? SECTION_HEADERS.evm : SECTION_HEADERS[group];
+function sectionHeaderFor(group: string, evm?: CambrianMetadataGroup): string | undefined {
+  return evmChainForToken(group, evm) ? SECTION_HEADERS.evm : SECTION_HEADERS[group];
 }
 
 type MetadataGroups = Record<CambrianGroup, CambrianMetadataGroup>;
@@ -40,8 +40,8 @@ interface ResolvedEndpoint {
   cliDefaults: Record<string, string>;
 }
 
-function metadataGroupKey(group: string): CambrianGroup | undefined {
-  if (evmChainForToken(group)) return 'base';
+function metadataGroupKey(group: string, evm?: CambrianMetadataGroup): CambrianGroup | undefined {
+  if (evmChainForToken(group, evm)) return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
@@ -51,7 +51,7 @@ function resolveEndpoint(
   resource: string,
   metadataGroups: MetadataGroups,
 ): ResolvedEndpoint | null {
-  const key = metadataGroupKey(group);
+  const key = metadataGroupKey(group, metadataGroups.base);
   if (!key) return null;
   const resolved = key === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
   const entry = metadataGroups[key].spec[resolved];
@@ -203,7 +203,7 @@ export async function fetchDocs(
     if (fullText) {
       // Level 2: extract section for a specific group
       if (group && !resource) {
-        const header = sectionHeaderFor(group);
+        const header = sectionHeaderFor(group, metadataGroups.base);
         if (header) {
           const section = extractSection(fullText, header);
           if (section) return section;
@@ -257,13 +257,16 @@ function renderExecutableContract(
     `${entry.method} ${entry.apiPath.replace(/^\/api\/v1/, '')}`,
     '',
   ];
-  const params = Object.entries(entry.params);
+  // Hidden params (for example `chain_id` on a chain group) are set by the command group.
+  const params = Object.entries(entry.params).filter(([, ps]) => !ps.hidden);
+  const pinned = Object.keys(entry.params).filter((name) => entry.params[name].hidden);
   if (params.length === 0) {
     lines.push('Parameters: (none)');
   } else {
     lines.push('Parameters:');
     for (const [name, ps] of params) lines.push(describeParam(name, ps, cliDefaults[name]));
   }
+  if (pinned.length > 0) lines.push('', `Set by the command group: ${pinned.join(', ')}.`);
   return lines.join('\n');
 }
 
@@ -313,7 +316,7 @@ export function buildSchemaFallbackDocs(
 ): string | null {
   try {
     if (!group) return null;
-    const metadataKey = metadataGroupKey(group);
+    const metadataKey = metadataGroupKey(group, metadataGroups.base);
     if (!metadataKey) return null;
     const groupMeta = metadataGroups[metadataKey];
 

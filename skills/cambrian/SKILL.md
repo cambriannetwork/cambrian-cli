@@ -104,9 +104,12 @@ Runtime endpoint rule:
   reinstalling the npm package.
 - Chains come from the same live schema. Any chain id the API advertises is
   usable immediately as `cambrian chain-<id> ...` (for example
-  `cambrian chain-10 tokens`) with no reinstall. `base`, `ethereum`, and
-  `arbitrum`, and `robinhood` are curated friendly names for their chain ids. `cambrian schema
-  chains` lists every chain the active schema supports.
+  `cambrian chain-10 tokens`) with no reinstall. `base`, `ethereum`,
+  `arbitrum`, and `robinhood` are curated friendly names for their chain ids.
+  A chain the API names is also served under that name. `cambrian schema
+  chains` lists every chain the active schema supports, with its `chain-<id>` alias.
+- Do not pass `--chain-id` to a chain group: the group selects the chain. Run
+  `cambrian <group> <resource> --help` to see the other chains that serve it.
 - If a newly deployed endpoint is expected but not visible, run
   `cambrian schema refresh <solana|base|ethereum|arbitrum|robinhood|deep42|risk>` once, then retry it. All
   attempts share a 15-minute per-source floor, including failures and typos.

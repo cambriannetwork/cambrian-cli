@@ -21,7 +21,9 @@ import { dirname, join } from 'node:path';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array']);
 export const MIN_LLMS_ENDPOINTS = 5;
-export const REGISTRY_CACHE_VERSION = 6;
+// 7: ParamSpec.enumNames (OpenAPI x-enum-varnames). A separate directory keeps an
+// older CLI from overwriting the cache with specs that drop the names.
+export const REGISTRY_CACHE_VERSION = 7;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -316,6 +318,15 @@ function normalizeParamSchema(parameter: JsonObject): ParamSpec | null {
       result.max = numericEnum[0];
     } else {
       result.numericEnum = [...numericEnum];
+    }
+    // Names are cosmetic, so a malformed list is dropped instead of rejecting the operation.
+    const enumNames = schema['x-enum-varnames'];
+    if (
+      Array.isArray(enumNames) &&
+      enumNames.length === numericEnum.length &&
+      enumNames.every((name) => typeof name === 'string')
+    ) {
+      result.enumNames = [...enumNames];
     }
   }
   if (typeof parameter.description === 'string' && parameter.description.trim()) {
@@ -792,6 +803,10 @@ function isCachedParam(value: unknown): value is ParamSpec {
   const upper = Math.min(value.max as number ?? Infinity, value.exclusiveMax as number ?? Infinity);
   if (lower > upper || (lower === upper && (value.exclusiveMin === lower || value.exclusiveMax === upper))) return false;
   if (value.description !== undefined && typeof value.description !== 'string') return false;
+  if (value.enumNames !== undefined && (
+    !Array.isArray(value.enumNames) ||
+    !value.enumNames.every((name) => typeof name === 'string')
+  )) return false;
   if (value.pattern !== undefined) {
     if (typeof value.pattern !== 'string' || value.type !== 'string') return false;
     try {
@@ -971,6 +986,10 @@ export function clearRegistryCache(runtime: Runtime, group?: CambrianGroup): num
       const sourcePath = sourceRegistryCachePath(runtime, source, current);
       found ||= existsSync(sourcePath);
       rmSync(sourcePath, { force: true });
+    }
+    if (current === 'base') {
+      found ||= existsSync(evmChainNamesCachePath(runtime));
+      rmSync(evmChainNamesCachePath(runtime), { force: true });
     }
     if (found) removed += 1;
   }
@@ -1174,6 +1193,40 @@ function withActualCachePath(
 ): RuntimeMetadataResolution {
   resolution.status.cachePath = registryCachePath(runtime, resolution.status.group);
   return resolution;
+}
+
+/**
+ * Last `/evm/chains` attempt: chain id → API name, plus when it was tried. Only
+ * the CLI reads it, so library consumers (for example `cambrian/tools`) get
+ * the same names on every machine: curated, OpenAPI, or `chain-<id>`.
+ */
+export interface EvmChainNamesCache {
+  attemptedAt: number;
+  names: Record<string, string>;
+}
+
+function evmChainNamesCachePath(runtime: Runtime): string {
+  return join(cacheBaseDir(runtime), `schema-v${REGISTRY_CACHE_VERSION}`, 'evm-chain-names.json');
+}
+
+export function readEvmChainNamesCache(runtime: Runtime): EvmChainNamesCache | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(evmChainNamesCachePath(runtime), 'utf8'));
+    if (!isObject(parsed) || typeof parsed.attemptedAt !== 'number' || !isObject(parsed.names)) return null;
+    const names = Object.fromEntries(Object.entries(parsed.names).filter(([id, name]) =>
+      /^[1-9][0-9]*$/.test(id) && typeof name === 'string')) as Record<string, string>;
+    return { attemptedAt: parsed.attemptedAt, names };
+  } catch {
+    return null;
+  }
+}
+
+export function writeEvmChainNamesCache(runtime: Runtime, entry: EvmChainNamesCache): void {
+  const path = evmChainNamesCachePath(runtime);
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+  renameSync(temporary, path);
 }
 
 function sourceCacheEntries(

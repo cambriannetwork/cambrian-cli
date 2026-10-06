@@ -27,17 +27,22 @@ export function deriveCliMetadata(
 ) {
   const resources: string[] = Object.keys(spec);
   const allowedOptions: Record<string, string[]> = {};
+  /** allowedOptions minus hidden (pinned) params: what help and OpenCLI advertise. */
+  const visibleOptions: Record<string, string[]> = {};
   const requiredOptions: Record<string, string[]> = {};
 
   for (const [resource, entry] of Object.entries(spec)) {
     const defaults = cliDefaults[resource] ?? {};
     allowedOptions[resource] = Object.keys(entry.params).map((p) => p.replace(/_/g, '-'));
+    visibleOptions[resource] = Object.entries(entry.params)
+      .filter(([, v]) => !v.hidden)
+      .map(([k]) => k.replace(/_/g, '-'));
     requiredOptions[resource] = Object.entries(entry.params)
       .filter(([k, v]) => v.required && !(k in defaults) && v.default === undefined)
       .map(([k]) => k.replace(/_/g, '-'));
   }
 
-  return { resources, allowedOptions, requiredOptions };
+  return { resources, allowedOptions, visibleOptions, requiredOptions };
 }
 
 // ── Type coercion from spec metadata ─────────────────────────────
@@ -277,12 +282,15 @@ export function buildResourceHelp(
   allowed: string[],
   required: string[],
   defaults: Record<string, string> = {},
+  notes: string[] = [],
 ): string {
   const requiredSet = new Set(required);
+  // Hidden params (pinned by the command group) are accepted but not advertised.
+  const shown = allowed.filter((f) => !entry.params[f.replace(/-/g, '_')]?.hidden);
 
   const flagLines =
-    allowed.length > 0
-      ? allowed.map((f) => {
+    shown.length > 0
+      ? shown.map((f) => {
           const apiParam = f.replace(/-/g, '_');
           const ps = entry.params[apiParam];
           let line = `  --${f}`;
@@ -298,7 +306,7 @@ export function buildResourceHelp(
       : ['  (no additional options)'];
 
   // Minimal runnable example: fill the required params with representative values.
-  const exampleFlags = allowed
+  const exampleFlags = shown
     .filter((f) => requiredSet.has(f))
     .map((f) => {
       const apiParam = f.replace(/-/g, '_');
@@ -333,6 +341,7 @@ export function buildResourceHelp(
     '  --offline         Do not refresh endpoint metadata; data requests still require network.',
     '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY).',
     '',
+    ...notes.flatMap((note) => [note, '']),
     `▶ Full docs, field descriptions & examples:  cambrian docs ${groupCommand} ${resource}`,
   ].join('\n');
 }
@@ -353,6 +362,7 @@ export async function handleDynamicQuery(
   allowedOptions: Record<string, string[]>,
   requiredOptions: Record<string, string[]>,
   helpFn: () => string,
+  resourceHelpNotes: (resource: string) => string[] = () => [],
 ): Promise<number> {
   if (!resource) {
     assertNoUnknownOptions(parsed, globalOptions, groupCommand);
@@ -383,6 +393,7 @@ export async function handleDynamicQuery(
         allowedOptions[resource] ?? [],
         requiredOptions[resource] ?? [],
         cliDefaults[resource] ?? {},
+        resourceHelpNotes(resource),
       ),
     );
     return 0;

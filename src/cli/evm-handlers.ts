@@ -56,6 +56,15 @@ function evmHelp(currentResources: string[], command: string): string {
   });
 }
 
+/** `Other chains: replace "base" with ethereum, arbitrum, or robinhood.` */
+export function otherChainsNote(command: string, others: string[]): string[] {
+  if (others.length === 0) return [];
+  const list = others.length === 1
+    ? others[0]
+    : `${others.slice(0, -1).join(', ')}${others.length > 2 ? ',' : ''} or ${others[others.length - 1]}`;
+  return [`Other chains: replace "${command}" with ${list}.`];
+}
+
 // ── Handler ──────────────────────────────────────────────────────
 
 export async function handleEvmQuery(
@@ -65,6 +74,7 @@ export async function handleEvmQuery(
   client: CambrianData,
   metadata: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.base,
   command = 'base',
+  otherChains: (resource: string) => string[] = () => [],
 ): Promise<number> {
   const currentSpec = metadata.spec;
   const currentDefaults = metadata.cliDefaults;
@@ -81,5 +91,6 @@ export async function handleEvmQuery(
     current.allowedOptions,
     current.requiredOptions,
     () => evmHelp(current.resources, command),
+    (resource) => otherChainsNote(command, otherChains(resource)),
   );
 }

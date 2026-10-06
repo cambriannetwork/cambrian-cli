@@ -476,6 +476,12 @@ cambrian docs chain-10 --offline
 - `chain-<id>` is validated against the active schema; an unadvertised id exits 2.
 - `base`, `ethereum`, `arbitrum`, and `robinhood` are curated friendly names for
   `8453`, `1`, `42161`, and `4663`.
+- When the API names a new chain, the CLI also serves it under that name (for
+  example `cambrian monad tokens`). `cambrian schema chains` shows the
+  `command` and its `chain-<id>` `alias`. Both always work.
+- Do not pass `--chain-id` to a chain group. The group selects the chain, and a
+  different value exits 2 with the command to use. Endpoint `--help` ends with
+  the other chains that serve the same endpoint.
 - Curated names are a convenience, not a gate: users are never blocked waiting
   for a release when the API adds a chain.
 

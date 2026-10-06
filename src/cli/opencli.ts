@@ -208,7 +208,7 @@ export function buildOpenCliDocument(
           commands: buildSubcommands(
             derived.resources,
             chain.label,
-            derived.allowedOptions,
+            derived.visibleOptions,
             derived.requiredOptions,
           ),
         };
@@ -238,7 +238,7 @@ export function buildOpenCliDocument(
               commands: buildSubcommands(
                 derived.resources,
                 chain.label,
-                derived.allowedOptions,
+                derived.visibleOptions,
                 derived.requiredOptions,
               ),
             };

@@ -33,7 +33,7 @@ import {
   type CambrianMetadataGroup,
   type GroupSpec,
 } from '../metadata.js';
-import { DEFAULT_EVM_CHAIN, discoverEvmChains, projectEvmChain } from './evm-chains.js';
+import { DEFAULT_EVM_CHAIN, discoverEvmChains, projectEvmChain, syntheticEvmChain } from './evm-chains.js';
 import {
   X402_BASE_URL,
   DEFAULT_MAX_AMOUNT_MICRO,
@@ -89,6 +89,7 @@ function buildPayGroups(
       cliDefaults: projected.cliDefaults,
       allowedOptions: deriveCliMetadata(projected.spec, projected.cliDefaults).allowedOptions,
     };
+    out[syntheticEvmChain(chain.chainId).command] ??= out[chain.command]; // `chain-<id>` alias
   }
   out.evm = out.base; // alias
   out.deep42 = build('deep42', DEEP42_RESOURCE_ALIASES);
@@ -310,7 +311,7 @@ export function prepareX402PaymentAttempt(
   };
 }
 
-export function payHelp(): string {
+export function payHelp(evm: CambrianMetadataGroup = CAMBRIAN_METADATA_GROUPS.base): string {
   return [
     'Usage:',
     '  cambrian pay <group> <resource> [params] [--max-amount <usd>] [--timeout <ms>] [--yes]',
@@ -318,7 +319,7 @@ export function payHelp(): string {
     'Pay-per-call via x402 (Base USDC) instead of an API key. Spends real funds.',
     'The gateway returns the current price, which the CLI previews before payment.',
     '',
-    `Groups:  ${['solana', ...discoverEvmChains(CAMBRIAN_METADATA_GROUPS.base).map((chain) => chain.command), 'deep42', 'risk'].join(' | ')}`,
+    `Groups:  ${['solana', ...discoverEvmChains(evm).map((chain) => chain.command), 'deep42', 'risk'].join(' | ')}`,
     '',
     'Options:',
     '  --yes              Authorize the payment (required; otherwise prints a preview only).',
@@ -360,7 +361,7 @@ export async function handlePay(
   const resourceArg = parsed.positionals[2];
   if (!groupArg || hasOption(parsed, 'help')) {
     assertNoUnknownOptions(parsed, ['help'], 'pay');
-    runtime.stdout(payHelp());
+    runtime.stdout(payHelp(metadataGroups.base));
     return 0;
   }
 

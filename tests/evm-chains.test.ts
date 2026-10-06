@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { CambrianMetadataGroup, EndpointSpec } from '../src/metadata.js';
 import {
@@ -23,6 +24,7 @@ import {
   supportedEvmChainIds,
   supportedEvmChains,
   syntheticEvmChainId,
+  parseEvmChainNames,
 } from '../src/cli/evm-chains.js';
 
 function endpoint(chainIds?: number[]): EndpointSpec {
@@ -185,6 +187,7 @@ describe('EVM chain registry', () => {
       required: false,
       type: 'integer',
       default: 42161,
+      hidden: true,
       min: 42161,
       max: 42161,
       strict: true,
@@ -241,5 +244,30 @@ describe('runtime EVM chain discovery', () => {
       tokens: endpoint([1, 8453, 42161]),
     }));
     expect(discovered.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum']);
+  });
+});
+
+describe('parseEvmChainNames', () => {
+  it('reads id/name columns and skips rows that do not fit', () => {
+    const table = {
+      columns: [{ name: 'name', type: 'String' }, { name: 'id', type: 'UInt32' }],
+      data: [['base', 8453], ['monad', 10143], ['bad', -1], [7, 'swapped'], ['x'.repeat(65), 9]],
+    };
+    expect(parseEvmChainNames([table])).toEqual({ 8453: 'base', 10143: 'monad' });
+    expect(parseEvmChainNames(table)).toEqual({ 8453: 'base', 10143: 'monad' });
+    expect(parseEvmChainNames({ ok: true })).toEqual({});
+    expect(parseEvmChainNames(null)).toEqual({});
+  });
+});
+
+describe('chain docs', () => {
+  it('name every curated chain and its id', () => {
+    for (const path of ['README.md', 'skills/cambrian/SKILL.md', 'skills/cambrian/references/cli.md']) {
+      const text = readFileSync(path, 'utf8');
+      for (const chain of EVM_CHAINS) {
+        expect(text, `${path} mentions ${chain.command}`).toContain(chain.command);
+        expect(text, `${path} mentions ${chain.chainId}`).toContain(String(chain.chainId));
+      }
+    }
   });
 });

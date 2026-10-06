@@ -47,6 +47,10 @@ import {
   loadCachedMetadataGroup,
   loadRuntimeMetadataGroup,
   clearRegistryCache,
+  readEvmChainNamesCache,
+  writeEvmChainNamesCache,
+  REGISTRY_FETCH_TIMEOUT_MS,
+  REGISTRY_TTL_MS,
 } from '../schema/registry.js';
 import {
   CAMBRIAN_METADATA_GROUPS,
@@ -62,7 +66,12 @@ import {
   evmChainForToken,
   hasEvmChainSupport,
   isSyntheticEvmChainToken,
+  otherEvmChainsFor,
+  parseEvmChainNames,
+  RESERVED_COMMAND_TOKENS,
   projectEvmChain,
+  syntheticEvmChain,
+  unnamedEvmChainIds,
 } from './evm-chains.js';
 
 // ── Known top-level commands (for dispatch + typo suggestions) ──────
@@ -76,26 +85,49 @@ const DATA_COMMANDS = ['solana', 'evm', ...EVM_COMMAND_TOKENS, 'deep42', 'risk']
 
 /** Every chain command the active schema advertises, including `chain-<id>` discoveries. */
 function activeEvmChains(runtime: Runtime): EvmChain[] {
-  return discoverEvmChains(loadCachedMetadataGroup('base', runtime).metadata);
+  return discoverEvmChains(cachedEvmMetadata(runtime));
 }
 
-/** True for any token the EVM dispatcher can route (curated or `chain-<id>`). */
-function isEvmChainCommand(command: string): boolean {
-  return evmChainForToken(command) !== undefined;
+function cachedEvmMetadata(runtime: Runtime): CambrianMetadataGroup {
+  return withCachedChainNames(loadCachedMetadataGroup('base', runtime).metadata, runtime);
+}
+
+/** Adds the cached `/evm/chains` names (CLI only; see readEvmChainNamesCache). */
+function withCachedChainNames(metadata: CambrianMetadataGroup, runtime: Runtime): CambrianMetadataGroup {
+  if (runtime.env.CAMBRIAN_SCHEMA_MODE?.trim().toLowerCase() === 'bundled') return metadata;
+  const names = readEvmChainNamesCache(runtime)?.names;
+  return names ? { ...metadata, chainNames: names } : metadata;
+}
+
+/** Resolves an EVM chain token; reads the cache only for tokens the CLI does not know. */
+function evmChainForCommand(command: string, runtime: Runtime): EvmChain | undefined {
+  return evmChainForToken(command) ??
+    (KNOWN_COMMANDS.includes(command) ? undefined : evmChainForToken(command, cachedEvmMetadata(runtime)));
+}
+
+/** True for any token the EVM dispatcher can route (curated, API-named, or `chain-<id>`). */
+function isEvmChainCommand(command: string, runtime: Runtime): boolean {
+  return evmChainForCommand(command, runtime) !== undefined;
 }
 
 const REGISTRY_GROUPS: CambrianGroup[] = ['solana', 'base', 'deep42', 'risk'];
 
 function cachedMetadataGroups(runtime: Runtime): Record<CambrianGroup, CambrianMetadataGroup> {
   return Object.fromEntries(
-    REGISTRY_GROUPS.map((group) => [group, loadCachedMetadataGroup(group, runtime).metadata]),
+    REGISTRY_GROUPS.map((group) => [
+      group,
+      group === 'base' ? cachedEvmMetadata(runtime) : loadCachedMetadataGroup(group, runtime).metadata,
+    ]),
   ) as Record<CambrianGroup, CambrianMetadataGroup>;
 }
 
 function suggestionCommands(runtime: Runtime): string[] {
-  const available = new Set(activeEvmChains(runtime).map((chain) => chain.command));
-  return KNOWN_COMMANDS.filter((command) =>
-    command !== 'evm' && (!EVM_COMMAND_TOKENS.includes(command) || available.has(command)));
+  const available = activeEvmChains(runtime).map((chain) => chain.command);
+  return [
+    ...KNOWN_COMMANDS.filter((command) =>
+      command !== 'evm' && (!EVM_COMMAND_TOKENS.includes(command) || available.includes(command))),
+    ...available.filter((command) => !KNOWN_COMMANDS.includes(command)),
+  ];
 }
 
 
@@ -103,17 +135,27 @@ function canonicalRegistryResource(group: CambrianGroup, resource: string): stri
   return group === 'deep42' ? DEEP42_RESOURCE_ALIASES[resource] ?? resource : resource;
 }
 
-function registryGroupForToken(group: string | undefined): CambrianGroup | undefined {
-  if (group && evmChainForToken(group)) return 'base';
+function registryGroupForToken(group: string | undefined, runtime: Runtime): CambrianGroup | undefined {
+  if (group && evmChainForCommand(group, runtime)) return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
+}
+
+/** Resolves a chain token against the active metadata; a dropped or renamed name is an error. */
+function requireEvmChain(token: string, metadata: CambrianMetadataGroup): EvmChain {
+  const chain = evmChainForToken(token, metadata);
+  if (chain) return chain;
+  throw new CliUsageError(
+    `${token} is not advertised by the active EVM schema. ` +
+    'Run "cambrian schema chains" to list supported chains.',
+  );
 }
 
 function projectEvmCommand(
   metadata: CambrianMetadataGroup,
   command: string,
 ): CambrianMetadataGroup {
-  return projectEvmChain(metadata, evmChainForToken(command) ?? DEFAULT_EVM_CHAIN);
+  return projectEvmChain(metadata, requireEvmChain(command, metadata));
 }
 
 async function runtimeRootHelp(parsed: ParsedArgs, runtime: Runtime): Promise<string> {
@@ -131,7 +173,99 @@ async function runtimeMetadataFor(
     offline: hasOption(parsed, 'offline'),
     ...(resource ? { missingResource: canonicalRegistryResource(group, resource) } : {}),
   });
-  return resolution.metadata;
+  return group === 'base'
+    ? await withApiChainNames(resolution.metadata, parsed, runtime)
+    : resolution.metadata;
+}
+
+/**
+ * Names advertised chain ids that have no curated row and no OpenAPI name, from
+ * `/evm/chains`. That endpoint needs an API key, so without one (or offline)
+ * those chains stay `chain-<id>`. Runs at most once per registry TTL unless
+ * forced, and never fails the command.
+ */
+async function withApiChainNames(
+  metadata: CambrianMetadataGroup,
+  parsed: ParsedArgs,
+  runtime: Runtime,
+  force = false,
+): Promise<CambrianMetadataGroup> {
+  const named = withCachedChainNames(metadata, runtime);
+  if (hasOption(parsed, 'offline')) return named;
+  if (runtime.env.CAMBRIAN_SCHEMA_MODE?.trim().toLowerCase() === 'bundled') return named;
+  // Names from a custom --base-url (for example staging) must not reach the shared cache.
+  if (optionalOptionValue(parsed, 'base-url')) return named;
+  if (!force && unnamedEvmChainIds(named).length === 0) return named;
+  const apiKey = resolveApiKey(parsed, runtime);
+  if (!apiKey) return named;
+  const previous = readEvmChainNamesCache(runtime);
+  const now = Date.now();
+  // A future timestamp (clock skew, hand edit) counts as expired.
+  const recent = previous !== null && previous.attemptedAt <= now &&
+    now < previous.attemptedAt + REGISTRY_TTL_MS;
+  if (!force && recent) return named;
+  let names = previous?.names ?? {};
+  try {
+    const client = new CambrianData({
+      apiKey,
+      fetch: runtime.fetch,
+      timeoutMs: REGISTRY_FETCH_TIMEOUT_MS,
+      maxRetries: 0,
+    });
+    const fetched = parseEvmChainNames(await client.opabinia.query('/api/v1/evm/chains', {}));
+    if (Object.keys(fetched).length > 0) names = fetched;
+  } catch {
+    // Names are cosmetic: keep the last good names and retry after the TTL.
+  }
+  try {
+    writeEvmChainNamesCache(runtime, { attemptedAt: now, names });
+  } catch {
+    // An unwritable cache only means the next run asks again.
+  }
+  return { ...metadata, chainNames: names };
+}
+
+/**
+ * True when an unknown token names a chain that only a fresh schema knows. It
+ * refreshes only when the cached EVM schema is stale, and never for a reserved
+ * word or a near-typo of a known command, so typos stay offline.
+ */
+async function isNewEvmChainCommand(
+  command: string,
+  parsed: ParsedArgs,
+  runtime: Runtime,
+): Promise<boolean> {
+  if (KNOWN_COMMANDS.includes(command) || RESERVED_COMMAND_TOKENS.has(command)) return false;
+  if (!/^[a-z][a-z0-9-]{0,31}$/.test(command)) return false;
+  if (didYouMean(command, KNOWN_COMMANDS)) return false;
+  if (!loadCachedMetadataGroup('base', runtime).status.stale) return false;
+  return evmChainForToken(command, await runtimeMetadataFor('base', '', parsed, runtime)) !== undefined;
+}
+
+/**
+ * The command group selects the chain, so `--chain-id` is pinned and hidden.
+ * The matching value stays accepted for old scripts; any other value gets an
+ * error that names the right command instead of a bare range error.
+ */
+function assertChainIdMatches(
+  parsed: ParsedArgs,
+  command: string,
+  chain: EvmChain,
+  resource: string,
+  others: EvmChain[],
+): void {
+  const raw = getOption(parsed, 'chain-id');
+  if (raw === undefined || !/^[0-9]+$/.test(raw) || Number(raw) === chain.chainId) return;
+  const target = others.find((other) => other.chainId === Number(raw));
+  const fix = target
+    ? `Use: cambrian ${target.command} ${resource}`
+    : others.length > 0
+      ? `${resource} is also available on: ${others.map((other) => other.command).join(', ')}.`
+      : `${resource} is only available on ${command}.`;
+  throw new CliUsageError(
+    `--chain-id ${raw} does not match "${command}" (chain ${chain.chainId}). ` +
+    `The command group selects the chain, so --chain-id is not needed. ${fix}`,
+  );
 }
 
 async function allRuntimeMetadata(
@@ -143,7 +277,10 @@ async function allRuntimeMetadata(
       const resolution = await loadRuntimeMetadataGroup(group, runtime, {
         offline: hasOption(parsed, 'offline'),
       });
-      return [group, resolution.metadata] as const;
+      return [
+        group,
+        group === 'base' ? withCachedChainNames(resolution.metadata, runtime) : resolution.metadata,
+      ] as const;
     }),
   );
   return Object.fromEntries(entries) as Record<CambrianGroup, CambrianMetadataGroup>;
@@ -226,7 +363,7 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
   }
 
   const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
-  const registryGroup = registryGroupForToken(group);
+  const registryGroup = registryGroupForToken(group, runtime);
   if (registryGroup) {
     const metadata = await runtimeMetadataFor(
       registryGroup,
@@ -237,7 +374,7 @@ async function handleDocs(parsed: ParsedArgs, runtime: Runtime): Promise<number>
     metadataGroups[registryGroup] = registryGroup === 'base' && group
       ? projectEvmCommand(metadata, group)
       : metadata;
-    const docsChain = group ? evmChainForToken(group) : undefined;
+    const docsChain = group ? evmChainForToken(group, metadata) : undefined;
     if (docsChain && docsChain.command !== 'evm' && docsChain.command !== 'base') {
       if (metadataGroups.base.resources.length === 0) {
         throw new CliUsageError(
@@ -418,11 +555,12 @@ async function handleCompletion(parsed: ParsedArgs, runtime: Runtime): Promise<n
 
 // ── Runtime schema registry controls ──────────────────────────────
 
-function selectedSchemaGroups(token: string | undefined): CambrianGroup[] {
+function selectedSchemaGroups(token: string | undefined, runtime: Runtime): CambrianGroup[] {
   if (!token) return [...REGISTRY_GROUPS];
-  const group = registryGroupForToken(token);
+  const group = registryGroupForToken(token, runtime);
   if (!group) {
-    const valid = ['solana', ...EVM_COMMAND_TOKENS, 'deep42', 'risk'].join(', ');
+    const valid = ['solana', ...activeEvmChains(runtime).map((chain) => chain.command), 'deep42', 'risk']
+      .filter((token, index, all) => all.indexOf(token) === index).join(', ');
     throw new CliUsageError(`Unknown schema group: ${token}. Use ${valid}.`);
   }
   return [group];
@@ -446,12 +584,14 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
     // newly deployed chain shows up here without a CLI upgrade.
     const metadata = await runtimeMetadataFor('base', '', parsed, runtime);
     const discovered = discoverEvmChains(metadata);
+    const curatedIds = new Set(EVM_CHAINS.map((chain) => chain.chainId));
     const rows = [
       // Curated chains, including any the active schema no longer advertises.
       ...EVM_CHAINS.map((chain) => {
         const projected = projectEvmChain(metadata, chain);
         return {
           command: chain.command,
+          alias: syntheticEvmChain(chain.chainId).command,
           chainId: chain.chainId,
           label: chain.label,
           source: 'curated' as const,
@@ -459,11 +599,12 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
           resources: projected.resources,
         };
       }),
-      // Advertised ids with no curated row, usable as `chain-<id>` today.
+      // Advertised ids with no curated row: named by the API, else `chain-<id>`.
       ...discovered
-        .filter((chain) => isSyntheticEvmChainToken(chain.command))
+        .filter((chain) => !curatedIds.has(chain.chainId))
         .map((chain) => ({
           command: chain.command,
+          alias: syntheticEvmChain(chain.chainId).command,
           chainId: chain.chainId,
           label: chain.label,
           source: 'discovered' as const,
@@ -476,7 +617,7 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
   }
 
   const groupToken = parsed.positionals[2];
-  const groups = selectedSchemaGroups(groupToken);
+  const groups = selectedSchemaGroups(groupToken, runtime);
 
   if (subcommand === 'clear-cache') {
     const cleared = groups.length === 1
@@ -497,9 +638,11 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
 
   if (subcommand === 'refresh') {
     const statuses = await Promise.all(
-      groups.map(async (group) =>
-        (await loadRuntimeMetadataGroup(group, runtime, { refresh: true })).status,
-      ),
+      groups.map(async (group) => {
+        const resolution = await loadRuntimeMetadataGroup(group, runtime, { refresh: true });
+        if (group === 'base') await withApiChainNames(resolution.metadata, parsed, runtime, true);
+        return resolution.status;
+      }),
     );
     printJson(runtime, statuses.length === 1 ? statuses[0] : { groups: statuses });
     return statuses.some((status) => status.lastError) ? 1 : 0;
@@ -573,9 +716,12 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       return 0;
     }
 
-    // `chain-<id>` tokens are resolved from the active schema, so they are
-    // valid data commands even though KNOWN_COMMANDS is static.
-    const isEvmChain = isEvmChainCommand(command);
+    // `chain-<id>` and API-named chains are resolved from the active schema,
+    // so they are valid data commands even though KNOWN_COMMANDS is static.
+    // An unknown token gets one TTL-gated refresh, so a chain deployed after
+    // the last cache write still resolves.
+    const isEvmChain = isEvmChainCommand(command, runtime) ||
+      (await isNewEvmChainCommand(command, parsed, runtime));
 
     // --help with no recognized command → root help
     if (hasOption(parsed, 'help') && !KNOWN_COMMANDS.includes(command) && !isEvmChain) {
@@ -600,11 +746,11 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
 
     // Shared EVM execution for curated chains and runtime `chain-<id>` tokens.
     const runEvmCommand = async (chainToken: string): Promise<number> => {
-      const chain = evmChainForToken(chainToken) ?? DEFAULT_EVM_CHAIN;
-      const metadata = projectEvmCommand(
-        await runtimeMetadataFor('base', resource, parsed, runtime),
-        chainToken,
-      );
+      const full = await runtimeMetadataFor('base', resource, parsed, runtime);
+      // The cache named this chain, but the refreshed schema may have dropped or
+      // renamed it. Never fall back to Base for a named token.
+      const chain = requireEvmChain(chainToken, full);
+      const metadata = projectEvmChain(full, chain);
       // Base owns chain-neutral endpoints; every other chain only appears when
       // the active schema explicitly advertises its chain id.
       if (chain.chainId !== DEFAULT_EVM_CHAIN.chainId && metadata.resources.length === 0) {
@@ -619,11 +765,18 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
           'Use "cambrian base --help" for currently supported EVM commands.',
         );
       }
+      // Help and errors use the canonical token (`evm` → `base`, `chain-4663` → `robinhood`).
+      const groupCommand = chain.command;
+      const others = (res: string) => otherEvmChainsFor(full, chain, res);
+      if (resource && !wantsHelp && metadata.spec[resource]?.params.chain_id) {
+        assertChainIdMatches(parsed, groupCommand, chain, resource, others(resource));
+      }
+      const otherCommands = (res: string) => others(res).map((other) => other.command);
       if (skipAuth) {
-        return await handleEvmQuery(resource, parsed, runtime, null!, metadata, chain.command);
+        return await handleEvmQuery(resource, parsed, runtime, null!, metadata, groupCommand, otherCommands);
       }
       const client = createClient(parsed, runtime);
-      return await handleEvmQuery(resource, parsed, runtime, client, metadata, chain.command);
+      return await handleEvmQuery(resource, parsed, runtime, client, metadata, groupCommand, otherCommands);
     };
 
     switch (command) {
@@ -665,12 +818,14 @@ export async function runCli(argv: string[], runtimeOverrides: Partial<Runtime> 
       case 'pay': {
         const payGroupToken = parsed.positionals[1];
         const payResource = parsed.positionals[2] ?? '';
-        const payGroup = registryGroupForToken(payGroupToken);
+        const payGroup = registryGroupForToken(payGroupToken, runtime);
         if (!payGroup || !payResource || hasOption(parsed, 'help')) {
-          return await handlePay(parsed, runtime);
+          return await handlePay(parsed, runtime, { ...CAMBRIAN_METADATA_GROUPS, base: cachedEvmMetadata(runtime) });
         }
         const metadataGroups = { ...CAMBRIAN_METADATA_GROUPS };
-        const cached = loadCachedMetadataGroup(payGroup, runtime).metadata;
+        const cached = payGroup === 'base'
+          ? cachedEvmMetadata(runtime)
+          : loadCachedMetadataGroup(payGroup, runtime).metadata;
         const canonicalResource = canonicalRegistryResource(payGroup, payResource);
         metadataGroups[payGroup] = cached.spec[canonicalResource]
           ? cached

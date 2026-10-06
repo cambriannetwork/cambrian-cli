@@ -606,8 +606,9 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(docs.stdout).not.toContain('aero-v2-pools');
     const endpointDocs = await run(['docs', 'ethereum', 'tokens', '--offline'], fetch, root);
     expect(endpointDocs.stdout).toContain('# cambrian ethereum tokens');
-    expect(endpointDocs.stdout).toContain('default: 1');
-    expect(endpointDocs.stdout).toContain('range 1-1');
+    // The chain group pins chain_id, so the contract names it instead of listing it.
+    expect(endpointDocs.stdout).toContain('Set by the command group: chain_id.');
+    expect(endpointDocs.stdout).not.toContain('--chain-id');
     const unsupportedDocs = await run(
       ['docs', 'ethereum', 'aero-v2-pools', '--offline'],
       fetch,
@@ -635,7 +636,8 @@ describe('runtime endpoint discovery through the CLI', () => {
       root,
     );
     expect(conflict.code).toBe(2);
-    expect(conflict.stderr).toContain('--chain-id must be at most 1');
+    expect(conflict.stderr).toContain('--chain-id 8453 does not match "ethereum" (chain 1).');
+    expect(conflict.stderr).toContain('Use: cambrian base tokens');
     expect(requests.filter((url) => url.includes('/evm/tokens?'))).toHaveLength(beforeConflict);
 
     const payConflict = await run(
@@ -683,8 +685,9 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(docs.stdout).not.toContain('aero-v2-pools');
     const endpointDocs = await run(['docs', 'arbitrum', 'tokens', '--offline'], fetch, root);
     expect(endpointDocs.stdout).toContain('# cambrian arbitrum tokens');
-    expect(endpointDocs.stdout).toContain('default: 42161');
-    expect(endpointDocs.stdout).toContain('range 42161-42161');
+    // The chain group pins chain_id, so the contract names it instead of listing it.
+    expect(endpointDocs.stdout).toContain('Set by the command group: chain_id.');
+    expect(endpointDocs.stdout).not.toContain('--chain-id');
     const unsupportedDocs = await run(
       ['docs', 'arbitrum', 'aero-v2-pools', '--offline'],
       fetch,
@@ -722,7 +725,8 @@ describe('runtime endpoint discovery through the CLI', () => {
       root,
     );
     expect(conflict.code).toBe(2);
-    expect(conflict.stderr).toContain('--chain-id must be at least 42161');
+    expect(conflict.stderr).toContain('--chain-id 8453 does not match "arbitrum" (chain 42161).');
+    expect(conflict.stderr).toContain('Use: cambrian base tokens');
     expect(requests.filter((url) => url.includes('/evm/tokens?'))).toHaveLength(beforeConflict);
 
     const payConflict = await run(

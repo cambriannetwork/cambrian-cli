@@ -5,6 +5,42 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-06
+
+### Added
+
+- New EVM chains get a named command with no CLI release. A chain id without a
+  curated row takes its name from the OpenAPI `x-enum-varnames` extension on
+  `chain_id`. If the OpenAPI has no name and an API key is set, the name comes
+  from `/evm/chains`. The CLI caches that name and asks again at most once per
+  15 minutes; `cambrian schema refresh base` asks at once. Example:
+  `cambrian monad tokens`. `chain-<id>` stays a valid alias everywhere,
+  including `cambrian pay`. A name that is a built-in command, a curated token,
+  or unsafe stays `chain-<id>`.
+- `cambrian schema chains` rows now include `alias` (`chain-<id>`).
+- Endpoint help ends with the other chains that serve the same endpoint, for
+  example `Other chains: replace "base" with ethereum, arbitrum, or robinhood.`
+  The list comes from the endpoint's live `chain_id` enum.
+
+### Changed
+
+- Chain groups (`base`, `ethereum`, `arbitrum`, `robinhood`, `chain-<id>`) no
+  longer show `--chain-id` in help, completion, or OpenCLI. The group already
+  selects the chain. The matching value is still accepted.
+- A conflicting `--chain-id` now names the command to use. Before:
+  `--chain-id must be at least 8453.` Now: `--chain-id 1 does not match "base"
+  (chain 8453). ... Use: cambrian ethereum tvl-top-owners`.
+- `chain-<id>` for a curated or named chain now shows that chain's name in help
+  and errors (`chain-4663` → `robinhood`).
+- The schema cache moves to `schema-v7/`, so an older CLI on the same machine
+  cannot overwrite it with specs that drop the chain names. The first run after
+  the upgrade fetches the schema once.
+- Docs fallback (`cambrian docs <chain> <resource>`) lists the pinned
+  `chain_id` as "Set by the command group" instead of as a flag.
+- `npm run check:chains` prints the command each new chain gets and exits 0,
+  because no chain needs a curated row to work. Use `--strict` to fail on
+  chains without a row.
+
 ## [1.8.0] - 2026-09-30
 
 ### Added

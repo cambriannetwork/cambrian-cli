@@ -30,14 +30,21 @@ const GLOBAL_FLAGS = [
 
 const PAY_FLAGS = ['--yes', '--max-amount', '--timeout', '--output', '--fields', '--offline', '--help'];
 
+/** Resource flags to offer; hidden (pinned) params such as a chain's `chain_id` are skipped. */
+function visibleFlags(params: Record<string, { hidden?: boolean }>): string[] {
+  return Object.entries(params)
+    .filter(([, spec]) => !spec.hidden)
+    .map(([name]) => `--${name.replace(/_/g, '-')}`);
+}
+
 function startsWithFilter(candidates: string[], prefix: string): string[] {
   if (!prefix) return candidates;
   return candidates.filter((c) => c.startsWith(prefix));
 }
 
 /** Maps a CLI group token to its metadata group key ('evm'/'arbitrum' → 'base'). */
-function metadataGroupKey(group: string): CambrianGroup | undefined {
-  if (evmChainForToken(group)) return 'base';
+function metadataGroupKey(group: string, evm: CambrianMetadataGroup): CambrianGroup | undefined {
+  if (evmChainForToken(group, evm)) return 'base';
   if (group === 'solana' || group === 'deep42' || group === 'risk') return group;
   return undefined;
 }
@@ -47,9 +54,9 @@ function completionMetadata(
   token: string,
   metadataGroups: Record<CambrianGroup, CambrianMetadataGroup>,
 ): CambrianMetadataGroup | undefined {
-  const chain = evmChainForToken(token);
+  const chain = evmChainForToken(token, metadataGroups.base);
   if (chain) return projectEvmChain(metadataGroups.base, chain);
-  const key = metadataGroupKey(token);
+  const key = metadataGroupKey(token, metadataGroups.base);
   return key ? metadataGroups[key] : undefined;
 }
 
@@ -129,9 +136,7 @@ export function complete(
     if (!payMeta) return [];
     if (args.length === 3) return startsWithFilter(payMeta.resources, args[2] ?? '');
     const payEntry = payMeta.spec[args[2]];
-    const payResourceFlags = payEntry
-      ? Object.keys(payEntry.params).map((p) => `--${p.replace(/_/g, '-')}`)
-      : [];
+    const payResourceFlags = payEntry ? visibleFlags(payEntry.params) : [];
     return startsWithFilter([...payResourceFlags, ...PAY_FLAGS], args[args.length - 1] ?? '');
   }
 
@@ -147,9 +152,7 @@ export function complete(
   const resource = args[1];
   const entry = meta.spec[resource];
   const last = args[args.length - 1] ?? '';
-  const resourceFlags = entry
-    ? Object.keys(entry.params).map((p) => `--${p.replace(/_/g, '-')}`)
-    : [];
+  const resourceFlags = entry ? visibleFlags(entry.params) : [];
   return startsWithFilter([...resourceFlags, ...GLOBAL_FLAGS], last);
 }
 

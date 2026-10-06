@@ -99,8 +99,14 @@ appear without reinstalling `cambrian` or publishing another npm version.
   the OpenAPI `chain_id` enums with `npm run check:chains`.
 - New chains need no CLI upgrade. Any chain id the live OpenAPI advertises is
   usable immediately as `cambrian chain-<id> <resource>` (for example
-  `cambrian chain-10 tokens`); curated names such as `arbitrum` are friendly
-  aliases. `cambrian schema chains` lists every supported chain.
+  `cambrian chain-10 tokens`). When the API names the chain (OpenAPI
+  `x-enum-varnames` on `chain_id`, or `/evm/chains` when an API key is set),
+  the CLI also serves it under that name, for example `cambrian monad tokens`.
+  `chain-<id>` stays a valid alias. `cambrian schema chains` lists every
+  supported chain.
+- The chain group selects the chain, so endpoint help does not show
+  `--chain-id`. A conflicting `--chain-id` exits 2 and names the command to
+  use. Endpoint help ends with the other chains that serve the same endpoint.
 - Validated results are cached for 15 minutes. Successful, failed, explicit,
   unknown-resource, and concurrent attempts all share the same per-physical-URL
   request floor. EVM and Solana share a fallback attempt only when both need the
@@ -387,7 +393,7 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | `cambrian base <resource> [--flags]` | Base DeFi data (38 supported resources, `chain_id=8453`) |
 | `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data (`chain_id=1`, 31 resources) |
 | `cambrian arbitrum <resource> [--flags]` | Arbitrum One data (`chain_id=42161`, 27 resources) |
-| `cambrian robinhood <resource> [--flags]` | Robinhood Chain data (`chain_id=4663`, 20 resources) |
+| `cambrian robinhood <resource> [--flags]` | Robinhood Chain data (`chain_id=4663`, 21 resources) |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |

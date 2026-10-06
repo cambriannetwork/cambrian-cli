@@ -13,7 +13,9 @@
  *   - the add-evm-chain skill (agent workflow)
  */
 
-import { EVM_CHAINS, type EvmChain } from './evm-chains.js';
+import { CAMBRIAN_METADATA_GROUPS } from '../metadata.js';
+import { normalizeOpenApiGroup } from '../schema/registry.js';
+import { EVM_CHAINS, discoverEvmChains, type EvmChain } from './evm-chains.js';
 
 interface OpenApiParameter {
   name?: unknown;
@@ -138,7 +140,7 @@ export interface EvmChainAudit {
   discoveredChainIds: number[];
   /** Chain ids from the static registry. */
   registryChainIds: number[];
-  /** Discovered ids with no registry row - these need a new table entry. */
+  /** Discovered ids with no registry row - served under an API name or `chain-<id>`. */
   unregisteredChainIds: number[];
   /** Registry chains the document does not advertise at all. */
   unsupportedChains: EvmChain[];
@@ -150,9 +152,9 @@ export interface EvmChainAudit {
  * Shared audit kernel over an already-extracted path/resource allow-list map.
  *
  * A non-empty `unregisteredChainIds` means the API serves a chain with no
- * curated row. That chain is still reachable at runtime as `chain-<id>` (see
- * discoverEvmChains), so users are not blocked - a curated row only adds a
- * friendly command name. A non-empty `unsupportedChains` means the registry has
+ * curated row. That chain is still reachable at runtime under its API name or
+ * as `chain-<id>` (see discoverEvmChains), so users are not blocked - a
+ * curated row only pins a friendly command name and label. A non-empty `unsupportedChains` means the registry has
  * a curated chain the supplied document does not advertise (usually stale).
  */
 export function auditEvmChainSupport(
@@ -197,4 +199,17 @@ export function auditNormalizedEvmChains(
   chains: readonly EvmChain[] = EVM_CHAINS,
 ): EvmChainAudit {
   return auditEvmChainSupport(normalizedChainSupport(spec), chains);
+}
+
+/**
+ * The command each chain without a curated row gets from a raw OpenAPI
+ * document: its `x-enum-varnames` name when that is a safe token, else
+ * `chain-<id>`. At runtime a cached `/evm/chains` name can also fill the
+ * second case when the user has an API key.
+ */
+export function discoveredEvmCommands(document: unknown): EvmChain[] {
+  const { spec } = normalizeOpenApiGroup('base', document);
+  const curated = new Set(EVM_CHAINS.map((chain) => chain.chainId));
+  return discoverEvmChains({ ...CAMBRIAN_METADATA_GROUPS.base, resources: Object.keys(spec), spec })
+    .filter((chain) => !curated.has(chain.chainId));
 }

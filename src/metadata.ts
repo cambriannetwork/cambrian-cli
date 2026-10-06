@@ -30,6 +30,10 @@ export interface ParamSpec {
   explode?: boolean;
   /** Enables strict validation for normalized authoritative OpenAPI metadata. */
   strict?: boolean;
+  /** Names for the enum values, in order, from the OpenAPI `x-enum-varnames` extension. */
+  enumNames?: string[];
+  /** Set by the command group (for example `chain_id` on `base`): accepted, but not advertised. */
+  hidden?: boolean;
 }
 
 export interface EndpointSpec {
@@ -64,6 +68,8 @@ export interface CambrianMetadataGroup {
   resources: string[];
   spec: GroupSpec;
   cliDefaults: Record<string, Record<string, string>>;
+  /** EVM chain id → chain name from the cached `/evm/chains` response. */
+  chainNames?: Record<string, string>;
 }
 
 const rawSpec = specData as {
