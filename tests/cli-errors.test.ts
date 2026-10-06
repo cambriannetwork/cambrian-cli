@@ -95,6 +95,31 @@ describe('CLI exit codes', () => {
     expect(stdout).toBe('');
     expect(stderr).toContain('Unknown option for cambrian: --not-real');
   });
+
+  it('suggests the closest flag for a single unknown option', async () => {
+    const { code, stderr } = await run(['solana', 'price-current', '--token-addreses', 'SOL', '--offline']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown option for solana price-current: --token-addreses. Did you mean "--token-addresses"?');
+  });
+
+  it('does not guess when more than one option is unknown', async () => {
+    const { code, stderr } = await run(['solana', 'price-current', '--foo-bar', '1', '--baz-qux', '2', '--offline']);
+    expect(code).toBe(2);
+    expect(stderr).toContain('Unknown options for solana price-current: --foo-bar, --baz-qux.');
+    expect(stderr).not.toContain('Did you mean');
+  });
+
+  it.each([
+    [['skill', 'isntall'], 'Unknown skill subcommand: isntall. Did you mean "install"?'],
+    [['config', 'staus'], 'Unknown config subcommand: staus. Did you mean "status"?'],
+    [['schema', 'status', 'solna'], 'Unknown schema group: solna. Did you mean "solana"?'],
+    [['schema', 'refres'], 'Unknown schema subcommand: refres. Did you mean "refresh"?'],
+    [['mcp', 'confg'], 'Unknown mcp subcommand: confg. Did you mean "config"?'],
+  ])('suggests the closest subcommand for %j', async (argv, message) => {
+    const { code, stderr } = await run(argv);
+    expect(code).toBe(2);
+    expect(stderr).toContain(message);
+  });
 });
 
 describe('CLI --json error output', () => {

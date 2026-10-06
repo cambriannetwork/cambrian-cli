@@ -30,7 +30,7 @@ function riskHelp(currentResources: string[]): string {
     ...currentResources.map((r) => `  ${r}`),
     '',
     'Global options:',
-    '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).',
+    '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY, then the stored key).',
     '  --help             Show this help.',
   ].join('\n');
 }

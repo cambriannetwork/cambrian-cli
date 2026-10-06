@@ -5,6 +5,33 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-10-06
+
+### Added
+
+- A single unknown flag gets a suggestion, for example
+  `Unknown option for base tokens: --limt. Did you mean "--limit"?`. The CLI
+  does not guess when more than one flag is unknown.
+- Unknown `skill`, `config`, `schema`, and `mcp` subcommands, and unknown
+  `schema` groups, get the same suggestion.
+
+Ported from public contributor PRs by @Wanbogang
+(cambriannetwork/cambrian-cli#16, #17, #18, #19).
+
+### Fixed
+
+- `--help` now says the API key falls back to `CAMBRIAN_API_KEY`, then the key
+  stored with `cambrian config set-key`. The CLI already used that order.
+- `--max-items` help now says it requires `--all`.
+- `--timeout` help now says that `0` disables the timeout. The CLI already did
+  this.
+
+### Changed
+
+- Dev dependencies updated inside their existing ranges: `@x402/*` 2.28.0,
+  `viem` 2.57.3, `esbuild` 0.28.2, `@types/node` 22.20.x. No runtime
+  dependencies changed.
+
 ## [1.9.0] - 2026-10-06
 
 ### Added

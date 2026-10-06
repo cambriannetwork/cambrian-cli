@@ -5,6 +5,7 @@ import { homedir as defaultHomedir } from 'os';
 import { realpathSync } from 'fs';
 import { pathToFileURL } from 'url';
 import { ApiError } from '../client/index.js';
+import { didYouMean } from './suggest.js';
 
 // Re-export so existing imports of ApiError from this module keep working.
 export { ApiError };
@@ -181,7 +182,11 @@ export function assertNoUnknownOptions(parsed: ParsedArgs, allowed: string[], co
 
   const rendered = unknown.map((name) => `--${name}`).join(', ');
   const noun = unknown.length === 1 ? 'option' : 'options';
-  throw new CliUsageError(`Unknown ${noun} for ${context}: ${rendered}`);
+  // Suggest only for a single typo, so a list of wrong flags is not cluttered with guesses.
+  const suggestion = unknown.length === 1
+    ? didYouMean(`--${unknown[0]}`, allowed.map((name) => `--${name}`))
+    : '';
+  throw new CliUsageError(`Unknown ${noun} for ${context}: ${rendered}.${suggestion}`);
 }
 
 export function assertNoExtraPositionals(

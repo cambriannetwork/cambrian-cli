@@ -26,6 +26,13 @@ describe('CLI help output', () => {
     expect(stdout).toContain('cambrian schema');
   });
 
+  it('documents that --timeout 0 disables the timeout', async () => {
+    for (const argv of [['solana', 'price-current', '--help'], ['pay', '--help']]) {
+      const { stdout } = await captureStdout(argv);
+      expect(stdout).toMatch(/--timeout <ms> .*0 disables it\)\./);
+    }
+  });
+
   it('documents safe config inspection and advanced schema controls precisely', async () => {
     const config = await captureStdout(['config', '--help']);
     expect(config.stdout).toContain('cambrian config status');
@@ -302,5 +309,14 @@ describe('CLI help output', () => {
       toolCount: 2,
       checkedTool: 'cambrian_base_dexes',
     });
+  });
+
+  it('help states the full API key order and that --max-items needs --all', async () => {
+    for (const argv of [['base', '--help'], ['base', 'tokens', '--help'], ['risk', '--help']]) {
+      const { stdout } = await captureStdout(argv);
+      expect(stdout, argv.join(' ')).toContain('falls back to CAMBRIAN_API_KEY, then the stored key');
+    }
+    const { stdout } = await captureStdout(['base', 'tokens', '--help']);
+    expect(stdout).toContain('--max-items <n>   Cap total rows; requires --all');
   });
 });

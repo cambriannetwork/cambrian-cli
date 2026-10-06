@@ -480,7 +480,9 @@ async function handleSkill(parsed: ParsedArgs, runtime: Runtime): Promise<number
       });
       return 0;
     default:
-      throw new CliUsageError(`Unknown skill subcommand: ${resource}`);
+      throw new CliUsageError(
+        `Unknown skill subcommand: ${resource}.${didYouMean(resource ?? '', ['install', 'print', 'targets'])}`,
+      );
   }
 }
 
@@ -535,7 +537,9 @@ async function handleConfig(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
       return 0;
     }
     default:
-      throw new CliUsageError(`Unknown config subcommand: ${sub}. Use status, set-key, get-key, or clear.`);
+      throw new CliUsageError(
+        `Unknown config subcommand: ${sub}.${didYouMean(sub ?? '', ['status', 'set-key', 'get-key', 'clear'])} Use status, set-key, get-key, or clear.`,
+      );
   }
 }
 
@@ -560,8 +564,8 @@ function selectedSchemaGroups(token: string | undefined, runtime: Runtime): Camb
   const group = registryGroupForToken(token, runtime);
   if (!group) {
     const valid = ['solana', ...activeEvmChains(runtime).map((chain) => chain.command), 'deep42', 'risk']
-      .filter((token, index, all) => all.indexOf(token) === index).join(', ');
-    throw new CliUsageError(`Unknown schema group: ${token}. Use ${valid}.`);
+      .filter((token, index, all) => all.indexOf(token) === index);
+    throw new CliUsageError(`Unknown schema group: ${token}.${didYouMean(token, valid)} Use ${valid.join(', ')}.`);
   }
   return [group];
 }
@@ -649,7 +653,7 @@ async function handleSchema(parsed: ParsedArgs, runtime: Runtime): Promise<numbe
   }
 
   throw new CliUsageError(
-    `Unknown schema subcommand: ${subcommand}. Use chains, status, refresh, or clear-cache.`,
+    `Unknown schema subcommand: ${subcommand}.${didYouMean(subcommand ?? '', ['chains', 'status', 'refresh', 'clear-cache'])} Use chains, status, refresh, or clear-cache.`,
   );
 }
 

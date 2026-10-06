@@ -335,11 +335,11 @@ export function buildResourceHelp(
     '  --output <fmt>    Output format: json (default), table, or tsv.',
     '  --fields a,b,c    Project to only these columns/fields (comma-separated).',
     '  --all             Auto-paginate and merge all pages (paginated resources only; not with --limit).',
-    '  --max-items <n>   Cap total rows requested with --all (default 10000).',
-    '  --timeout <ms>    Per-request timeout in milliseconds (default 90000).',
+    '  --max-items <n>   Cap total rows; requires --all (default 10000).',
+    '  --timeout <ms>    Per-request timeout in milliseconds (default 90000; 0 disables it).',
     '  --retries <n>     Retry transient failures (408/429/5xx) with backoff (default 0).',
     '  --offline         Do not refresh endpoint metadata; data requests still require network.',
-    '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY).',
+    '  --api-key <key>   API key (falls back to CAMBRIAN_API_KEY, then the stored key).',
     '',
     ...notes.flatMap((note) => [note, '']),
     `▶ Full docs, field descriptions & examples:  cambrian docs ${groupCommand} ${resource}`,
@@ -516,7 +516,7 @@ export function buildCategorizedHelp(
   lines.push(
     '',
     'Global options:',
-    '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY).',
+    '  --api-key <key>    API key (falls back to CAMBRIAN_API_KEY, then the stored key).',
     '  --offline          Do not refresh endpoint metadata; data requests still require network.',
     '  --help             Show this help.',
   );
