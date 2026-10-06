@@ -2,13 +2,13 @@
 
 > Developer guide. The agent-runtime skill version of this document lives at
 > `.agents/skills/add-evm-chain/SKILL.md` (workspace-local). Keep both in sync.
-> Deterministically add or verify an EVM chain (Base, Ethereum, Arbitrum, or a
-> new `chain_id`) by reading the OpenAPI `chain_id` enums.
+> Deterministically add or verify an EVM chain (Base, Ethereum, Arbitrum,
+> Robinhood, or a new `chain_id`) by reading the OpenAPI `chain_id` enums.
 
 The EVM command surface is **derived from the OpenAPI `chain_id` enum** of each
 operation. There are no per-endpoint chain lists to edit. A chain the live
-schema advertises is usable as `chain-<id>` with no CLI upgrade; a curated row
-(plus a spec refresh) only gives it a friendly name.
+schema advertises is usable with no CLI upgrade, under its API name when one
+exists and always as `chain-<id>`. A curated row only pins the token and label.
 
 ## The Deterministic Source of Truth
 
@@ -43,13 +43,40 @@ cambrian schema chains          # lists it as source: "discovered"
 ```
 
 `discoverEvmChains()` derives this set from the runtime (or bundled) metadata.
-A curated `EVM_CHAINS` row only upgrades `chain-<id>` to a friendlier token and
-label (for example `chain-10` -> `optimism`). Users are never blocked waiting
-for a release.
+Users are never blocked waiting for a release.
 
-If names matter, `GET /evm/chains` returns the canonical `{ id, name }` pairs,
-but that is data (auth required), not schema - so the CLI does not depend on it
-for availability.
+### Chain names - also no upgrade required
+
+A chain with no curated row takes its command token from the API, first match wins:
+
+1. OpenAPI `x-enum-varnames` on `chain_id`, in the same order as `enum`
+   (no key needed, cached with the schema):
+   `{ "enum": [1, 8453, 10143], "x-enum-varnames": ["ethereum", "base", "monad"] }`
+2. `GET /evm/chains` `{ id, name }` rows. That endpoint needs an API key, so the
+   CLI calls it only when a key is set and an advertised id has no other name.
+   It runs at most once per 15 minutes; `cambrian schema refresh base` forces it.
+   The result is cached in `schema-v7/evm-chain-names.json`. Only the CLI reads
+   it, so `cambrian/tools` (the MCP) names chains the same way on every machine.
+   The CLI never fetches names with `--base-url`. A name the refreshed schema
+   drops or renames exits 2 ("not advertised"); it never falls back to Base.
+3. Otherwise `chain-<id>`.
+
+The CLI slugs names (`Arbitrum Nova` -> `arbitrum-nova`). It rejects a name that
+is a top-level command (`solana`, `pay`, ...), a curated token of another chain,
+or that starts with `chain-`; those chains stay `chain-<id>`. `chain-<id>` is
+always an alias, so a later rename never breaks scripts.
+
+The best backend change is option 1. It makes the OpenAPI document the single
+source for both availability and names.
+
+### Pinned `--chain-id`
+
+Each chain group pins `chain_id` (`hidden: true` in the projection). Help,
+completion, and OpenCLI do not show it. The matching value is still accepted.
+A different value exits 2 with the command to use, for example
+`--chain-id 1 does not match "base" (chain 8453). ... Use: cambrian ethereum tokens`.
+Endpoint help ends with `Other chains: replace "base" with ...`, built from the
+chains whose `chain_id` enum includes that endpoint.
 
 ## Step 0 - Audit first (always)
 
@@ -61,7 +88,9 @@ npm run check:chains -- --file src/generated/openapi-params.json   # offline
 ```
 
 If the report shows `NEW CHAIN(S) SERVED BY THE API: <id>`, users can already
-reach it as `chain-<id>`; follow the steps below to add a curated friendly name.
+reach it. The report prints the command each new chain gets (`cambrian <name>`
+or `cambrian chain-<id>`). The audit exits 0 in that case; `--strict` fails it.
+Follow the steps below only to pin a different token or label.
 If it shows `Registry chains absent from this document`, the live document is
 stale or the chain was removed - do not add a row.
 
@@ -83,10 +112,11 @@ curl -s https://api.cambrian.org/evm/openapi.json \
 `{ id, name }` pairs the API serves. **The OpenAPI enum is authoritative for
 which endpoints accept the chain.**
 
-## Step 2 - Add one row to the chain registry (friendly name)
+## Step 2 - Add one row to the chain registry (optional pinned name)
 
-Availability is already automatic via `chain-<id>`; this step is only to give
-the chain a stable, human-friendly command token.
+Availability and the API name are already automatic. This step is only to pin
+a token or label that differs from the API name, or to keep a friendly token
+when the API supplies no name and users have no key.
 
 `src/cli/evm-chains.ts`:
 
@@ -105,7 +135,7 @@ That is the **only** source edit. Everything downstream derives from it:
 
 | Surface            | Derivation |
 |--------------------|------------|
-| command dispatch   | `EVM_CHAINS` -> `KNOWN_COMMANDS`, `DATA_COMMANDS`, switch case |
+| command dispatch   | `EVM_CHAINS` -> `KNOWN_COMMANDS`; API-named chains via `evmChainForToken(token, metadata)` |
 | root/group help    | `supportedEvmChains()` + projected resources |
 | shell completion   | `supportedEvmChains()`, `evmChainForToken()` |
 | `describe opencli` | `projectEvmChain()` per chain |
@@ -229,8 +259,13 @@ addresses (the metadata `required` list tells you which).
 
 ## Anti-Patterns
 
-- Hardcoding a chain list in a handler/help/completion file instead of `EVM_CHAINS`.
+- Hardcoding a chain list in a handler/help/completion file instead of the
+  `evm-chains.ts` registry and `discoverEvmChains()`.
 - Editing `src/generated/openapi-params.json` by hand - always regenerate.
 - Claiming support without `npm run check:chains` passing and a live sweep.
-- Adding a chain id that is not in the live OpenAPI `chain_id` enum.
+- Adding a curated chain id that is not in the live OpenAPI `chain_id` enum.
+- Treating a release as the gate for availability or names: `chain-<id>` and
+  API names already cover new chains; a release only pins a curated name.
+- Writing a chain list by hand in help or docs. Build it from
+  `discoverEvmChains()` / `otherEvmChainsFor()` instead.
 - Skipping `sync-openapi` (runtime works, but the shipped bundle stays stale).
