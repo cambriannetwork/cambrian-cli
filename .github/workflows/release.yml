@@ -11,37 +11,10 @@ permissions:
   id-token: write
 
 jobs:
+  # The full CI workflow, including the MCP contract job, gates the publish.
   verify:
-    name: Build, Test, and Pack
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          registry-url: https://registry.npmjs.org
-
-      - name: Install
-        run: npm ci
-
-      - name: Audit
-        run: npm audit --audit-level=moderate
-
-      - name: Public safety
-        run: npm run check:public
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify package contents
-        run: npm pack --dry-run
+    name: CI
+    uses: ./.github/workflows/ci.yml
 
   publish:
     name: Publish to npm
