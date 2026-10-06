@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -57,3 +58,57 @@ jobs:
           cd "$refresh_dir"
           npx --yes skills@latest add "$GITHUB_REPOSITORY" \
             --skill cambrian --agent codex --copy --yes
+
+  # Installs this CLI build into the public MCP server and runs its gates. cambrian-api-mcp
+  # depends on cambrian with a caret range, so its npm users get every new 1.x release at
+  # install time. A 1.x release must not break it.
+  mcp-contract:
+    name: MCP contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Pack CLI
+        run: npm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Test cambrian-api-mcp with this build
+        run: |
+          git clone --depth 1 https://github.com/cambriannetwork/cambrian-api-mcp.git "$RUNNER_TEMP/mcp"
+          cd "$RUNNER_TEMP/mcp"
+          cli_major="$(node -p "require('$GITHUB_WORKSPACE/package.json').version.split('.')[0]")"
+          mcp_major="$(node -p "require('./package.json').dependencies.cambrian.replace(/^\\D*/, '').split('.')[0]")"
+          if [ "$cli_major" != "$mcp_major" ]; then
+            echo "::notice::cambrian-api-mcp depends on cambrian $mcp_major.x; this build is $cli_major.x. Skipping."
+            exit 0
+          fi
+          npm ci
+          npm install --no-save --no-audit "$RUNNER_TEMP"/cambrian-*.tgz
+          npx tsc --noEmit
+          npm test
+          npm run build
+          node --input-type=module <<'NODE'
+          const s = await import('./dist/server.js');
+          const { CAMBRIAN_METADATA_GROUPS } = await import('cambrian/metadata');
+          const { listCambrianCliTools } = await import('cambrian/tools');
+          const names = s.listMcpTools().map(tool => tool.name);
+          const expected = listCambrianCliTools(CAMBRIAN_METADATA_GROUPS).map(tool => tool.name);
+          if (new Set(names).size !== names.length ||
+              names.includes('cambrian_health') ||
+              !names.includes('cambrian_docs') ||
+              !expected.every(name => names.includes(name))) {
+            throw new Error('Unexpected MCP tool inventory');
+          }
+          const { readFileSync } = await import('node:fs');
+          const cambrian = JSON.parse(readFileSync('node_modules/cambrian/package.json', 'utf8')).version;
+          console.log(JSON.stringify({ cambrian, mcpTools: names.length, cliTools: expected.length }));
+          NODE
