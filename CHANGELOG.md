@@ -5,6 +5,32 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-08
+
+### Added
+
+- `cambrian bnb` selects BNB Smart Chain (`chain_id=56`). It serves the 20
+  resources the production OpenAPI advertises for the chain: Uniswap, Sushi,
+  and Pancake V3 pools, Aave V3 and Euler lending, prices, tokens, and TVL.
+  `cambrian pay bnb ...` also works. `cambrian chain-56` stays an alias.
+  Before this release, BNB was `chain-56`, or `bnb` only with an API key after
+  the cached `/evm/chains` names refreshed. Now it is `bnb` for every user and
+  for `cambrian/tools` consumers such as the MCP.
+
+### Changed
+
+- The bundled OpenAPI snapshot matches production. Users of 1.9.x already got
+  these changes from the runtime registry:
+  - New `lending-fluid-borrow` and `lending-fluid-lend` on Base, Ethereum, and
+    Arbitrum.
+  - Robinhood Chain gains Uniswap, Sushi, and Pancake V3 pool resources and
+    loses the Euler lending resources.
+  - `lending-euler-markets` and `lending-morpho-markets` take `--market-id`.
+    `--protocol-id` is removed from several Euler and Morpho resources.
+  - `deep42 social-data/influencer-credibility` no longer accepts
+    `--min-accuracy-30d`, `--min-signals`, `--min-unique-tokens`, or
+    `--track-record-required`.
+
 ## [1.9.1] - 2026-10-06
 
 ### Added

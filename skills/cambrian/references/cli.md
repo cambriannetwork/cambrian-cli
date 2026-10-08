@@ -345,7 +345,7 @@ Meaning:
 ## Base Commands
 
 `cambrian base` is pinned to `chain_id=8453`, even though the EVM schema also
-supports Ethereum, Arbitrum, and Robinhood. Base is the only group that also exposes
+supports Ethereum, Arbitrum, Robinhood, and BNB Smart Chain. Base is the only group that also exposes
 chain-neutral discovery operations such as `chains`. Do not use `cambrian evm`
 as a CLI group.
 
@@ -474,8 +474,8 @@ cambrian docs chain-10 --offline
 ```
 
 - `chain-<id>` is validated against the active schema; an unadvertised id exits 2.
-- `base`, `ethereum`, `arbitrum`, and `robinhood` are curated friendly names for
-  `8453`, `1`, `42161`, and `4663`.
+- `base`, `ethereum`, `arbitrum`, `robinhood`, and `bnb` are curated friendly
+  names for `8453`, `1`, `42161`, `4663`, and `56`.
 - When the API names a new chain, the CLI also serves it under that name (for
   example `cambrian monad tokens`). `cambrian schema chains` shows the
   `command` and its `chain-<id>` `alias`. Both always work.
@@ -520,7 +520,7 @@ Meaning:
 ## Robinhood Chain Commands
 
 `cambrian robinhood` selects Robinhood Chain with `chain_id=4663`. The
-production OpenAPI advertises 20 resources for this chain. Check
+production OpenAPI advertises 21 resources for this chain. Check
 `cambrian robinhood --help` for the active resource list.
 
 ```bash
@@ -530,6 +530,26 @@ cambrian robinhood lending-protocols
 ```
 
 The CLI supplies `chain_id=4663` and rejects a conflicting chain flag.
+
+## BNB Smart Chain Commands
+
+`cambrian bnb` selects BNB Smart Chain with `chain_id=56`. The production
+OpenAPI advertises 20 resources for this chain: Uniswap/Sushi/Pancake V3 pools,
+Aave V3 and Euler lending, prices, tokens, and TVL. It has no Morpho, Fluid,
+Aerodrome, or OHLCV resources. Check `cambrian bnb --help` for the active list.
+
+```bash
+cambrian bnb dexes
+cambrian bnb tokens --limit 20
+cambrian bnb price-current --token-address 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+cambrian bnb pancake-v3-pools --limit 20
+cambrian bnb lending-overview
+cambrian bnb lending-aave-v3-pools
+cambrian bnb lending-euler-markets
+```
+
+The CLI supplies `chain_id=56` and rejects a conflicting chain flag.
+`cambrian chain-56` is an alias for `cambrian bnb`.
 
 ## Deep42 Commands
 

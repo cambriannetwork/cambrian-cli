@@ -9,6 +9,7 @@ DeFi data, social intelligence, and perpetual risk analysis for agents across So
 - `cambrian ethereum <resource> [--flags]` -- Ethereum mainnet endpoints
 - `cambrian arbitrum <resource> [--flags]` -- Arbitrum One endpoints
 - `cambrian robinhood <resource> [--flags]` -- Robinhood Chain endpoints
+- `cambrian bnb <resource> [--flags]` -- BNB Smart Chain endpoints
 - `cambrian deep42 <resource> [--flags]` -- social intelligence endpoints
 - `cambrian risk <resource> [--flags]` -- perp risk endpoint
 - `cambrian pay <group> <resource> [--flags]` -- pay-per-call via x402 (Base USDC, no API key)
@@ -93,7 +94,7 @@ appear without reinstalling `cambrian` or publishing another npm version.
   unavailable; primary and fallback schemas are never merged.
 - The EVM registry is projected by chain: `base` is pinned to
   `chain_id=8453`, `ethereum` to `chain_id=1`, `arbitrum` to `chain_id=42161`,
-  and `robinhood` to `chain_id=4663`.
+  `robinhood` to `chain_id=4663`, and `bnb` to `chain_id=56`.
   Each group lists only the operations that support its chain. Chains are
   table-driven from `EVM_CHAINS` in `src/cli/evm-chains.ts` and audited against
   the OpenAPI `chain_id` enums with `npm run check:chains`.
@@ -139,9 +140,9 @@ atomic writes also clean up their temporary files on a best-effort basis.
 
 ```bash
 cambrian schema chains
-cambrian schema status [solana|base|ethereum|arbitrum|robinhood|deep42|risk]
-cambrian schema refresh [solana|base|ethereum|arbitrum|robinhood|deep42|risk]
-cambrian schema clear-cache [solana|base|ethereum|arbitrum|robinhood|deep42|risk]
+cambrian schema status [solana|base|ethereum|arbitrum|robinhood|bnb|deep42|risk]
+cambrian schema refresh [solana|base|ethereum|arbitrum|robinhood|bnb|deep42|risk]
+cambrian schema clear-cache [solana|base|ethereum|arbitrum|robinhood|bnb|deep42|risk]
 
 # Never refresh metadata for this invocation:
 cambrian solana latest-block --offline
@@ -276,6 +277,7 @@ Execution best practice after setup:
 | Ethereum mainnet data | `ethereum tokens` when `ethereum` is advertised | another listed `ethereum` resource |
 | Arbitrum One data | `arbitrum tokens` | `arbitrum price-current`, `arbitrum lending-overview` |
 | Robinhood Chain data | `robinhood tokens` | `robinhood price-current`, `robinhood lending-overview` |
+| BNB Smart Chain data | `bnb tokens` | `bnb price-current`, `bnb lending-overview` |
 | social sentiment or trending | `deep42 social-data/sentiment-shifts` | `deep42 social-data/alpha-tweet-detection` |
 | influencer credibility | `deep42 social-data/influencer-credibility` | `deep42 social-data/alpha-tweet-detection` |
 | alpha tweet detection | `deep42 social-data/alpha-tweet-detection` | `deep42 social-data/influencer-credibility` |
@@ -284,7 +286,7 @@ Execution best practice after setup:
 Routing rules that matter:
 
 - do not route Solana questions to `base` or vice versa
-- use `base`, `ethereum`, `arbitrum`, or `robinhood` for the matching EVM chain; do not use `evm` as a CLI group
+- use `base`, `ethereum`, `arbitrum`, `robinhood`, or `bnb` for the matching EVM chain; do not use `evm` as a CLI group
 - do not pass Base addresses to Solana endpoints or Solana mint addresses to Base endpoints
 - do not guess pool or token addresses; ask the user if missing
 - do not conflate Aerodrome v2 (classic AMM) with v3 (concentrated liquidity)
@@ -335,6 +337,11 @@ cambrian arbitrum uniswap-v3-pools --limit 20
 cambrian robinhood tokens --limit 20
 cambrian robinhood lending-overview
 
+# BNB Smart Chain
+cambrian bnb tokens --limit 20
+cambrian bnb price-current --token-address 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+cambrian bnb pancake-v3-pools --limit 20
+
 # Deep42
 cambrian deep42 social-data/alpha-tweet-detection --limit 10
 cambrian deep42 social-data/alpha-tweet-detection --token-filter SOL --limit 5
@@ -362,7 +369,7 @@ cambrian describe opencli
 ## Global Flags
 
 These apply to every data command (`solana` / `base` / `ethereum` /
-`arbitrum` / `robinhood` / `deep42` / `risk`). The
+`arbitrum` / `robinhood` / `bnb` / `deep42` / `risk`). The
 default output is unchanged (pretty JSON), so all flags are opt-in.
 
 | Flag | Effect |
@@ -390,10 +397,11 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 | Command | Description |
 | --- | --- |
 | `cambrian solana <resource> [--flags]` | Solana DeFi data (35 endpoints) |
-| `cambrian base <resource> [--flags]` | Base DeFi data (38 supported resources, `chain_id=8453`) |
-| `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data (`chain_id=1`, 31 resources) |
-| `cambrian arbitrum <resource> [--flags]` | Arbitrum One data (`chain_id=42161`, 27 resources) |
+| `cambrian base <resource> [--flags]` | Base DeFi data (40 supported resources, `chain_id=8453`) |
+| `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data (`chain_id=1`, 33 resources) |
+| `cambrian arbitrum <resource> [--flags]` | Arbitrum One data (`chain_id=42161`, 29 resources) |
 | `cambrian robinhood <resource> [--flags]` | Robinhood Chain data (`chain_id=4663`, 21 resources) |
+| `cambrian bnb <resource> [--flags]` | BNB Smart Chain data (`chain_id=56`, 20 resources) |
 | `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
 | `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |

@@ -6,6 +6,8 @@ import {
   ARBITRUM_CHAIN_ID,
   BASE_CHAIN,
   BASE_CHAIN_ID,
+  BNB_CHAIN,
+  BNB_CHAIN_ID,
   DEFAULT_EVM_CHAIN,
   ETHEREUM_CHAIN,
   ETHEREUM_CHAIN_ID,
@@ -137,12 +139,30 @@ describe('EVM chain registry', () => {
       .toMatchObject({ default: 4663, min: 4663, max: 4663 });
   });
 
+  it('names BNB Smart Chain and exposes only its advertised operations', () => {
+    expect(BNB_CHAIN).toMatchObject({ command: 'bnb', chainId: 56, label: 'BNB Smart Chain' });
+    expect(BNB_CHAIN.chainId).toBe(BNB_CHAIN_ID);
+
+    const source = metadata({
+      chains: endpoint(),
+      tokens: endpoint([1, 8453, 42161, 4663, 56]),
+      'lending-morpho-markets': endpoint([1, 8453, 42161, 4663]),
+    });
+    expect(projectEvmChain(source, BNB_CHAIN).resources).toEqual(['tokens']);
+    expect(projectEvmChain(source, BNB_CHAIN).spec.tokens.params.chain_id)
+      .toMatchObject({ default: 56, min: 56, max: 56 });
+    // The curated row wins over the synthetic token, with or without metadata.
+    expect(evmChainForToken('chain-56')).toBe(BNB_CHAIN);
+    expect(discoverEvmChains(source).map((chain) => chain.command)).toContain('bnb');
+    expect(discoverEvmChains(source).map((chain) => chain.command)).not.toContain('chain-56');
+  });
+
   it('exposes the named EVM chains with stable ids', () => {
     expect(BASE_CHAIN).toMatchObject({ command: 'base', chainId: 8453 });
     expect(ETHEREUM_CHAIN).toMatchObject({ command: 'ethereum', chainId: 1 });
     expect(ARBITRUM_CHAIN).toMatchObject({ command: 'arbitrum', chainId: 42161 });
     expect(ARBITRUM_CHAIN.chainId).toBe(ARBITRUM_CHAIN_ID);
-    expect(EVM_CHAINS.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum', 'robinhood']);
+    expect(EVM_CHAINS.map((chain) => chain.command)).toEqual(['base', 'ethereum', 'arbitrum', 'robinhood', 'bnb']);
     expect(DEFAULT_EVM_CHAIN.command).toBe('base');
   });
 
@@ -151,6 +171,7 @@ describe('EVM chain registry', () => {
     expect(evmChainIdForToken('ethereum')).toBe(1);
     expect(evmChainIdForToken('arbitrum')).toBe(42161);
     expect(evmChainIdForToken('robinhood')).toBe(4663);
+    expect(evmChainIdForToken('bnb')).toBe(56);
     expect(evmChainIdForToken('evm')).toBe(8453);
     expect(evmChainForToken('evm')).toBe(BASE_CHAIN);
     expect(evmChainForToken('solana')).toBeUndefined();

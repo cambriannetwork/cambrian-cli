@@ -233,12 +233,12 @@ describe('shared Cambrian metadata registry', () => {
 
   it('bundles all Base endpoints visible under the current llms.txt policy', () => {
     const base = CAMBRIAN_METADATA_GROUPS.base.resources;
-    expect(base).toHaveLength(40);
+    expect(base).toHaveLength(42);
     expect(base).not.toContain('aero-v2-provider-positions');
     expect(base).not.toContain('aero-v2-providers');
     expect(base).toContain('chains');
     expect(base).toContain('lending-protocols');
-    expect(base.filter((resource) => resource.startsWith('lending-'))).toHaveLength(17);
+    expect(base.filter((resource) => resource.startsWith('lending-'))).toHaveLength(19);
   });
 
   it('bundles Arbitrum (42161) support on every endpoint the API advertises for it', () => {
@@ -258,6 +258,7 @@ describe('shared Cambrian metadata registry', () => {
       'dexes',
       'lending-aave-v3-pools', 'lending-euler-curator-vaults', 'lending-euler-curators',
       'lending-euler-markets', 'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
+      'lending-fluid-borrow', 'lending-fluid-lend',
       'lending-morpho-curator-vaults', 'lending-morpho-curators', 'lending-morpho-markets',
       'lending-morpho-v1-vault-markets', 'lending-morpho-v1-vaults',
       'lending-morpho-v2-vault-markets', 'lending-morpho-v2-vaults',
@@ -269,7 +270,7 @@ describe('shared Cambrian metadata registry', () => {
     expect(arbResources).not.toContain('chains');
   });
 
-  it('bundles only the 20 Robinhood resources advertised by production', () => {
+  it('bundles only the 21 Robinhood resources advertised by production', () => {
     const robinhoodResources = Object.entries(spec.evm)
       .filter(([, entry]) => {
         const chain = entry.params.chain_id as (ParamInfo & { numericEnum?: number[]; min?: number; max?: number }) | undefined;
@@ -280,16 +281,36 @@ describe('shared Cambrian metadata registry', () => {
 
     expect(robinhoodResources).toEqual([
       'dexes',
-      'lending-euler-curator-vaults', 'lending-euler-curators', 'lending-euler-markets',
-      'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
       'lending-morpho-curator-vaults', 'lending-morpho-curators', 'lending-morpho-markets',
       'lending-morpho-v1-vault-markets', 'lending-morpho-v1-vaults',
       'lending-morpho-v2-vault-markets', 'lending-morpho-v2-vaults',
-      'lending-overview', 'lending-protocols', 'price-current', 'price-hour',
-      'tokens', 'tvl-status', 'tvl-top-owners',
+      'lending-overview', 'lending-protocols', 'pancake-v3-pool', 'pancake-v3-pools',
+      'price-current', 'price-hour', 'sushi-v3-pool', 'sushi-v3-pools',
+      'tokens', 'tvl-status', 'tvl-top-owners', 'uniswap-v3-pool', 'uniswap-v3-pools',
     ]);
     expect(robinhoodResources).not.toContain('ohlcv-token');
-    expect(robinhoodResources).not.toContain('uniswap-v3-pools');
+    expect(robinhoodResources).not.toContain('lending-euler-markets');
+  });
+
+  it('bundles only the 20 BNB Smart Chain (56) resources advertised by production', () => {
+    const bnbResources = Object.entries(spec.evm)
+      .filter(([, entry]) => {
+        const chain = entry.params.chain_id as (ParamInfo & { numericEnum?: number[]; min?: number; max?: number }) | undefined;
+        return chain?.numericEnum?.includes(56) === true || (chain?.min === 56 && chain.max === 56);
+      })
+      .map(([resource]) => resource)
+      .sort();
+
+    expect(bnbResources).toEqual([
+      'dexes',
+      'lending-aave-v3-pools', 'lending-euler-curator-vaults', 'lending-euler-curators',
+      'lending-euler-markets', 'lending-euler-v2-vault-markets', 'lending-euler-v2-vaults',
+      'lending-overview', 'lending-protocols', 'pancake-v3-pool', 'pancake-v3-pools',
+      'price-current', 'price-hour', 'sushi-v3-pool', 'sushi-v3-pools',
+      'tokens', 'tvl-status', 'tvl-top-owners', 'uniswap-v3-pool', 'uniswap-v3-pools',
+    ]);
+    expect(bnbResources).not.toContain('lending-morpho-markets');
+    expect(bnbResources).not.toContain('ohlcv-token');
   });
 
   it('bundles the current token-analysis OpenAPI contract', () => {

@@ -649,15 +649,17 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(payConflict.stderr).toContain('--chain-id must be at least 8453');
   });
 
-  it('projects named EVM chains including Robinhood while preserving Base and evm', async () => {
+  it('projects named EVM chains including Robinhood and BNB while preserving Base and evm', async () => {
     const root = cacheRoot();
     const requests: string[] = [];
-    const fetch = routedEvmFetch([1, 8453, 42161, 4663], requests);
+    const fetch = routedEvmFetch([1, 8453, 42161, 4663, 56], requests);
 
     const help = await run(['--help'], fetch, root);
     expect(help.stdout).toContain('cambrian ethereum');
     expect(help.stdout).toContain('cambrian arbitrum');
     expect(help.stdout).toContain('cambrian robinhood');
+    expect(help.stdout).toContain('cambrian bnb');
+    expect(help.stdout).not.toContain('cambrian chain-56');
 
     const arbitrumHelp = await run(['arbitrum', '--help'], fetch, root);
     expect(arbitrumHelp.stdout).toContain('tokens');
@@ -669,6 +671,7 @@ describe('runtime endpoint discovery through the CLI', () => {
     expect(arbitrumResources.stdout).toContain('tokens');
     expect(arbitrumResources.stdout).not.toContain('aero-v2-pools');
     expect((await run(['__complete', 'rob'], fetch, root)).stdout.trim()).toBe('robinhood');
+    expect((await run(['__complete', 'bn'], fetch, root)).stdout.trim()).toBe('bnb');
 
     const opencli = await run(['describe', 'opencli', '--offline'], fetch, root);
     const document = JSON.parse(opencli.stdout);
@@ -701,17 +704,19 @@ describe('runtime endpoint discovery through the CLI', () => {
     const chains = await run(['schema', 'chains'], fetch, root);
     const chainReport = JSON.parse(chains.stdout);
     expect(chainReport.chains.map((chain: { command: string }) => chain.command))
-      .toEqual(['base', 'ethereum', 'arbitrum', 'robinhood']);
+      .toEqual(['base', 'ethereum', 'arbitrum', 'robinhood', 'bnb']);
     expect(chainReport.chains.every((chain: { supported: boolean }) => chain.supported)).toBe(true);
     expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'arbitrum'))
       .toMatchObject({ chainId: 42161, label: 'Arbitrum One' });
     expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'robinhood'))
       .toMatchObject({ chainId: 4663, label: 'Robinhood Chain' });
+    expect(chainReport.chains.find((chain: { command: string }) => chain.command === 'bnb'))
+      .toMatchObject({ chainId: 56, label: 'BNB Smart Chain' });
 
     const typo = await run(['arbitrumm'], fetch, root);
     expect(typo.stderr).toContain('Did you mean "arbitrum"');
 
-    for (const [command, chainId] of [['robinhood', 4663], ['arbitrum', 42161], ['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
+    for (const [command, chainId] of [['bnb', 56], ['chain-56', 56], ['robinhood', 4663], ['arbitrum', 42161], ['ethereum', 1], ['base', 8453], ['evm', 8453]] as const) {
       const result = await run([command, 'tokens', '--limit', '1', '--json'], fetch, root);
       expect(result.code).toBe(0);
       expect(requests.at(-1)).toContain(`chain_id=${chainId}`);
