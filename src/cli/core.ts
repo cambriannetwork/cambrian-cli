@@ -79,7 +79,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
 
     if (token.startsWith('--')) {
-      const [rawName, inlineValue] = token.slice(2).split('=', 2);
+      // Split at the first '=' only: an inline value may itself contain '='
+      // (a URL query string, base64 padding), and split('=', 2) would drop the rest.
+      const body = token.slice(2);
+      const eq = body.indexOf('=');
+      const rawName = eq === -1 ? body : body.slice(0, eq);
+      const inlineValue = eq === -1 ? undefined : body.slice(eq + 1);
       const name = rawName.trim();
       if (name.length === 0) {
         throw new Error('Invalid empty option name.');

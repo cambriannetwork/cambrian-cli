@@ -5,6 +5,11 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- An inline `--flag=value` keeps every `=` after the first. `--url=https://host/mcp?a=b`
+  used to become `https://host/mcp?a`, and `--filter=a=b` was sent as `filter=a`.
+
 ## [1.10.0] - 2026-10-08
 
 ### Added
