@@ -36,6 +36,6 @@ export class CambrianData {
 // Re-export everything consumers need
 export { ApiError, mapStatusToCode, isRetryableStatus, DEFAULT_TIMEOUT_MS } from './base-client.js';
 export { OpabiniaClient } from './opabinia.js';
-export { Deep42Client } from './deep42.js';
+export { Deep42Client, deep42AcceptHeader, type Deep42QueryOptions } from './deep42.js';
 export { RiskClient } from './risk.js';
 export type * from './types.js';

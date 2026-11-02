@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { GroupSpec } from '../src/metadata.js';
@@ -570,6 +570,43 @@ describe('runtime registry cache and fallback', () => {
     expect(result.status.lastError).toBeUndefined();
     expect(result.metadata.resources).toContain('social-data/new-signal');
   });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0).each([
+    ['', false],
+    [' and holds a stale lock', true],
+  ])(
+    'refreshes live when the existing cache directory is read-only%s',
+    async (_label, staleLock) => {
+      const cacheRoot = temporaryCacheRoot();
+      const runtime = testRuntime(schemaFetch(deep42Document()), cacheRoot);
+      const registryDir = dirname(registryCachePath(runtime, 'deep42'));
+      mkdirSync(registryDir, { recursive: true });
+      if (staleLock) {
+        const lockPath = join(registryDir, 'deep42-primary.attempt.json.lock');
+        writeFileSync(lockPath, '1\n');
+        utimesSync(lockPath, 0, 0);
+      }
+      chmodSync(registryDir, 0o555);
+      try {
+        const result = await loadRuntimeMetadataGroup('deep42', runtime, { refresh: true, now: 1_000 });
+
+        expect(result.status.source).toBe('live');
+        expect(result.status.warning).toContain('could not persist registry cache');
+        expect(result.metadata.resources).toContain('social-data/new-signal');
+
+        // A long-running process keeps the live registry during the cooldown.
+        const noFetch = (async () => {
+          throw new Error('must not refetch during the cooldown');
+        }) as typeof globalThis.fetch;
+        const again = await loadRuntimeMetadataGroup('deep42', testRuntime(noFetch, cacheRoot), { now: 2_000 });
+        expect(again.status.source).toBe('cache');
+        expect(again.status.lastError).toBeUndefined();
+        expect(again.metadata.resources).toContain('social-data/new-signal');
+      } finally {
+        chmodSync(registryDir, 0o755);
+      }
+    },
+  );
 
   it('removes its atomic temporary file when the final cache rename fails', async () => {
     const cacheRoot = temporaryCacheRoot();

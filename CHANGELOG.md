@@ -3,7 +3,57 @@
 All notable changes to the `cambrian` CLI are documented here. This project
 follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
-## [Unreleased]
+## [1.11.0] - 2026-11-02
+
+### Added
+
+- `cambrian deep42 <resource> --api-version <version>` uses one API version of
+  a Deep42 endpoint. The CLI sends that version's Accept header and reads that
+  version's schema, so the options match it. For example, `--api-version 4.1.0`
+  makes `--handle`, `--include-calls`, and `--offset` available on
+  `social-data/influencer-credibility` before 4.1.0 becomes the default.
+  Without `--api-version`, requests do not change: the API answers with its
+  default version.
+- `cambrian deep42 <resource> --help` lists the default API version, each
+  queued version with the date it becomes the default, and the earlier
+  versions.
+- An "Unknown option" error on a Deep42 resource with several versions says
+  that another version can offer the option.
+- `client.deep42.query()` takes `{ apiVersion }` as a fourth argument, and
+  `deep42AcceptHeader()` is exported.
+
+### Changed
+
+- The schema cache moves to `schema-v8`, because cached Deep42 schemas now keep
+  the version list. The first run after the upgrade fetches the schemas again
+  (about one second). Until then, `--offline` uses the bundled snapshot.
+  `schema clear-cache` does not remove the old `schema-v7` folder.
+- `--help` for a Deep42 resource with several versions ends with the version
+  list, and its "Unknown option" error has one more sentence. The error code
+  and exit status do not change.
+- `--api-version` reads the version's schema from the production API, even
+  with `--base-url`.
+- The bundled Deep42 snapshot matches production. Users of 1.10.0 already
+  got these changes from the runtime registry:
+  - `social-data/influencer-credibility --sort-by` lists only the values the
+    default version accepts: `influence` and `credibility` were rejected by
+    the API with HTTP 400.
+  - `--limit` on the social-data resources goes up to 300.
+  - Each Deep42 resource carries its version list, so help shows it offline.
+- `cambrian pay` is tested with x402 SDK 2.29.0 (zod 4). That is the version
+  that `npm install -g @x402/core @x402/fetch @x402/evm viem` installs now.
+- The skill reference shows `chain-<id>` with `chain-56`, which works now.
+  The old `chain-10` examples exited 2 because no API serves chain 10.
+
+### Fixed
+
+- `cambrian schema refresh` no longer reports success with the bundled schema
+  when the cache directory exists but is read-only, also when it holds a stale
+  lock file. The refresh now runs live, and `warning` says that the cache could
+  not be saved. Only a lock that another process holds now skips the refresh.
+- A long-running process with an unwritable cache, such as a local MCP server,
+  keeps the live schema for the 15-minute cooldown. Before, it went back to the
+  bundled schema after the first refresh.
 
 ## [1.10.0] - 2026-10-08
 

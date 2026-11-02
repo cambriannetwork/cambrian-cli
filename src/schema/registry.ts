@@ -2,6 +2,7 @@ import {
   CAMBRIAN_METADATA_GROUPS,
   type CambrianGroup,
   type CambrianMetadataGroup,
+  type EndpointVersion,
   type GroupSpec,
   type ParamSpec,
 } from '../metadata.js';
@@ -23,7 +24,8 @@ const SUPPORTED_PARAM_TYPES = new Set(['string', 'integer', 'number', 'boolean',
 export const MIN_LLMS_ENDPOINTS = 5;
 // 7: ParamSpec.enumNames (OpenAPI x-enum-varnames). A separate directory keeps an
 // older CLI from overwriting the cache with specs that drop the names.
-export const REGISTRY_CACHE_VERSION = 7;
+// 8: EndpointSpec.versions (OpenAPI x-available-versions), for the same reason.
+export const REGISTRY_CACHE_VERSION = 8;
 export const REGISTRY_TTL_MS = 15 * 60 * 1000;
 export const REGISTRY_FETCH_TIMEOUT_MS = 5_000;
 const MAX_SCHEMA_BYTES = 5 * 1024 * 1024;
@@ -451,6 +453,24 @@ function parameterIdentity(value: unknown): string | null {
  * command profile. It never follows `servers`, references, bodies, or
  * cross-service proxy routes.
  */
+const API_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+
+function endpointVersions(operation: JsonObject): EndpointVersion[] | undefined {
+  const available = operation['x-available-versions'];
+  if (!isObject(available) || !Array.isArray(available.versions)) return undefined;
+  const versions = available.versions.flatMap((item): EndpointVersion[] =>
+    isObject(item) && typeof item.version === 'string' && API_VERSION_PATTERN.test(item.version)
+      ? [{
+          version: item.version,
+          isDefault: item.is_default === true,
+          ...(typeof item.becomes_default_at === 'string'
+            ? { becomesDefaultAt: item.becomes_default_at }
+            : {}),
+        }]
+      : []);
+  return versions.length > 0 ? versions : undefined;
+}
+
 export function normalizeOpenApiGroup(group: CambrianGroup, document: unknown): NormalizedOpenApiGroup {
   const spec: GroupSpec = {};
   const rejected: RegistryRejection[] = [];
@@ -558,7 +578,8 @@ export function normalizeOpenApiGroup(group: CambrianGroup, document: unknown): 
         continue;
       }
       resourcePaths.set(resource, path);
-      spec[resource] = { apiPath: path, method: 'GET', params };
+      const versions = endpointVersions(rawOperation);
+      spec[resource] = { apiPath: path, method: 'GET', params, ...(versions ? { versions } : {}) };
     }
   }
   return { spec, rejected };
@@ -655,6 +676,9 @@ function cacheBaseDir(runtime: Runtime): string {
 }
 
 const sourceAttempts = new Map<string, SourceAttempt>();
+// Keeps a live refresh for the life of the process (for example a local MCP)
+// when the cache directory is read-only, instead of reverting to the bundle.
+const sourceRegistryEntries = new Map<string, RegistryCacheEntry>();
 interface SourceRefreshOutcome {
   entries: Map<CambrianGroup, RegistryCacheEntry>;
   fetched: boolean;
@@ -731,13 +755,20 @@ function claimSourceAttempt(runtime: Runtime, source: OpenApiSource, now: number
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     try {
       writeFileSync(lockPath, `${process.pid}\n`, { flag: 'wx', mode: 0o600 });
-    } catch {
+    } catch (error) {
+      // Only an existing lock means another process is refreshing. A blocked
+      // cache directory falls through to the in-process attempt below.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       try {
         if (Date.now() - statSync(lockPath).mtimeMs <= REGISTRY_FETCH_TIMEOUT_MS * 2) return false;
         rmSync(lockPath, { force: true });
         writeFileSync(lockPath, `${process.pid}\n`, { flag: 'wx', mode: 0o600 });
-      } catch {
-        return false;
+      } catch (retryError) {
+        // A lock that vanished or was retaken is contention; a stale lock we
+        // cannot remove is a blocked cache directory.
+        const code = (retryError as NodeJS.ErrnoException).code;
+        if (code === 'EEXIST' || code === 'ENOENT') return false;
+        throw retryError;
       }
     }
 
@@ -938,11 +969,8 @@ function readSourceRegistryCache(
   source: OpenApiSource,
   group: CambrianGroup,
 ): RegistryCacheEntry | null {
-  return readRegistryCacheFile(
-    sourceRegistryCachePath(runtime, source, group),
-    group,
-    source.url,
-  );
+  const path = sourceRegistryCachePath(runtime, source, group);
+  return newestCache(readRegistryCacheFile(path, group, source.url), sourceRegistryEntries.get(path));
 }
 
 function writeRegistryCacheFile(path: string, entry: RegistryCacheEntry): void {
@@ -970,7 +998,9 @@ function writeSourceRegistryCache(
   source: OpenApiSource,
   entry: RegistryCacheEntry,
 ): void {
-  writeRegistryCacheFile(sourceRegistryCachePath(runtime, source, entry.group), entry);
+  const path = sourceRegistryCachePath(runtime, source, entry.group);
+  sourceRegistryEntries.set(path, entry);
+  writeRegistryCacheFile(path, entry);
 }
 
 export function clearRegistryCache(runtime: Runtime, group?: CambrianGroup): number {
@@ -984,7 +1014,8 @@ export function clearRegistryCache(runtime: Runtime, group?: CambrianGroup): num
       .filter((source): source is OpenApiSource => source !== undefined);
     for (const source of sources) {
       const sourcePath = sourceRegistryCachePath(runtime, source, current);
-      found ||= existsSync(sourcePath);
+      found ||= existsSync(sourcePath) || sourceRegistryEntries.has(sourcePath);
+      sourceRegistryEntries.delete(sourcePath);
       rmSync(sourcePath, { force: true });
     }
     if (current === 'base') {
@@ -1616,4 +1647,29 @@ export function loadCachedMetadataGroup(
     readSourceRegistryCache(runtime, primary, group) ??
     (fallback ? readSourceRegistryCache(runtime, fallback, group) : null);
   return withActualCachePath(runtime, statusFor(group, cache ? 'cache' : 'bundle', now, cache));
+}
+
+/**
+ * Fetches the schema of one API version (`openapi.json?version=4.1.0`), which
+ * lists only the operations that offer that version, with that version's
+ * parameters. Returns null when no endpoint offers the version. It is not
+ * cached: a versioned request needs the network anyway.
+ */
+export async function loadVersionedGroupSpec(
+  group: CambrianGroup,
+  version: string,
+  runtime: Runtime,
+): Promise<GroupSpec | null> {
+  if (!API_VERSION_PATTERN.test(version)) throw new Error(`Invalid API version: ${version}`);
+  const url = `${OPENAPI_PRIMARY_SOURCES[group].url}?version=${version}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS);
+  try {
+    const response = await runtime.fetch(url, { redirect: 'error', signal: controller.signal });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+    return normalizeOpenApiGroup(group, JSON.parse(await readLimitedResponseText(response, url))).spec;
+  } finally {
+    clearTimeout(timer);
+  }
 }

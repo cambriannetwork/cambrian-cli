@@ -12,6 +12,21 @@ export interface Deep42EndpointInfo {
   parameters: { name: string; required: boolean; schema?: { type?: string; enum?: string[] } }[];
 }
 
+/**
+ * Accept header that selects one API version of a Deep42 endpoint, for example
+ * `application/vnd.cambrian.deep42.social-data.influencer-credibility.v4.1.0+json`.
+ */
+export function deep42AcceptHeader(apiPath: string, version: string): string {
+  const endpoint = apiPath.split('?')[0]
+    .replace(/^\/api\/v1\//, '').replace(/^\/|\/$/g, '').replace(/\//g, '.');
+  return `application/vnd.cambrian.${endpoint}.v${version}+json`;
+}
+
+export interface Deep42QueryOptions {
+  /** API version such as `4.1.0`. Without it the API answers with its default version. */
+  apiVersion?: string;
+}
+
 export class Deep42Client extends BaseClient {
   private _endpointCache: Map<string, Deep42EndpointInfo> | null = null;
 
@@ -27,17 +42,15 @@ export class Deep42Client extends BaseClient {
     apiPath: string,
     params: Record<string, string | number | boolean | undefined> = {},
     paymentSignature?: string,
+    options: Deep42QueryOptions = {},
   ): Promise<unknown> {
     const path = apiPath.replace(/^\/api\/v1\/deep42/, '');
     const qs = this.buildParams(params);
     const fullPath = qs ? `${path}?${qs}` : path;
-    const init: RequestInit = {};
-    if (paymentSignature) {
-      const headers = new Headers();
-      headers.set('PAYMENT-SIGNATURE', paymentSignature);
-      init.headers = headers;
-    }
-    return this.request(fullPath, init);
+    const headers = new Headers();
+    if (paymentSignature) headers.set('PAYMENT-SIGNATURE', paymentSignature);
+    if (options.apiVersion) headers.set('Accept', deep42AcceptHeader(`/deep42${path}`, options.apiVersion));
+    return this.request(fullPath, { headers });
   }
 
   /**

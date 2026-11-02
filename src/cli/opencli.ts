@@ -216,7 +216,16 @@ export function buildOpenCliDocument(
       {
         name: 'deep42',
         description: `Query Deep42 social intelligence endpoints (${deep42.resources.length} resources).`,
-        options: DATA_OPTIONS,
+        options: [
+          ...DATA_OPTIONS,
+          {
+            name: 'api-version',
+            recursive: true,
+            arguments: [{ name: 'version', required: true }],
+            description:
+              'Use this API version, such as 4.1.0, with its options. Without it the API answers with its default version.',
+          },
+        ],
         commands: buildSubcommands(deep42.resources, 'Deep42', deep42.allowedOptions, deep42.requiredOptions),
       },
       {

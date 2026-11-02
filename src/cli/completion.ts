@@ -153,7 +153,8 @@ export function complete(
   const entry = meta.spec[resource];
   const last = args[args.length - 1] ?? '';
   const resourceFlags = entry ? visibleFlags(entry.params) : [];
-  return startsWithFilter([...resourceFlags, ...GLOBAL_FLAGS], last);
+  const groupFlags = args[0] === 'deep42' ? ['--api-version'] : [];
+  return startsWithFilter([...resourceFlags, ...groupFlags, ...GLOBAL_FLAGS], last);
 }
 
 /** Renders the static shell stub for the given shell. */

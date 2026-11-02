@@ -4510,7 +4510,7 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "max": 100,
+          "max": 300,
           "description": "Number of tweets to analyze Default: 20",
           "default": 20
         },
@@ -4520,7 +4520,27 @@
           "strict": true,
           "description": "Filter tweets by specific token symbol for focused alpha analysis"
         }
-      }
+      },
+      "versions": [
+        {
+          "version": "3.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-27T23:08:15+00:00"
+        },
+        {
+          "version": "2.1.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-06T14:11:51+00:00"
+        },
+        {
+          "version": "2.0.0",
+          "isDefault": true
+        },
+        {
+          "version": "1.0.0",
+          "isDefault": false
+        }
+      ]
     },
     "social-data/influencer-credibility": {
       "apiPath": "/api/v1/deep42/social-data/influencer-credibility",
@@ -4540,7 +4560,7 @@
           "type": "integer",
           "strict": true,
           "min": 1,
-          "max": 100,
+          "max": 300,
           "description": "Maximum number of influencers to return.",
           "default": 25
         },
@@ -4556,18 +4576,16 @@
           "type": "string",
           "strict": true,
           "enum": [
-            "influence",
-            "credibility",
             "return_vs_bitcoin",
             "win_rate_vs_bitcoin",
-            "tweets",
-            "engagement",
-            "reach",
-            "alpha",
             "accuracy",
-            "conservative_accuracy"
+            "conservative_accuracy",
+            "tweets",
+            "alpha",
+            "engagement",
+            "reach"
           ],
-          "description": "Sort metric. In v2, credibility is the legacy activity composite and accuracy is raw 30-day accuracy. In v3 and v4, return_vs_bitcoin is the default and uses average direction-adjusted 7-day return relative to Bitcoin. With descending order, Track Record Verdict is applied first. In v3 and v4, win_rate_vs_bitcoin is the percentage of graded calls that beat Bitcoin. Accuracy is raw 7-day directional accuracy. Conservative_accuracy is the sample-size-adjusted Wilson estimate. V3 and v4 do not accept influence or credibility.",
+          "description": "Sort metric. return_vs_bitcoin is the default and uses average direction-adjusted 7-day return relative to Bitcoin. With descending order, Track Record Verdict is applied first. win_rate_vs_bitcoin is the percentage of graded calls that beat Bitcoin. accuracy is raw 7-day directional accuracy. conservative_accuracy is the sample-size-adjusted Wilson estimate. tweets, alpha, engagement, and reach use the recent activity metric of the same name.",
           "default": "return_vs_bitcoin"
         },
         "order": {
@@ -4606,7 +4624,36 @@
           "pattern": "^[1-9][0-9]*[hd]$",
           "default": "30d"
         }
-      }
+      },
+      "versions": [
+        {
+          "version": "5.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-27T23:08:15+00:00"
+        },
+        {
+          "version": "4.1.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-06T14:08:47+00:00"
+        },
+        {
+          "version": "4.0.0",
+          "isDefault": true,
+          "becomesDefaultAt": "2026-09-08T00:00:00+00:00"
+        },
+        {
+          "version": "3.0.0",
+          "isDefault": false
+        },
+        {
+          "version": "2.0.0",
+          "isDefault": false
+        },
+        {
+          "version": "1.0.0",
+          "isDefault": false
+        }
+      ]
     },
     "social-data/sentiment-shifts": {
       "apiPath": "/api/v1/deep42/social-data/sentiment-shifts",
@@ -4628,11 +4675,32 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "max": 50,
+          "max": 300,
           "description": "Number of tokens to return",
           "default": 20
         }
-      }
+      },
+      "versions": [
+        {
+          "version": "3.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-27T23:08:15+00:00"
+        },
+        {
+          "version": "2.1.0",
+          "isDefault": true,
+          "becomesDefaultAt": "2026-10-30T18:12:58+00:00"
+        },
+        {
+          "version": "2.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-09-08T00:00:00+00:00"
+        },
+        {
+          "version": "1.0.0",
+          "isDefault": false
+        }
+      ]
     },
     "social-data/token-analysis": {
       "apiPath": "/api/v1/deep42/social-data/token-analysis",
@@ -4661,7 +4729,28 @@
           "pattern": "^(total|[1-9][0-9]*[hd])$",
           "default": "total"
         }
-      }
+      },
+      "versions": [
+        {
+          "version": "3.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-27T23:08:15+00:00"
+        },
+        {
+          "version": "2.1.0",
+          "isDefault": true,
+          "becomesDefaultAt": "2026-10-30T19:35:56+00:00"
+        },
+        {
+          "version": "2.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-09-08T00:00:00+00:00"
+        },
+        {
+          "version": "1.0.0",
+          "isDefault": false
+        }
+      ]
     },
     "social-data/trending-momentum": {
       "apiPath": "/api/v1/deep42/social-data/trending-momentum",
@@ -4688,7 +4777,7 @@
           "required": false,
           "type": "integer",
           "strict": true,
-          "max": 50,
+          "max": 300,
           "description": "Number of trending tokens to return. In time-series mode, the maximum number of rows. In v2.1 and later, time-series mode returns every bucket for up to this many tokens.",
           "default": 15
         },
@@ -4711,7 +4800,32 @@
           "description": "Time granularity for momentum analysis. 'total' returns aggregate momentum ranking (single result set). Other values return time-series momentum data showing velocity changes over time. Time-series responses limited to 1000 rows maximum for performance. In v2.1 and later, each time-series bucket has the width of this value, the buckets cover the full lookback_hours window, and a value outside this list returns 400.",
           "default": "total"
         }
-      }
+      },
+      "versions": [
+        {
+          "version": "3.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-11-27T23:08:15+00:00"
+        },
+        {
+          "version": "2.1.0",
+          "isDefault": true,
+          "becomesDefaultAt": "2026-10-30T22:19:36+00:00"
+        },
+        {
+          "version": "2.0.0",
+          "isDefault": false,
+          "becomesDefaultAt": "2026-09-08T00:00:00+00:00"
+        },
+        {
+          "version": "1.1.0",
+          "isDefault": false
+        },
+        {
+          "version": "1.0.0",
+          "isDefault": false
+        }
+      ]
     }
   },
   "risk": {

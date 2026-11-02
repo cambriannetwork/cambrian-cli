@@ -463,14 +463,15 @@ request. Use `base`, not `evm`, for Base requests.
 ## Any Other Chain (`chain-<id>`)
 
 Chain availability is derived from the live OpenAPI `chain_id` enums, so a
-newly deployed chain works without reinstalling the CLI. Use its numeric id:
+newly deployed chain works without reinstalling the CLI. Use its numeric id.
+These examples use chain 56 (BNB Smart Chain); `chain-56` is an alias of `bnb`:
 
 ```bash
 cambrian schema chains                 # list curated + discovered chains
-cambrian chain-10 --help               # resources the schema advertises for chain 10
-cambrian chain-10 tokens --limit 5
-cambrian chain-10 price-current --token-address <token>
-cambrian docs chain-10 --offline
+cambrian chain-56 --help               # resources the schema advertises for chain 56
+cambrian chain-56 tokens --limit 5
+cambrian chain-56 price-current --token-address <token>
+cambrian docs chain-56 --offline
 ```
 
 - `chain-<id>` is validated against the active schema; an unadvertised id exits 2.
@@ -553,6 +554,21 @@ The CLI supplies `chain_id=56` and rejects a conflicting chain flag.
 
 ## Deep42 Commands
 
+### API versions
+
+Each Deep42 resource uses its default API version. A new version is queued and becomes the default on a published date. `cambrian deep42 <resource> --help` lists the default version, each queued version with its date, and the earlier versions.
+
+```bash
+cambrian deep42 social-data/influencer-credibility --api-version 4.1.0 --help
+cambrian deep42 social-data/influencer-credibility --api-version 4.1.0 --handle <handle> --include-calls
+```
+
+- `--api-version <version>` sends that version's Accept header and uses that version's options
+- use it to try a queued version before it becomes the default, or to stay on an earlier version
+- the version must be a full version such as `4.1.0` and one that the resource lists
+- an "Unknown option" error can mean that the option belongs to another version
+- it needs network access for the version's schema, so it does not work with `--offline` or `CAMBRIAN_SCHEMA_MODE=bundled`
+
 ### Social Data
 
 Alpha tweet detection:
@@ -578,7 +594,7 @@ Meaning:
 - `--min-tweets` (int) filters out influencers below a tweet count threshold
 - `--limit` (int) controls how many results to return
 - `--token-focus` (string) narrows results to influencers discussing a specific token
-- `--sort-by` accepts `return_vs_bitcoin` (default), `win_rate_vs_bitcoin`, `accuracy`, `conservative_accuracy`, `tweets`, `alpha`, `engagement`, or `reach`. The schema also lists `influence` and `credibility`, but the current API rejects them
+- `--sort-by` accepts `return_vs_bitcoin` (default), `win_rate_vs_bitcoin`, `accuracy`, `conservative_accuracy`, `tweets`, `alpha`, `engagement`, or `reach`. Older schemas also list `influence` and `credibility`, but versions 3 and later reject them
 - `--order` accepts `asc` or `desc`
 - `--time-window` (string) sets the evaluation period
 - use for "who are the most credible crypto influencers?" or "rank influencers by accuracy"

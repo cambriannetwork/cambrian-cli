@@ -134,9 +134,12 @@ appear without reinstalling `cambrian` or publishing another npm version.
 
 The cache honors `XDG_CACHE_HOME` (and the platform cache directory elsewhere),
 uses private directory/file modes, and never stores API keys.
-If a valid refresh succeeds while the cache is temporarily unwritable, that
-invocation still uses the validated live metadata and reports a warning; failed
-atomic writes also clean up their temporary files on a best-effort basis.
+If a valid refresh succeeds while the cache is unwritable (for example in a
+read-only sandbox), the process still uses the validated live metadata and
+reports a warning; failed atomic writes also clean up their temporary files on
+a best-effort basis. Each new process must refresh again, so in a read-only
+sandbox set `CAMBRIAN_SCHEMA_MODE=bundled` to skip that request. That mode
+turns off `deep42 --api-version`, which needs the version's live schema.
 
 ```bash
 cambrian schema chains
@@ -349,6 +352,8 @@ cambrian deep42 social-data/influencer-credibility --sort-by accuracy --limit 10
 cambrian deep42 social-data/sentiment-shifts
 cambrian deep42 social-data/token-analysis --token-symbol SOL
 cambrian deep42 social-data/trending-momentum --limit 10
+cambrian deep42 social-data/influencer-credibility --help    # Lists the default and queued API versions
+cambrian deep42 social-data/influencer-credibility --api-version 4.1.0 --handle <handle>
 
 # Risk
 cambrian risk perp-risk-engine --token-address <addr> --entry-price 100 --leverage 5 --direction long --risk-horizon 1d
@@ -517,6 +522,14 @@ console.log(sentiment);
 
 const credibility = await client.deep42.query('/social-data/influencer-credibility', { limit: 10 });
 console.log(credibility);
+
+// Deep42 API version: without apiVersion the API answers with its default version
+const oneAccount = await client.deep42.query(
+  '/social-data/influencer-credibility',
+  { handle: 'someone' },
+  undefined,
+  { apiVersion: '4.1.0' },
+);
 
 // Risk
 const risk = await client.risk.getLiquidationRisk({

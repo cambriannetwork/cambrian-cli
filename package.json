@@ -1,6 +1,6 @@
 {
   "name": "cambrian",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Solana, EVM, Deep42, and perp-risk data for AI agents",
   "keywords": [
     "agent",
@@ -69,13 +69,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.21",
-    "@x402/core": "^2.15.0",
-    "@x402/evm": "^2.15.0",
-    "@x402/fetch": "^2.15.0",
+    "@x402/core": "^2.29.0",
+    "@x402/evm": "^2.29.0",
+    "@x402/fetch": "^2.29.0",
     "esbuild": "^0.28.1",
     "typescript": "^5.7.0",
     "viem": "^2.52.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "license": "MIT",
   "overrides": {

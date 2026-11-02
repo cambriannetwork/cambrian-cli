@@ -36,10 +36,20 @@ export interface ParamSpec {
   hidden?: boolean;
 }
 
+/** One API version of an endpoint, from the OpenAPI `x-available-versions`. */
+export interface EndpointVersion {
+  version: string;
+  isDefault: boolean;
+  /** When this version became, or becomes, the default (ISO 8601). */
+  becomesDefaultAt?: string;
+}
+
 export interface EndpointSpec {
   apiPath: string;
   method: string;
   params: Record<string, ParamSpec>;
+  /** API versions the endpoint offers; absent for unversioned endpoints. */
+  versions?: EndpointVersion[];
 }
 
 export type GroupSpec = Record<string, EndpointSpec>;
