@@ -5,6 +5,13 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- `cambrian mcp test --mode local` works on Windows. `npx` there is `npx.cmd`,
+  which Node cannot start without a shell, so the test always failed with
+  `spawnSync npx ENOENT` and told the user to check that the package is
+  published.
+
 ## [1.11.1] - 2026-11-03
 
 ### Fixed
