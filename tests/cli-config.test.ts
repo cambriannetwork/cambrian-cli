@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { runCli } from '../src/cli/index.js';
@@ -145,6 +145,40 @@ describe('API-key precedence', () => {
       env: { CAMBRIAN_API_KEY: 'env-key' },
     });
     expect(flagRun.lastKey()).toBe('flag-key');
+  });
+
+  // chmod 000 does not block root, and Windows has no POSIX modes.
+  const canDenyRead = process.platform !== 'win32' && process.getuid?.() !== 0;
+  it.skipIf(!canDenyRead)('reports an unreadable config file instead of "no key"', async () => {
+    const home = tempHome();
+    const homedir = () => home;
+    const file = join(home, '.config', 'cambrian', 'config.json');
+    mkdirSync(join(home, '.config', 'cambrian'), { recursive: true });
+    writeFileSync(file, '{"apiKey":"x"}');
+    chmodSync(file, 0o000);
+    try {
+      const status = await run(['config', 'status'], { homedir });
+      expect(status.code).toBe(1);
+      expect(status.stdout).toBe('');
+      expect(status.stderr).toContain(`Cannot read config file ${file}`);
+      expect(status.stderr).toContain('EACCES');
+
+      const { fetch } = fetchEchoingApiKey();
+      const data = await run(['solana', 'tokens', '--base-url', 'http://x'], { homedir, fetch });
+      expect(data.code).toBe(1);
+      expect(data.stderr).toContain(`Cannot read config file ${file}`);
+      expect(data.stderr).not.toContain('API key required');
+
+      // An env key does not need the stored config, so the command still runs.
+      const envRun = await run(['solana', 'tokens', '--base-url', 'http://x'], {
+        homedir,
+        fetch,
+        env: { CAMBRIAN_API_KEY: 'env-key' },
+      });
+      expect(envRun.code).toBe(0);
+    } finally {
+      chmodSync(file, 0o600);
+    }
   });
 });
 

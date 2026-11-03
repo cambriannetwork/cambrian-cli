@@ -50,10 +50,26 @@ export function configPath(runtime: Runtime): string {
   return join(configDir(runtime), 'config.json');
 }
 
-/** Reads the config, returning {} on any missing/invalid file (never throws). */
+/**
+ * Reads the config, returning {} for a missing file or invalid JSON. Throws on
+ * any other read error (e.g. EACCES on a root-owned file), so callers report
+ * the real cause instead of "no stored key".
+ */
 export function readConfig(runtime: Runtime): CambrianConfig {
+  const file = configPath(runtime);
+  let text: string;
   try {
-    const parsed = JSON.parse(readFileSync(configPath(runtime), 'utf8'));
+    text = readFileSync(file, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Cannot read config file ${file}: ${detail}\n` +
+      'Fix its permissions (it may be owned by root after "sudo cambrian config set-key") or remove it.',
+    );
+  }
+  try {
+    const parsed = JSON.parse(text);
     return parsed && typeof parsed === 'object' ? (parsed as CambrianConfig) : {};
   } catch {
     return {};

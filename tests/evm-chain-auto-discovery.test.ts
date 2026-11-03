@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { runCli } from '../src/cli/index.js';
@@ -269,6 +269,29 @@ describe('API-named chains without a CLI release', () => {
 
     rmSync(root, { recursive: true, force: true });
   });
+
+  // chmod 000 does not block root, and Windows has no POSIX modes.
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'H2. an unreadable config does not fail schema refresh (no key needed)',
+    async () => {
+      const root = cacheRoot();
+      const { fetch, requests } = evmHarness([1, 8453, 42161, 10143], [], true, {
+        chainsTable: [[10143, 'monad']],
+      });
+      const file = join(root, '.config', 'cambrian', 'config.json');
+      mkdirSync(join(root, '.config', 'cambrian'), { recursive: true });
+      writeFileSync(file, '{"apiKey":"x"}');
+      chmodSync(file, 0o000);
+
+      const refresh = await run(['schema', 'refresh', 'base'], fetch, root, {});
+      chmodSync(file, 0o600);
+      expect(refresh.code).toBe(0);
+      expect(refresh.stderr).not.toContain('Cannot read config file');
+      expect(chainsCalls(requests)).toBe(0);
+
+      rmSync(root, { recursive: true, force: true });
+    },
+  );
 
   it('I. unsafe or clashing names fall back to chain-<id>', async () => {
     const root = cacheRoot();

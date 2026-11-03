@@ -91,13 +91,17 @@ export function maybeNotifyUpdate(
   const stderrIsTTY = opts.stderrIsTTY ?? process.stderr?.isTTY === true;
   if (isUpdateCheckSuppressed({ env: runtime.env, stderrIsTTY })) return;
 
-  const cfg = readConfig(runtime);
-  const notice = formatUpdateNotice(currentVersion, cfg.latestVersion);
-  if (notice) runtime.stderr(notice);
+  try {
+    const cfg = readConfig(runtime);
+    const notice = formatUpdateNotice(currentVersion, cfg.latestVersion);
+    if (notice) runtime.stderr(notice);
 
-  const now = opts.now ?? Date.now();
-  const due = !cfg.lastUpdateCheck || now - cfg.lastUpdateCheck > THROTTLE_MS;
-  if (due && opts.spawn !== false) {
-    spawnBackgroundCheck(runtime, now);
+    const now = opts.now ?? Date.now();
+    const due = !cfg.lastUpdateCheck || now - cfg.lastUpdateCheck > THROTTLE_MS;
+    if (due && opts.spawn !== false) {
+      spawnBackgroundCheck(runtime, now);
+    }
+  } catch {
+    /* best-effort; an unreadable/unwritable config never blocks the command */
   }
 }

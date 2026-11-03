@@ -3,6 +3,24 @@
 All notable changes to the `cambrian` CLI are documented here. This project
 follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
+## [Unreleased]
+
+## [1.11.1] - 2026-11-03
+
+### Fixed
+
+- An inline `--flag=value` keeps every `=` after the first. `--url=https://host/mcp?a=b`
+  used to become `https://host/mcp?a`, and `--filter=a=b` was sent as `filter=a`.
+  Ported from public contributor PR cambriannetwork/cambrian-cli#21 by
+  @hey-research-lab.
+- An unreadable config file (for example root-owned after
+  `sudo cambrian config set-key`) is no longer treated as "no stored key".
+  `cambrian config status` and commands that need the stored key now name the
+  file and the error (such as `EACCES`) and exit 1. A missing file or invalid
+  JSON still counts as an empty config. The update check,
+  `cambrian schema refresh`, and the `/evm/chains` name lookup do not need the
+  stored key, so they still work.
+
 ## [1.11.0] - 2026-11-02
 
 ### Added

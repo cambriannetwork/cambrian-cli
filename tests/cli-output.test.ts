@@ -219,6 +219,25 @@ function fetchRecording(): { fetch: typeof globalThis.fetch; urls: URL[] } {
   return { fetch, urls };
 }
 
+describe('inline --flag=value', () => {
+  it('keeps every "=" after the first as part of the value', async () => {
+    const { fetch, urls } = fetchRecording();
+    const { code } = await run(['base', 'tokens', '--filter=a=b=c'], { fetch });
+    expect(code).toBe(0);
+    expect(urls).toHaveLength(1);
+    expect(urls[0].searchParams.get('filter')).toBe('a=b=c');
+  });
+
+  it('keeps a query string in mcp install --url', async () => {
+    const { code, stdout } = await run([
+      'mcp', 'install', '--client', 'claude', '--mode', 'hosted',
+      '--url=https://mcp.example.com/mcp?region=eu', '--dry-run',
+    ]);
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout).config.url).toBe('https://mcp.example.com/mcp?region=eu');
+  });
+});
+
 describe('a flag without a value is a usage error, not the default', () => {
   it.each([
     [['base', 'tokens', '--limit']],

@@ -196,7 +196,13 @@ async function withApiChainNames(
   // Names from a custom --base-url (for example staging) must not reach the shared cache.
   if (optionalOptionValue(parsed, 'base-url')) return named;
   if (!force && unnamedEvmChainIds(named).length === 0) return named;
-  const apiKey = resolveApiKey(parsed, runtime);
+  let apiKey: string | undefined;
+  try {
+    apiKey = resolveApiKey(parsed, runtime);
+  } catch {
+    // An unreadable config means no key here: names are cosmetic.
+    return named;
+  }
   if (!apiKey) return named;
   const previous = readEvmChainNamesCache(runtime);
   const now = Date.now();
