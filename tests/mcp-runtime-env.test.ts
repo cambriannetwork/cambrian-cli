@@ -90,4 +90,30 @@ describe('MCP child-process environment', () => {
     expect(code).toBe(0);
     expect(readFileSync(resultFile, 'utf8')).toBe('runtime-environment');
   });
+
+  it.runIf(process.platform === 'win32')('starts npx.cmd for local tests on Windows', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'cambrian-mcp-bin-'));
+    temporaryDirectories.push(directory);
+    writeFileSync(join(directory, 'npx.cmd'), [
+      '@echo off',
+      'echo {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","serverInfo":{"version":"windows-npx"}}}',
+      'echo {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"cambrian_base_dexes"}]}}',
+    ].join('\r\n') + '\r\n');
+
+    let stdout = '';
+    let stderr = '';
+    const code = await runCli(['mcp', 'test', '--mode', 'local'], {
+      stdout: (line) => { stdout += `${line}\n`; },
+      stderr: (line) => { stderr += `${line}\n`; },
+      env: {
+        CAMBRIAN_API_KEY: 'test-key',
+        CAMBRIAN_SCHEMA_MODE: 'bundled',
+        PATH: directory,
+      },
+    });
+
+    expect(stderr).toBe('');
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({ version: 'windows-npx' });
+  });
 });

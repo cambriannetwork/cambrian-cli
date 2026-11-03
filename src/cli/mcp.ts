@@ -241,13 +241,18 @@ function testLocal(parsed: ParsedArgs, runtime: Runtime): number {
     { jsonrpc: '2.0', method: 'notifications/initialized', params: {} },
     { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
   ].map((message) => JSON.stringify(message)).join('\n') + '\n';
-  const result = spawnSync('npx', ['-y', CAMBRIAN_MCP_PACKAGE], {
-    encoding: 'utf8',
+  const options = {
+    encoding: 'utf8' as const,
     env: { ...runtime.env, CAMBRIAN_API_KEY: apiKey },
     input,
     timeout: 60_000,
     maxBuffer: 5 * 1024 * 1024,
-  });
+  };
+  // On Windows npx is npx.cmd, which Node can only start through a shell. The
+  // command line is a fixed string, so nothing user-supplied reaches cmd.exe.
+  const result = process.platform === 'win32'
+    ? spawnSync(`npx -y ${CAMBRIAN_MCP_PACKAGE}`, { ...options, shell: true })
+    : spawnSync('npx', ['-y', CAMBRIAN_MCP_PACKAGE], options);
   if (result.error || result.status !== 0) {
     throw new Error(
       `Local MCP test failed. Ensure ${CAMBRIAN_MCP_PACKAGE} is published or installed. ${result.error?.message ?? result.stderr.trim()}`,
