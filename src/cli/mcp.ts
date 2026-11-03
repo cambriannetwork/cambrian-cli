@@ -287,8 +287,15 @@ function installClaude(parsed: ParsedArgs, runtime: Runtime, mode: McpMode): num
     encoding: 'utf8',
     env: runtime.env,
   });
+  if (result.error) {
+    throw new Error(
+      `claude mcp add-json failed: could not run "claude" (${result.error.message}). ` +
+        'Install Claude Code and make sure "claude" is on PATH, or print the config with "cambrian mcp config".',
+    );
+  }
   if (result.status !== 0) {
-    throw new Error(`claude mcp add-json failed: ${result.stderr.trim() || result.stdout.trim()}`);
+    const detail = result.stderr?.trim() || result.stdout?.trim() || `exit ${result.status ?? result.signal}`;
+    throw new Error(`claude mcp add-json failed: ${detail}`);
   }
   printJson(runtime, {
     ok: true,

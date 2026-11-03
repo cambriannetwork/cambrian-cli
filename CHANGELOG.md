@@ -5,6 +5,12 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- `cambrian mcp install --client claude` without a `claude` executable on PATH
+  now says it could not run `claude` and points to `cambrian mcp config`. It
+  used to exit 1 with `Cannot read properties of undefined (reading 'trim')`.
+
 ## [1.11.1] - 2026-11-03
 
 ### Fixed
