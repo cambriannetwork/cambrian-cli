@@ -122,6 +122,31 @@ describe('--output (opt-in; JSON stays default)', () => {
 });
 
 describe('--fields projection', () => {
+  it.each(['json', 'table', 'tsv'])('preserves an empty result with --output %s', async (output) => {
+    const { code, stdout, stderr } = await run(
+      ['deep42', 'social-data/sentiment-shifts', '--fields', 'tokenSymbol', '--output', output, '--json'],
+      { fetch: fetchJson([]) },
+    );
+    expect(code).toBe(0);
+    expect(stdout).toBe('[]\n');
+    expect(stderr).toBe('');
+  });
+
+  it('still rejects an unknown field on nonempty results with a structured error', async () => {
+    const { code, stdout, stderr } = await run(
+      ['deep42', 'social-data/sentiment-shifts', '--fields', 'tokenSymbol,missing', '--json'],
+      { fetch: fetchJson([{ tokenSymbol: 'SOL' }]) },
+    );
+    expect(code).toBe(2);
+    expect(stdout).toBe('');
+    expect(JSON.parse(stderr).error).toEqual({
+      code: 'USAGE_ERROR',
+      message: '--fields not found in the response: missing. Check the field names against the JSON output.',
+      status: null,
+      retryable: false,
+    });
+  });
+
   it('projects a TableResponse to the named columns', async () => {
     const { code, stdout } = await run(
       ['solana', 'tokens', '--fields', 'symbol,currentPriceUSD'],
