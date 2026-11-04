@@ -5,6 +5,11 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- `--fields` preserves an empty array response instead of reporting every field
+  as unknown. Empty results still print `[]` with JSON, table, and TSV output.
+
 ## [1.11.1] - 2026-11-03
 
 ### Fixed

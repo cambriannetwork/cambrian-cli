@@ -58,6 +58,10 @@ describe('projectFields', () => {
     expect(projectFields([empty], ['symbol'])).toEqual([empty]); // wrapped envelope too
   });
 
+  it('returns an empty array unchanged (no rows to validate field paths against)', () => {
+    expect(projectFields([], ['symbol', 'price.usd'])).toEqual([]);
+  });
+
   it('throws a usage error listing valid columns on an unknown column', () => {
     expect(() => projectFields(TABLE, ['symbol', 'nope'])).toThrowError(CliUsageError);
     try {
