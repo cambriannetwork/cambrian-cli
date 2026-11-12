@@ -15,8 +15,12 @@ export type PageQueryFn = (apiPath: string, params: Record<string, unknown>) => 
 /** Default total-row cap when --all is set without an explicit --max-items. */
 export const DEFAULT_MAX_ITEMS = 10_000;
 
-/** Page size fallback when the endpoint's `limit` param carries no `max`. */
-export const DEFAULT_PAGE_SIZE = 1_000;
+/**
+ * Page size fallback when the endpoint's `limit` param carries no `max`.
+ * 300 is the server-wide limit cap (cambriannetwork/cambrian LIMIT_PARAMETER_MAX),
+ * so a page of this size never gets a 400.
+ */
+export const DEFAULT_PAGE_SIZE = 300;
 
 /** A single-element array wrapping a TableResponse, as the Opabinia path returns. */
 function asWrappedTable(page: unknown): TableResponse | null {

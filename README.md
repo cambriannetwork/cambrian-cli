@@ -84,7 +84,7 @@ cambrian completion fish > ~/.config/fish/completions/cambrian.fish
 
 ## Runtime Endpoint Discovery
 
-The installed 81-endpoint public snapshot is the offline safety fallback. After a
+The installed public snapshot is the offline safety fallback. After a
 successful refresh, validated production OpenAPI is authoritative for the
 active command group, so compatible endpoint additions, updates, and removals
 appear without reinstalling `cambrian` or publishing another npm version.
@@ -99,8 +99,8 @@ appear without reinstalling `cambrian` or publishing another npm version.
   table-driven from `EVM_CHAINS` in `src/cli/evm-chains.ts` and audited against
   the OpenAPI `chain_id` enums with `npm run check:chains`.
 - New chains need no CLI upgrade. Any chain id the live OpenAPI advertises is
-  usable immediately as `cambrian chain-<id> <resource>` (for example
-  `cambrian chain-10 tokens`). When the API names the chain (OpenAPI
+  usable immediately as `cambrian chain-<id> <resource>` (for example, if the
+  API added chain id 10, `cambrian chain-10 tokens`). When the API names the chain (OpenAPI
   `x-enum-varnames` on `chain_id`, or `/evm/chains` when an API key is set),
   the CLI also serves it under that name, for example `cambrian monad tokens`.
   `chain-<id>` stays a valid alias. `cambrian schema chains` lists every
@@ -207,7 +207,7 @@ or [docs/x402.md](docs/x402.md) for the full protocol details.
 ## Features
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details, holders, security audits; OHLCV candles; prices (current, hourly, unix, multi); pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3, Clones v3; lending coverage for Aave, Euler, and Morpho; LP provider summaries and fee metrics; TVL rankings; DEX discovery; EVM token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Uniswap v3, SushiSwap v3, PancakeSwap v3, Alienbase v3; lending for Aave, Euler, Fluid, Morpho, Sky, and SparkLend; LP provider summaries and fee metrics; wallet holdings and top token holders (TVL); DEX discovery; EVM token prices and lists
 - **Social intelligence**: alpha tweet detection with multi-dimensional scoring, influencer credibility rankings with track records, sentiment shift detection for identifying market-moving changes
 - **Perpetual risk**: risk engine simulations for position sizing and liquidation analysis
 - Agent-friendly CLI with clean error output, scoped subcommand help, and self-description via `cambrian describe opencli`
@@ -217,12 +217,14 @@ or [docs/x402.md](docs/x402.md) for the full protocol details.
 
 ## Coverage
 
-| Service | Endpoints | Coverage |
-|---------|-----------|----------|
-| Solana (Opabinia) | 41 compatible / 40 currently documented | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
-| EVM (Opabinia) | 38 compatible / 38 currently documented | Pools (7 DEXes), lending (Aave, Euler, Morpho), TVL, LP provider summaries, DEX discovery, prices, tokens |
-| Deep42 | 5 | Alpha tweet detection, influencer credibility, sentiment shifts, token analysis, trending momentum |
-| Risk | 1 | Perp risk engine |
+Endpoint counts change when the API changes. Run `cambrian <group> --help` for the active list.
+
+| Service | Coverage |
+|---------|----------|
+| Solana (Opabinia) | Pools (Meteora, Raydium, Orca), tokens, prices, OHLCV, transactions, traders, wallets |
+| EVM (Opabinia) | Pools (Aerodrome, Uniswap, SushiSwap, PancakeSwap, Alienbase), lending (Aave, Euler, Fluid, Morpho, Sky, SparkLend), TVL, LP provider summaries, DEX discovery, OHLCV, prices, tokens |
+| Deep42 | Alpha tweet detection, influencer credibility, sentiment shifts, token analysis, trending momentum |
+| Risk | Perp risk engine |
 
 ## Agent Setup In 60 Seconds
 
@@ -273,7 +275,7 @@ Execution best practice after setup:
 | Solana trader rankings | `solana traders-leaderboard` | `solana trade-statistics` |
 | Solana wallet analysis | `solana wallet-balance-history` | `solana holder-token-balances` |
 | Base pool metrics | `base <dex>-v3-pool` | `base <dex>-v3-pools` |
-| Base TVL rankings | `base tvl-status` | `base tvl-top-owners` |
+| Base top token holders | `base tvl-top-owners` | `base tvl-status` (one wallet's holdings) |
 | Base LP provider analysis | `base aero-v2-provider-summary` | the appropriate pool resource |
 | Base DEX discovery | `base dexes` | the appropriate pool resource |
 | Base token price | `base price-current` | `base price-hour` |
@@ -401,14 +403,14 @@ Unknown commands and resources get a "did you mean…?" suggestion.
 
 | Command | Description |
 | --- | --- |
-| `cambrian solana <resource> [--flags]` | Solana DeFi data (35 endpoints) |
-| `cambrian base <resource> [--flags]` | Base DeFi data (40 supported resources, `chain_id=8453`) |
-| `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data (`chain_id=1`, 33 resources) |
-| `cambrian arbitrum <resource> [--flags]` | Arbitrum One data (`chain_id=42161`, 29 resources) |
-| `cambrian robinhood <resource> [--flags]` | Robinhood Chain data (`chain_id=4663`, 21 resources) |
-| `cambrian bnb <resource> [--flags]` | BNB Smart Chain data (`chain_id=56`, 20 resources) |
-| `cambrian deep42 <resource> [--flags]` | Social intelligence (5 endpoints) |
-| `cambrian risk <resource> [--flags]` | Perp risk analysis (1 endpoint) |
+| `cambrian solana <resource> [--flags]` | Solana DeFi data |
+| `cambrian base <resource> [--flags]` | Base DeFi data (`chain_id=8453`) |
+| `cambrian ethereum <resource> [--flags]` | Ethereum mainnet data (`chain_id=1`) |
+| `cambrian arbitrum <resource> [--flags]` | Arbitrum One data (`chain_id=42161`) |
+| `cambrian robinhood <resource> [--flags]` | Robinhood Chain data (`chain_id=4663`) |
+| `cambrian bnb <resource> [--flags]` | BNB Smart Chain data (`chain_id=56`) |
+| `cambrian deep42 <resource> [--flags]` | Social intelligence |
+| `cambrian risk <resource> [--flags]` | Perp risk analysis |
 | `cambrian pay <group> <resource> [--flags]` | Pay-per-call via x402 (Base USDC; no API key) |
 | `cambrian docs guides [name]` | List or read guides dynamically indexed by the live `llms.txt` |
 | `cambrian config status\|set-key\|get-key\|clear` | Safely inspect, persist, print, or remove the stored API key |

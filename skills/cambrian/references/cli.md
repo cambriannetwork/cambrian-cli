@@ -156,7 +156,7 @@ cambrian solana price-current --token-addresses <mint1>,<mint2>,<mint3>
 
 Meaning:
 - `price-current` for latest spot price
-- `price-hour` for the last hourly candle; `--interval` is required
+- `price-hour` for average USD prices per time bucket (`--interval` 1H to 1M, required; 24 buckets by default)
 - `price-unix` for a price at a specific timestamp
 - `price-current` with comma-separated mints for batch price lookups; preferred over one call per token
 
@@ -311,7 +311,7 @@ cambrian solana traders-leaderboard --token-address <mint> --interval "24 HOUR"
 ```
 
 Meaning:
-- returns top traders ranked by PnL or volume for a specific token
+- returns top traders for a specific token, ranked by trade count or buy, sell, or total volume (no PnL)
 - `--token-address` and `--interval` (e.g. "24 HOUR") are both required
 - use for "who are the best traders on Solana for this token?"
 
@@ -420,9 +420,9 @@ cambrian base tvl-top-owners --token-address <token>
 ```
 
 Meaning:
-- `tvl-status` returns overall TVL status and health
-- `tvl-top-owners` returns top TVL owners
-- use for "what are the biggest pools?" or "who has the most TVL?"
+- `tvl-status` returns the tokens that one wallet holds (`--wallet-address` is required)
+- `tvl-top-owners` returns the top holders of one token
+- use for "what does this wallet hold?" or "who holds the most of this token?"
 
 ### DEX Discovery
 
@@ -513,7 +513,7 @@ cambrian arbitrum tvl-top-owners --token-address <token>
 
 Meaning:
 - the CLI supplies `chain_id=42161` and rejects a conflicting chain flag
-- Arbitrum does not expose Aerodrome/Alienbase/OHLCV resources; run
+- Arbitrum does not expose Aerodrome or Alienbase resources; run
   `cambrian arbitrum --help` for the authoritative list
 - use `cambrian schema chains` to print every registered chain and its
   supported resource count
@@ -521,7 +521,7 @@ Meaning:
 ## Robinhood Chain Commands
 
 `cambrian robinhood` selects Robinhood Chain with `chain_id=4663`. The
-production OpenAPI advertises 21 resources for this chain. Check
+production OpenAPI sets the resources for this chain. Check
 `cambrian robinhood --help` for the active resource list.
 
 ```bash
@@ -535,9 +535,9 @@ The CLI supplies `chain_id=4663` and rejects a conflicting chain flag.
 ## BNB Smart Chain Commands
 
 `cambrian bnb` selects BNB Smart Chain with `chain_id=56`. The production
-OpenAPI advertises 20 resources for this chain: Uniswap/Sushi/Pancake V3 pools,
-Aave V3 and Euler lending, prices, tokens, and TVL. It has no Morpho, Fluid,
-Aerodrome, or OHLCV resources. Check `cambrian bnb --help` for the active list.
+OpenAPI includes Uniswap/Sushi/Pancake V3 pools, Aave V3 and Euler lending,
+OHLCV, prices, tokens, and TVL for this chain. It has no Morpho, Fluid, or
+Aerodrome resources. Check `cambrian bnb --help` for the active list.
 
 ```bash
 cambrian bnb dexes
@@ -579,7 +579,7 @@ cambrian deep42 social-data/alpha-tweet-detection --limit <n> --token-filter <sy
 
 Meaning:
 - returns a feed of high-signal alpha tweets
-- `--limit` (int, max 100, default 20) controls how many results to return
+- `--limit` (int, max 300, default 20) controls how many results to return
 - `--token-filter` (string) narrows results to tweets mentioning a specific token
 - use for "find alpha tweets" or "what are insiders saying about <token>?"
 
@@ -642,8 +642,8 @@ cambrian risk perp-risk-engine --token-address <addr> --entry-price <n> --levera
 Meaning:
 - runs a perpetual futures risk simulation
 - accepts individual flags for position parameters: `--token-address`, `--entry-price`, `--leverage`, `--direction`, `--risk-horizon`
-- returns liquidation price, margin requirements, and risk metrics
-- use for "what's my liquidation price?" or "how much can I leverage?"
+- returns liquidation probability, liquidation price, volatility, drift, sigmas away, and simulation details
+- use for "what's my liquidation price?" or "how risky is this leverage?"
 
 ## Shared Options
 

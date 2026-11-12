@@ -104,7 +104,7 @@ Runtime endpoint rule:
   reinstalling the npm package.
 - Chains come from the same live schema. Any chain id the API advertises is
   usable immediately as `cambrian chain-<id> ...` (for example
-  `cambrian chain-10 tokens`) with no reinstall. `base`, `ethereum`,
+  `cambrian chain-10 tokens` if the API added chain id 10) with no reinstall. `base`, `ethereum`,
   `arbitrum`, `robinhood`, and `bnb` are curated friendly names for their chain ids.
   A chain the API names is also served under that name. `cambrian schema
   chains` lists every chain the active schema supports, with its `chain-<id>` alias.
@@ -153,7 +153,7 @@ Suggested agent workflow:
 Covered reads include:
 
 - **Solana DeFi**: pool metrics for Meteora DLMM, Raydium CLMM, and Orca; token details and security; holder distributions; OHLCV candles; current, hourly, unix, and multi prices; pool and token transactions; trade statistics; trader leaderboards; trending tokens; wallet balance history
-- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, Clones v3, PancakeSwap v3, and Uniswap v3; lending data for Aave, Euler, and Morpho; LP provider summaries and fee metrics; TVL rankings and top owners; DEX discovery; token prices and lists
+- **EVM DeFi**: pool metrics for Aerodrome v2/v3, Alienbase v3, SushiSwap v3, PancakeSwap v3, and Uniswap v3; lending for Aave, Euler, Fluid, Morpho, Sky, and SparkLend; LP provider summaries and fee metrics; wallet holdings and top token holders (TVL); OHLCV candles; DEX discovery; token prices and lists
 - **Social intelligence (Deep42)**: alpha tweet detection, influencer credibility scoring, sentiment shifts, token analysis, and trending momentum
 - **Perpetual risk**: Monte Carlo liquidation simulations for long/short positions with configurable risk horizons
 

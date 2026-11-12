@@ -32,7 +32,7 @@ and pins endpoints per chain.
 
 Every chain id the active schema advertises is usable **immediately** as a
 `chain-<id>` command, even with no curated row. The OpenAPI enum is the only
-gate:
+gate. For example, if the API added chain id 10 (it does not today):
 
 ```bash
 cambrian chain-10 --help

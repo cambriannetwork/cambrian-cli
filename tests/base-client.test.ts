@@ -200,7 +200,8 @@ describe('timeout covers the response body', () => {
     const server = createServer((req, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.write('[');
-      setTimeout(() => res.end(']'), req.url?.includes('slow') ? 400 : 0);
+      // The slow body never ends; the finally block closes the connection.
+      if (!req.url?.includes('slow')) res.end(']');
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as { port: number };
@@ -208,7 +209,8 @@ describe('timeout covers the response body', () => {
       const client = new CambrianData({
         apiKey: 'test-key',
         opabiniaBaseUrl: `http://127.0.0.1:${port}`,
-        timeoutMs: 100,
+        // Large enough that the fast request passes when the whole suite runs in parallel.
+        timeoutMs: 1000,
       });
       const slow = await client.opabinia.query('/slow').then(() => null, (e) => e);
       expect(slow).toBeInstanceOf(ApiError);

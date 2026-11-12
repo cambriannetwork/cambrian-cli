@@ -148,6 +148,8 @@ export function projectFields(value: unknown, fields: string[]): unknown {
   }
 
   if (Array.isArray(value)) {
+    // No rows means no field paths to validate, just like a schema-less table.
+    if (value.length === 0) return value;
     const matched = new Set<string>();
     const projected = value.map((el) => {
       const { obj, matchedPaths } = pickPaths(el, fields);

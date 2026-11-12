@@ -5,6 +5,36 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-11-12
+
+### Fixed
+
+- `--fields` keeps an empty array response. A query that returned `[]` used to
+  exit 2 because every requested field counted as missing. Now it prints `[]`
+  with JSON, table, and TSV output. Nonempty responses still reject unknown
+  fields. Ported from public contributor PR cambriannetwork/cambrian-cli#24 by
+  @zakazaka95.
+- `cambrian mcp install --client claude` without a `claude` executable on PATH
+  now says it could not run `claude` and points to `cambrian mcp config`. It
+  used to exit 1 with `Cannot read properties of undefined (reading 'trim')`.
+  Ported from public contributor PR cambriannetwork/cambrian-cli#22 by
+  @0xcfloki.
+- `cambrian mcp test --mode local` works on Windows. `npx` there is `npx.cmd`,
+  which Node cannot start without a shell, so the test always failed with
+  `spawnSync npx ENOENT`. On Windows the CLI now runs the fixed command line
+  `npx -y cambrian-api-mcp` through `cmd.exe`. Ported from public contributor
+  PR cambriannetwork/cambrian-cli#23 by @0xcfloki.
+- `--all` uses pages of 300 rows when an endpoint's `limit` has no maximum
+  (was 1,000). 300 is the server-wide `limit` cap that the Cambrian API will
+  enforce next, so `--all` does not start to fail with 400 when it ships.
+- Docs and the agent skill match the live OpenAPI specs (API consistency audit,
+  November 2026): no Clones v3 (removed); lending lists Aave, Euler, Fluid,
+  Morpho, Sky, and SparkLend; Arbitrum and BNB have OHLCV; `tvl-status` is one
+  wallet's holdings, not a ranking; the leaderboard ranks by trade count or
+  volume, not PnL; the risk engine returns no margin, funding, or sizing;
+  Deep42 alpha-tweet `--limit` max is 300. Endpoint counts that drift are
+  removed; `--help` is the source.
+
 ## [1.11.1] - 2026-11-03
 
 ### Fixed

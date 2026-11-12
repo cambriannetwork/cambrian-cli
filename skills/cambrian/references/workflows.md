@@ -245,9 +245,9 @@ cambrian deep42 social-data/sentiment-shifts --comparison-period 24h --limit 50 
 
 What to extract:
 
-- liquidation price and distance from current price
-- margin requirements and funding rate context
-- suggested position sizing for the given risk tolerance
+- liquidation price and distance from current price (`liquidationPrice`, `priceChangeNeeded`, `sigmasAway`)
+- liquidation probability over the horizon (`riskProbability`), with `volatility` and `drift`
+- a position-size suggestion that you derive from these numbers (the API does not return margin, funding, or sizing)
 - social sentiment as a risk overlay
 - one short judgment on whether the trade setup looks safe
 
