@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CAMBRIAN_METADATA_GROUPS } from '../src/metadata.js';
-import { buildToolQuery, listCambrianCliTools, toolInputSchema, ToolArgumentError } from '../src/tools.js';
+import { buildToolQuery, createEvmChainNamer, listCambrianCliTools, toolInputSchema, ToolArgumentError } from '../src/tools.js';
 
 const tools = listCambrianCliTools(CAMBRIAN_METADATA_GROUPS);
 const byName = (name: string) => {
@@ -74,5 +74,63 @@ describe('buildToolQuery', () => {
       direction: 'long',
       risk_horizon: '1d',
     }))).toEqual(['INVALID_TYPE', 'entry_price', 'Parameter "entry_price" must be a number.']);
+  });
+});
+
+describe('createEvmChainNamer', () => {
+  // Base metadata whose first endpoint also serves chain 143, which has no curated row and no OpenAPI name.
+  const groups = CAMBRIAN_METADATA_GROUPS;
+  const [resource, endpoint] = Object.entries(groups.base.spec).find(([, entry]) => entry.params.chain_id)!;
+  const unnamed = {
+    ...groups.base,
+    spec: {
+      ...groups.base.spec,
+      [resource]: { ...endpoint, params: { ...endpoint.params, chain_id: { ...endpoint.params.chain_id, numericEnum: [8453, 143] } } },
+    },
+  };
+  const chainsTable = { columns: [{ name: 'id' }, { name: 'name' }], data: [[143, 'Monad']] };
+  const fetchWith = (respond: () => Response) => {
+    const urls: string[] = [];
+    const fetch = (async (input: unknown) => {
+      urls.push(String(input));
+      return respond();
+    }) as typeof globalThis.fetch;
+    return { fetch, urls };
+  };
+  const ok = () => new Response(JSON.stringify(chainsTable), { headers: { 'content-type': 'application/json' } });
+  const names = (base: typeof unnamed) => listCambrianCliTools({ ...groups, base })
+    .filter((tool) => tool.chain?.chainId === 143).map((tool) => tool.chain!.command);
+
+  it('names an unnamed chain once per TTL, shared by every call', async () => {
+    const nameChains = createEvmChainNamer();
+    const { fetch, urls } = fetchWith(ok);
+    expect(names(unnamed)).toEqual(['chain-143']);
+    const named = await nameChains(unnamed, 'key', fetch);
+    await nameChains(unnamed, 'other-key', fetch);
+    expect(names(named)).toEqual(['monad']);
+    expect(urls.filter((url) => url.includes('/evm/chains'))).toHaveLength(1);
+  });
+
+  it('keeps the last good names when /evm/chains fails after the TTL', async () => {
+    const nameChains = createEvmChainNamer();
+    let fail = false;
+    const { fetch } = fetchWith(() => (fail ? new Response('down', { status: 500 }) : ok()));
+    const realNow = Date.now;
+    try {
+      await nameChains(unnamed, 'key', fetch);
+      fail = true;
+      Date.now = () => realNow() + 16 * 60 * 1000;
+      expect(names(await nameChains(unnamed, 'key', fetch))).toEqual(['monad']);
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  it('does not call /evm/chains without a key or when every chain has a name', async () => {
+    const nameChains = createEvmChainNamer();
+    const { fetch, urls } = fetchWith(ok);
+    expect(await nameChains(unnamed, '', fetch)).toBe(unnamed);
+    expect(await nameChains(groups.base, 'key', fetch)).toBe(groups.base);
+    expect(urls).toHaveLength(0);
   });
 });

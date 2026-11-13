@@ -1,4 +1,6 @@
 import type { CambrianMetadataGroup, EndpointSpec, ParamSpec } from '../metadata.js';
+import { CambrianData } from '../client/index.js';
+import { REGISTRY_FETCH_TIMEOUT_MS } from '../schema/registry.js';
 
 /**
  * Curated EVM chains: pinned command tokens and labels.
@@ -359,4 +361,13 @@ export function parseEvmChainNames(result: unknown): Record<string, string> {
     }
   }
   return names;
+}
+
+/** Asks `/evm/chains` for chain names once, with no retries. Throws on a failed request. */
+export async function fetchEvmChainNames(
+  apiKey: string,
+  fetch: typeof globalThis.fetch,
+): Promise<Record<string, string>> {
+  const client = new CambrianData({ apiKey, fetch, timeoutMs: REGISTRY_FETCH_TIMEOUT_MS, maxRetries: 0 });
+  return parseEvmChainNames(await client.opabinia.query('/api/v1/evm/chains', {}));
 }

@@ -5,6 +5,16 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-13
+
+### Added
+
+- `cambrian/tools` exports `createEvmChainNamer()`. It names the EVM chains
+  that have no curated row and no OpenAPI name from `/evm/chains`, the way the
+  CLI does (`chain-143` becomes `monad`). It asks at most once per 15 minutes
+  and keeps the last good names. MCP servers use it instead of a copy of the
+  CLI's logic.
+
 ## [1.11.2] - 2026-11-12
 
 ### Fixed

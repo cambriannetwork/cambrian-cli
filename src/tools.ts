@@ -10,7 +10,15 @@ import {
   type CambrianToolMetadata,
   type ParamSpec,
 } from './metadata.js';
-import { BASE_CHAIN_ID, discoverEvmChains, projectEvmMetadata, type EvmChain } from './cli/evm-chains.js';
+import {
+  BASE_CHAIN_ID,
+  discoverEvmChains,
+  fetchEvmChainNames,
+  projectEvmMetadata,
+  unnamedEvmChainIds,
+  type EvmChain,
+} from './cli/evm-chains.js';
+import { REGISTRY_TTL_MS } from './schema/registry.js';
 import { buildQueryParams, serializeQueryParams } from './cli/dynamic-handler.js';
 import { CliUsageError } from './cli/core.js';
 
@@ -135,6 +143,40 @@ function toToolError(error: CliUsageError, toolName: string): ToolArgumentError 
     .replace(/^"/, 'Parameter "');
   const code = USAGE_CODES.find(([pattern]) => pattern.test(error.message))?.[1] ?? 'INVALID_TYPE';
   return new ToolArgumentError(code, message, param);
+}
+
+/**
+ * Returns a function that names the EVM chains the API serves with no curated
+ * row and no OpenAPI name, from `/evm/chains`, as the CLI does: `chain-143`
+ * becomes `monad`, so tools are `cambrian_monad_*`. Pass the result to
+ * `listCambrianCliTools` as the `base` group. Every call of one namer shares one
+ * `/evm/chains` attempt per registry TTL (the names are the same for every key),
+ * and a failed or empty answer keeps the last good names. The CLI keeps its
+ * names in a disk cache instead.
+ */
+export function createEvmChainNamer(): (
+  base: CambrianMetadataGroup,
+  apiKey: string,
+  fetch?: typeof globalThis.fetch,
+) => Promise<CambrianMetadataGroup> {
+  let last: { attemptedAt: number; names: Promise<Record<string, string>> } | undefined;
+  return async (base, apiKey, fetch = globalThis.fetch) => {
+    if (!apiKey || unnamedEvmChainIds(base).length === 0) return base;
+    const now = Date.now();
+    // A future timestamp (clock skew) counts as expired, as in the CLI.
+    if (!last || last.attemptedAt > now || now >= last.attemptedAt + REGISTRY_TTL_MS) {
+      const previous = last?.names ?? Promise.resolve({});
+      last = {
+        attemptedAt: now,
+        names: fetchEvmChainNames(apiKey, fetch)
+          .then((names) => (Object.keys(names).length > 0 ? names : previous))
+          // Names are cosmetic: keep the last good names and retry after the TTL.
+          .catch(() => previous),
+      };
+    }
+    const names = await last.names;
+    return Object.keys(names).length > 0 ? { ...base, chainNames: names } : base;
+  };
 }
 
 const isScalar = (value: unknown): value is string | number | boolean =>

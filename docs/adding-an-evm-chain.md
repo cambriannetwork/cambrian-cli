@@ -56,7 +56,9 @@ A chain with no curated row takes its command token from the API, first match wi
    CLI calls it only when a key is set and an advertised id has no other name.
    It runs at most once per 15 minutes; `cambrian schema refresh base` forces it.
    The result is cached in `schema-v7/evm-chain-names.json`. Only the CLI reads
-   it, so `cambrian/tools` (the MCP) names chains the same way on every machine.
+   that file. `cambrian/tools` exports `createEvmChainNamer()` for MCP servers:
+   the same lookup with an in-memory cache, so the MCP names chains the same way
+   on every machine.
    The CLI never fetches names with `--base-url`. A name the refreshed schema
    drops or renames exits 2 ("not advertised"); it never falls back to Base.
 3. Otherwise `chain-<id>`.

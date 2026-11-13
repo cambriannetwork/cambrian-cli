@@ -49,7 +49,6 @@ import {
   clearRegistryCache,
   readEvmChainNamesCache,
   writeEvmChainNamesCache,
-  REGISTRY_FETCH_TIMEOUT_MS,
   REGISTRY_TTL_MS,
 } from '../schema/registry.js';
 import {
@@ -67,7 +66,7 @@ import {
   hasEvmChainSupport,
   isSyntheticEvmChainToken,
   otherEvmChainsFor,
-  parseEvmChainNames,
+  fetchEvmChainNames,
   RESERVED_COMMAND_TOKENS,
   projectEvmChain,
   syntheticEvmChain,
@@ -212,13 +211,7 @@ async function withApiChainNames(
   if (!force && recent) return named;
   let names = previous?.names ?? {};
   try {
-    const client = new CambrianData({
-      apiKey,
-      fetch: runtime.fetch,
-      timeoutMs: REGISTRY_FETCH_TIMEOUT_MS,
-      maxRetries: 0,
-    });
-    const fetched = parseEvmChainNames(await client.opabinia.query('/api/v1/evm/chains', {}));
+    const fetched = await fetchEvmChainNames(apiKey, runtime.fetch);
     if (Object.keys(fetched).length > 0) names = fetched;
   } catch {
     // Names are cosmetic: keep the last good names and retry after the TTL.
