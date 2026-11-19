@@ -1,16 +1,19 @@
 /**
  * Unit tests for the update notice: semver comparison, suppression conditions,
- * and the stderr-only / never-stdout discipline. The background spawn is
- * disabled via { spawn: false } so no child process or network is involved.
+ * the stderr-only / never-stdout discipline, and the detached registry script
+ * preserving secrets. The background spawn is disabled via { spawn: false }
+ * except where the script is exercised directly.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createRuntime } from '../src/cli/core.js';
-import { writeConfig } from '../src/cli/config.js';
+import { configPath, readConfig, writeConfig } from '../src/cli/config.js';
 import {
+  buildBackgroundUpdateCheckScript,
   formatUpdateNotice,
   isUpdateCheckSuppressed,
   maybeNotifyUpdate,
@@ -94,5 +97,65 @@ describe('maybeNotifyUpdate', () => {
     maybeNotifyUpdate(runtime, '0.1.0', { stderrIsTTY: true, spawn: false });
     expect(err).toEqual([]);
     expect(out).toEqual([]);
+  });
+});
+
+describe('buildBackgroundUpdateCheckScript', () => {
+  it('merges latestVersion without dropping apiKey or pending payments', () => {
+    const home = tempHome();
+    const runtime = createRuntime({ homedir: () => home, env: {} });
+    writeConfig(runtime, {
+      apiKey: 'keep-me',
+      x402PendingPayments: {
+        fp: {
+          idempotencyKey: 'k',
+          createdAt: 1,
+          expiresAt: 99,
+          amount: '1',
+          network: 'base',
+          payTo: '0x1',
+        },
+      },
+    });
+    const file = configPath(runtime);
+    const script = buildBackgroundUpdateCheckScript(
+      file,
+      'data:application/json,{"version":"8.8.8"}',
+    );
+    execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      stdio: 'pipe',
+      timeout: 10_000,
+    });
+    expect(readConfig(runtime)).toEqual({
+      apiKey: 'keep-me',
+      latestVersion: '8.8.8',
+      x402PendingPayments: {
+        fp: {
+          idempotencyKey: 'k',
+          createdAt: 1,
+          expiresAt: 99,
+          amount: '1',
+          network: 'base',
+          payTo: '0x1',
+        },
+      },
+    });
+  });
+
+  it('leaves a corrupt config file unchanged', () => {
+    const home = tempHome();
+    const runtime = createRuntime({ homedir: () => home, env: {} });
+    writeConfig(runtime, { apiKey: 'k' });
+    const file = configPath(runtime);
+    writeFileSync(file, '{broken', { mode: 0o600 });
+    const script = buildBackgroundUpdateCheckScript(
+      file,
+      'data:application/json,{"version":"8.8.8"}',
+    );
+    execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      stdio: 'pipe',
+      timeout: 10_000,
+    });
+    expect(readFileSync(file, 'utf8')).toBe('{broken');
   });
 });

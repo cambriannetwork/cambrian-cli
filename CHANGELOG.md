@@ -5,6 +5,13 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- Config writes are atomic (temp file + rename), and the background update-check
+  child merges `latestVersion` into the existing document instead of replacing
+  the whole file. A corrupt config is left untouched. The previous child used
+  `catch {}` → `{}` and could wipe a stored API key or x402 pending map.
+
 ## [1.12.0] - 2026-11-13
 
 ### Added

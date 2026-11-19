@@ -7,6 +7,11 @@
  *     delays process exit — its result is read on the *next* run;
  *   - it is suppressed under NO_UPDATE_NOTIFIER, CI, or a non-TTY stderr, and
  *     throttled to once per 24h.
+ *
+ * The child merges `latestVersion` into the existing config file and never
+ * replaces a corrupt document with `{ latestVersion }` alone (that used to wipe
+ * a stored API key / x402 pending map). Keep the inline script in sync with
+ * `writeLatestVersionToConfigFile` in `./config.js`.
  */
 
 import { spawn } from 'child_process';
@@ -49,6 +54,40 @@ export function formatUpdateNotice(current: string, latest: string | undefined):
   );
 }
 
+/**
+ * ESM source for the detached registry check. Self-contained (CLI is a single
+ * bundle) — mirrors `writeLatestVersionToConfigFile` so a corrupt config is
+ * never overwritten with only `latestVersion`.
+ */
+export function buildBackgroundUpdateCheckScript(
+  configFile: string,
+  registryUrl: string = REGISTRY_URL,
+): string {
+  return (
+    `import{readFileSync,writeFileSync,renameSync,rmSync}from'node:fs';` +
+    `import{randomUUID}from'node:crypto';` +
+    `const f=${JSON.stringify(configFile)};` +
+    `function atomicWrite(body){` +
+    `const t=f+'.'+process.pid+'.'+randomUUID()+'.tmp';` +
+    `try{writeFileSync(t,body,{mode:0o600});renameSync(t,f)}` +
+    `catch(e){try{rmSync(t,{force:true})}catch{}throw e}` +
+    `}` +
+    `function writeLatest(version){` +
+    `let text;try{text=readFileSync(f,'utf8')}` +
+    `catch(err){if(err&&err.code==='ENOENT'){` +
+    `atomicWrite(JSON.stringify({latestVersion:version},null,2)+'\\n');return}` +
+    `return}` +
+    `let c;try{c=JSON.parse(text)}catch{return}` +
+    `if(!c||typeof c!=='object'||Array.isArray(c))return;` +
+    `c.latestVersion=version;` +
+    `atomicWrite(JSON.stringify(c,null,2)+'\\n')` +
+    `}` +
+    `fetch(${JSON.stringify(registryUrl)}).then(r=>r.json()).then(j=>{` +
+    `if(j&&j.version)writeLatest(j.version)` +
+    `}).catch(()=>{});`
+  );
+}
+
 /** Marks the check time and spawns a detached refresh of the version cache. */
 function spawnBackgroundCheck(runtime: Runtime, now: number): void {
   const cfg = readConfig(runtime);
@@ -56,16 +95,8 @@ function spawnBackgroundCheck(runtime: Runtime, now: number): void {
   writeConfig(runtime, cfg);
 
   try {
-    const file = configPath(runtime);
-    const script =
-      `const {readFileSync,writeFileSync}=require('fs');` +
-      `const f=${JSON.stringify(file)};` +
-      `fetch(${JSON.stringify(REGISTRY_URL)}).then(r=>r.json()).then(j=>{` +
-      `let c={};try{c=JSON.parse(readFileSync(f,'utf8'))}catch{}` +
-      `if(j&&j.version){c.latestVersion=j.version;` +
-      `writeFileSync(f,JSON.stringify(c,null,2)+'\\n',{mode:0o600})}` +
-      `}).catch(()=>{});`;
-    const child = spawn(process.execPath, ['-e', script], {
+    const script = buildBackgroundUpdateCheckScript(configPath(runtime));
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], {
       detached: true,
       stdio: 'ignore',
     });
