@@ -1,4 +1,5 @@
-import { spawnSync } from 'child_process';
+import { spawnSync, type SpawnSyncReturns } from 'child_process';
+import { join } from 'path';
 import type { ParsedArgs, Runtime } from './core.js';
 import { didYouMean } from './suggest.js';
 import {
@@ -18,6 +19,9 @@ import {
   CAMBRIAN_MCP_PACKAGE,
   CAMBRIAN_MCP_SERVER_NAME,
 } from '../metadata.js';
+
+/** Env var used on Windows so the add-json payload never reaches a shell argv. */
+const CLAUDE_ADD_JSON_ENV = 'CAMBRIAN_MCP_ADD_JSON';
 
 const MCP_CLIENTS = ['claude', 'cursor', 'codex'] as const;
 const MCP_MODES = ['hosted', 'local'] as const;
@@ -268,6 +272,47 @@ function testLocal(parsed: ParsedArgs, runtime: Runtime): number {
   return 0;
 }
 
+/**
+ * Runs `claude mcp add-json`. On Windows `claude` is usually `claude.cmd`,
+ * which Node cannot start without a shell (CVE-2024-27980). PowerShell gets an
+ * absolute path so a test-empty PATH still finds it, and the JSON goes through
+ * an env var so secrets are not interpolated on a cmd.exe command line.
+ */
+function runClaudeAddJson(
+  serverName: string,
+  configJson: string,
+  runtime: Runtime,
+): SpawnSyncReturns<string> {
+  const options = { encoding: 'utf8' as const, env: runtime.env };
+  if (process.platform !== 'win32') {
+    return spawnSync('claude', ['mcp', 'add-json', serverName, configJson], options);
+  }
+
+  const systemRoot = runtime.env.SystemRoot || runtime.env.SYSTEMROOT || 'C:\\Windows';
+  const powershell = join(
+    systemRoot,
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe',
+  );
+  return spawnSync(
+    powershell,
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-Command',
+      `& claude @('mcp','add-json',${JSON.stringify(serverName)},$env:${CLAUDE_ADD_JSON_ENV})`,
+    ],
+    {
+      encoding: 'utf8',
+      env: { ...runtime.env, [CLAUDE_ADD_JSON_ENV]: configJson },
+    },
+  );
+}
+
 function installClaude(parsed: ParsedArgs, runtime: Runtime, mode: McpMode): number {
   const dryRun = hasOption(parsed, 'dry-run');
   const apiKey = dryRun ? undefined : resolveInstallApiKey(parsed, runtime);
@@ -288,10 +333,7 @@ function installClaude(parsed: ParsedArgs, runtime: Runtime, mode: McpMode): num
     return 0;
   }
 
-  const result = spawnSync(command[0], command.slice(1), {
-    encoding: 'utf8',
-    env: runtime.env,
-  });
+  const result = runClaudeAddJson(CAMBRIAN_MCP_SERVER_NAME, configJson, runtime);
   if (result.error) {
     throw new Error(
       `claude mcp add-json failed: could not run "claude" (${result.error.message}). ` +
@@ -300,6 +342,14 @@ function installClaude(parsed: ParsedArgs, runtime: Runtime, mode: McpMode): num
   }
   if (result.status !== 0) {
     const detail = result.stderr?.trim() || result.stdout?.trim() || `exit ${result.status ?? result.signal}`;
+    // PowerShell reports a missing command instead of spawn ENOENT; keep the
+    // same user-facing hint as the Unix path (#22).
+    if (/not recognized|CommandNotFoundException|could not find/i.test(detail)) {
+      throw new Error(
+        `claude mcp add-json failed: could not run "claude" (${detail}). ` +
+          'Install Claude Code and make sure "claude" is on PATH, or print the config with "cambrian mcp config".',
+      );
+    }
     throw new Error(`claude mcp add-json failed: ${detail}`);
   }
   printJson(runtime, {
