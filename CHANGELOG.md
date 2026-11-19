@@ -5,6 +5,15 @@ follows [Semantic Versioning](https://semver.org/). Dates are UTC.
 
 ## [Unreleased]
 
+### Fixed
+
+- `cambrian mcp install --client claude` works on Windows when only `claude.cmd`
+  is on PATH. Bare `spawnSync("claude")` failed with `ENOENT` after
+  CVE-2024-27980 (the same class as the `npx.cmd` fix in 1.11.2). The install
+  path now starts Claude through PowerShell and passes the server JSON via an
+  environment variable so the API key is not interpolated on a cmd.exe command
+  line.
+
 ## [1.12.0] - 2026-11-13
 
 ### Added

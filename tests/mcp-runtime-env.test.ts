@@ -139,4 +139,47 @@ describe('MCP child-process environment', () => {
     expect(code).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ version: 'windows-npx' });
   });
+
+  it.runIf(process.platform === 'win32')('starts claude.cmd for mcp install on Windows', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'cambrian-mcp-bin-'));
+    temporaryDirectories.push(directory);
+    const resultFile = join(directory, 'called.txt').replace(/\\/g, '\\\\');
+    // Only claude.cmd is on PATH — the same layout that used to fail with
+    // spawnSync('claude') ENOENT after CVE-2024-27980. The JSON is delivered
+    // via CAMBRIAN_MCP_ADD_JSON so cmd metacharacters in the key stay safe.
+    writeFileSync(join(directory, 'claude.cmd'), [
+      '@echo off',
+      `if not defined CAMBRIAN_MCP_ADD_JSON exit /b 2`,
+      `echo %1> "${resultFile}"`,
+      `echo %2>> "${resultFile}"`,
+      `echo %3>> "${resultFile}"`,
+      `echo %CAMBRIAN_MCP_ADD_JSON%>> "${resultFile}"`,
+      'exit /b 0',
+    ].join('\r\n') + '\r\n');
+
+    const apiKey = 'test&key%PATH%';
+    let stdout = '';
+    let stderr = '';
+    const code = await runCli(
+      ['mcp', 'install', '--client', 'claude', '--api-key', apiKey],
+      {
+        stdout: (line) => { stdout += `${line}\n`; },
+        stderr: (line) => { stderr += `${line}\n`; },
+        env: {
+          CAMBRIAN_SCHEMA_MODE: 'bundled',
+          PATH: directory,
+          SystemRoot: process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows',
+          PATHEXT: process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD',
+        },
+      },
+    );
+
+    expect(stderr).toBe('');
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({ ok: true, client: 'claude' });
+    const recorded = readFileSync(join(directory, 'called.txt'), 'utf8');
+    expect(recorded).toContain('mcp');
+    expect(recorded).toContain('add-json');
+    expect(recorded).toContain(apiKey);
+  });
 });
