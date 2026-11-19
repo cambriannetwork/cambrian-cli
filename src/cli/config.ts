@@ -8,10 +8,14 @@
  * optional persisted API key and the update-check cache. No native keychain
  * dependency — a 0600 file is the pragmatic, well-precedented choice for an API
  * key (a wallet private key would warrant more; that lives with x402, parked).
+ *
+ * Writes are atomic (temp file + rename) so a crash mid-write cannot leave a
+ * truncated JSON document that later readers treat as an empty config.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import type { Runtime } from './core.js';
 
 export interface CambrianConfig {
@@ -76,8 +80,61 @@ export function readConfig(runtime: Runtime): CambrianConfig {
   }
 }
 
+/** Atomically replace `file` with `body` (temp + rename; cleans up on failure). */
+function atomicWriteConfigFile(file: string, body: string): void {
+  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+  const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporary, body, { mode: 0o600 });
+    renameSync(temporary, file);
+  } catch (error) {
+    try {
+      rmSync(temporary, { force: true });
+    } catch {
+      // Preserve the original write error if cleanup is also blocked.
+    }
+    throw error;
+  }
+}
+
 /** Writes the config, creating the dir (0o700) and file (0o600) as needed. */
 export function writeConfig(runtime: Runtime, config: CambrianConfig): void {
   mkdirSync(configDir(runtime), { recursive: true, mode: 0o700 });
-  writeFileSync(configPath(runtime), JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
+  atomicWriteConfigFile(configPath(runtime), JSON.stringify(config, null, 2) + '\n');
+}
+
+/**
+ * Merges `latestVersion` into an on-disk config without dropping other fields.
+ * Used by the detached update-check child (and tests). Corrupt or non-object
+ * JSON is left untouched — never replaced with `{ latestVersion }` alone.
+ */
+export function writeLatestVersionToConfigFile(
+  file: string,
+  version: string,
+): 'written' | 'skipped' {
+  let text: string;
+  try {
+    text = readFileSync(file, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') return 'skipped';
+    atomicWriteConfigFile(file, JSON.stringify({ latestVersion: version }, null, 2) + '\n');
+    return 'written';
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return 'skipped';
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return 'skipped';
+  }
+
+  const next: CambrianConfig = {
+    ...(parsed as CambrianConfig),
+    latestVersion: version,
+  };
+  atomicWriteConfigFile(file, JSON.stringify(next, null, 2) + '\n');
+  return 'written';
 }

@@ -1,15 +1,22 @@
 /**
  * Unit tests for the persisted config store: directory resolution (XDG override
- * vs ~/.config default), read/write round-trip, file/dir permissions, and the
- * safe {} fallback for a missing file. Uses real temp dirs (no network).
+ * vs ~/.config default), read/write round-trip, file/dir permissions, the
+ * safe {} fallback for a missing file, atomic writes, and latestVersion merges
+ * that must not wipe secrets. Uses real temp dirs (no network).
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, statSync, writeFileSync } from 'fs';
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { createRuntime } from '../src/cli/core.js';
-import { configDir, configPath, readConfig, writeConfig } from '../src/cli/config.js';
+import {
+  configDir,
+  configPath,
+  readConfig,
+  writeConfig,
+  writeLatestVersionToConfigFile,
+} from '../src/cli/config.js';
 
 const created: string[] = [];
 function tempHome(): string {
@@ -69,5 +76,72 @@ describe('readConfig / writeConfig', () => {
     writeConfig(rt, { apiKey: 'k' }); // creates the dir
     writeFileSync(configPath(rt), '{not json', { mode: 0o600 });
     expect(readConfig(rt)).toEqual({});
+  });
+
+  it('leaves no temporary files after an atomic write', () => {
+    const home = tempHome();
+    const rt = createRuntime({ homedir: () => home, env: {} });
+    writeConfig(rt, { apiKey: 'k' });
+    const names = readdirSync(configDir(rt));
+    expect(names).toEqual(['config.json']);
+    expect(readConfig(rt)).toEqual({ apiKey: 'k' });
+  });
+});
+
+describe('writeLatestVersionToConfigFile', () => {
+  it('preserves apiKey and x402 pending state while updating latestVersion', () => {
+    const home = tempHome();
+    const rt = createRuntime({ homedir: () => home, env: {} });
+    writeConfig(rt, {
+      apiKey: 'secret-key',
+      lastUpdateCheck: 1,
+      x402PendingPayments: {
+        abc: {
+          idempotencyKey: 'idemp',
+          createdAt: 1,
+          expiresAt: 9,
+          amount: '1000',
+          network: 'base',
+          payTo: '0xabc',
+        },
+      },
+    });
+    const file = configPath(rt);
+    expect(writeLatestVersionToConfigFile(file, '9.9.9')).toBe('written');
+    expect(readConfig(rt)).toEqual({
+      apiKey: 'secret-key',
+      lastUpdateCheck: 1,
+      latestVersion: '9.9.9',
+      x402PendingPayments: {
+        abc: {
+          idempotencyKey: 'idemp',
+          createdAt: 1,
+          expiresAt: 9,
+          amount: '1000',
+          network: 'base',
+          payTo: '0xabc',
+        },
+      },
+    });
+  });
+
+  it('does not wipe a corrupt config file', () => {
+    const home = tempHome();
+    const rt = createRuntime({ homedir: () => home, env: {} });
+    writeConfig(rt, { apiKey: 'k' });
+    const file = configPath(rt);
+    writeFileSync(file, '{not json', { mode: 0o600 });
+    expect(writeLatestVersionToConfigFile(file, '9.9.9')).toBe('skipped');
+    expect(readConfig(rt)).toEqual({});
+    // On-disk bytes stay corrupt rather than becoming { latestVersion } only.
+    expect(statSync(file).size).toBe('{not json'.length);
+  });
+
+  it('creates a latestVersion-only file when the config is missing', () => {
+    const home = tempHome();
+    const rt = createRuntime({ homedir: () => home, env: {} });
+    const file = configPath(rt);
+    expect(writeLatestVersionToConfigFile(file, '1.2.3')).toBe('written');
+    expect(readConfig(rt)).toEqual({ latestVersion: '1.2.3' });
   });
 });
